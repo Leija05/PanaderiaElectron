@@ -18,8 +18,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-
-  win.loadFile('views/index.html');
+win.loadFile('src/views/index.html')
 }
 app.whenReady().then(createWindow);
 
