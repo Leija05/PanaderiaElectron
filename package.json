@@ -1,34 +1,57 @@
 {
-  "name": "DulceHorno",
+  "name": "dulcehorno",
   "productName": "DulceHorno",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Punto de Venta Panaderia",
   "main": "src/main.js",
-  "author": "",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Leija05/PanaderiaElectron"
-  },
   "scripts": {
-    "start": "electron src/main.js",
-    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds",
-    "package-win": "electron-packager . electron-tutorial-app --overwrite --asar=true --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=release-builds --version-string.CompanyName=CE --version-string.FileDescription=CE --version-string.ProductName=\"Electron Tutorial App\"",
-    "package-linux": "electron-packager . electron-tutorial-app --overwrite --asar=true --platform=linux --arch=x64 --icon=assets/icons/png/1024x1024.png --prune=true --out=release-builds"
+    "start": "electron .",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "predist": "npm run clean",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish always"
   },
-  "keywords": [],
-  "license": "ISC",
-  "dependencies": {
-    "better-sqlite3": "^12.4.1",
-    "electron-log": "^5.4.3",
-    "electron-packager": "^17.1.2",
-    "electron-reload": "^2.0.0-alpha.1",
-    "electron-updater": "^6.7.3",
-    "mysql": "^2.18.1",
-    "parcel": "^2.16.0"
+  "build": {
+    "appId": "com.dulcehorno.app",
+    "productName": "DulceHorno",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Leija05",
+        "repo": "PanaderiaElectron"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
   },
   "devDependencies": {
     "electron": "^26.6.10",
-    "electron-builder": "^26.4.0",
+    "electron-builder": "^26.7.0",
     "rimraf": "^5.0.10"
-  }
+  },
+  "dependencies": {
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.7.3",
+    "mysql": "^2.18.1",
+    "sqlite3": "^5.1.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Leija05/PanaderiaElectron.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Leija05/PanaderiaElectron/issues"
+  },
+  "homepage": "https://github.com/Leija05/PanaderiaElectron#readme"
 }

@@ -5,14 +5,33 @@ let usuarioAModificar = [];
 const appContainer = document.getElementById('app-container');
 
 // =============== LOGIN ==================
+// 1. Usuarios permitidos para entrar sin base de datos
+const DATOS_LOCAL_BACKUP = {
+  usuarios: [
+    { 
+      NombreUsuario: 'admin', 
+      PasswordLocal: '1234', // Contraseña de emergencia
+      NombreCompleto: 'Admin Local (Sin DB)', 
+      Rol: 'Gerente', 
+      Activo: 1, 
+      IdEmpleado: 999 
+    },
+    { 
+      NombreUsuario: 'empleado1', 
+      PasswordLocal: '5678', 
+      NombreCompleto: 'Empleado de Turno', 
+      Rol: 'Empleado', 
+      Activo: 1, 
+      IdEmpleado: 888 
+    }
+  ]
+};
+
 async function renderLogin() {
   appContainer.innerHTML = `
     <div class="login-container card">
         <h2><i class="fas fa-bread-slice icon"></i> Panadería Dulce Horno</h2>
-        
-        <!-- Contenedor para mensajes de error -->
         <div id="login-error" style="display: none;" class="alert alert-danger"></div>
-        
         <form id="login-form">
             <div class="form-group">
                 <label for="username">Usuario:</label>
@@ -34,46 +53,46 @@ async function renderLogin() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('login-error');
-    errorDiv.style.display = 'none';
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
+    
+    errorDiv.style.display = 'none';
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
     submitBtn.disabled = true;
 
     try {
       const result = await window.api.login(username, password);
-      console.log('Resultado login:', result);
 
       if (result.success) {
         usuarioActual = result.user;
         renderDashboard();
       } else {
-        if (result.error === 'Usuario desactivado') {
-          mostrarErrorLogin('❌ Usuario desactivado', result.message);
-        } else {
-          mostrarErrorLogin('❌ Error de login', result.message);
-        }
+        mostrarErrorLogin('❌ Error', result.message);
       }
     } catch (error) {
-      console.error('Error en login:', error);
-      mostrarErrorLogin('❌ Error', 'Ocurrió un error inesperado durante el login.');
+      console.warn('DB Offline. Buscando en usuarios locales...');
+      
+      const userLocal = DATOS_LOCAL_BACKUP.usuarios.find(u => 
+        u.NombreUsuario === username && u.PasswordLocal === password
+      );
+
+      if (userLocal) {
+        usuarioActual = userLocal;
+        alert('⚠️ MODO LOCAL ACTIVO, Si quieres usar la app bien, instala xammp y agrega la conexion local en "./includes/conexion.js" y corre la base de datos de "./database/Panaderia.sql"');
+        renderDashboard();
+      } else {
+        mostrarErrorLogin('❌ Error de Conexión', 'No hay conexión a la DB y las credenciales locales no coinciden.');
+      }
     } finally {
       submitBtn.innerHTML = originalText;
       submitBtn.disabled = false;
     }
   });
 
-  // Función para mostrar errores de login
   function mostrarErrorLogin(titulo, mensaje) {
     const errorDiv = document.getElementById('login-error');
-    errorDiv.innerHTML = `
-      <strong>${titulo}</strong><br>
-      ${mensaje}
-    `;
+    errorDiv.innerHTML = `<strong>${titulo}</strong><br>${mensaje}`;
     errorDiv.style.display = 'block';
-
-    // Hacer scroll al error
-    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
