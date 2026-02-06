@@ -10,7 +10,7 @@ const DATOS_LOCAL_BACKUP = {
   usuarios: [
     { 
       NombreUsuario: 'admin', 
-      PasswordLocal: '1234', // Contraseña de emergencia
+      PasswordLocal: '1234',
       NombreCompleto: 'Admin Local (Sin DB)', 
       Rol: 'Gerente', 
       Activo: 1, 
