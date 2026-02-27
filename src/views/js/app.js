@@ -3,6 +3,44 @@ let carrito = [];
 let ventas = [];
 let usuarioAModificar = [];
 const appContainer = document.getElementById('app-container');
+const APP_STORAGE_KEYS = {
+  tema: 'panaderia-tema',
+  ultimaVista: 'panaderia-ultima-vista'
+};
+
+function guardarUltimaVista(page) {
+  localStorage.setItem(APP_STORAGE_KEYS.ultimaVista, page);
+}
+
+function obtenerUltimaVistaPorRol() {
+  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : 'personal';
+  const guardada = localStorage.getItem(APP_STORAGE_KEYS.ultimaVista);
+
+  if (!guardada) return fallback;
+
+  const paginasPermitidas = usuarioActual?.Rol === 'Empleado'
+    ? ['ventas']
+    : ['personal', 'proveedores', 'inventario', 'registroVenta'];
+
+  return paginasPermitidas.includes(guardada) ? guardada : fallback;
+}
+
+function aplicarTemaGuardado() {
+  const tema = localStorage.getItem(APP_STORAGE_KEYS.tema) || 'claro';
+  document.body.classList.toggle('dark-theme', tema === 'oscuro');
+}
+
+function alternarTema() {
+  const esOscuro = document.body.classList.toggle('dark-theme');
+  localStorage.setItem(APP_STORAGE_KEYS.tema, esOscuro ? 'oscuro' : 'claro');
+
+  const temaBtn = document.getElementById('theme-toggle-btn');
+  if (temaBtn) {
+    temaBtn.innerHTML = esOscuro ? '☀️ Tema Claro' : '🌙 Tema Oscuro';
+  }
+}
+
+aplicarTemaGuardado();
 
 // =============== LOGIN ==================
 // 1. Usuarios permitidos para entrar sin base de datos
@@ -119,6 +157,7 @@ function renderDashboard() {
     <div class="dashboard-container">
       <div class="sidebar">
         <h3>Menú</h3>
+        <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">🌙 Tema Oscuro</button>
         ${navbar}
       </div>
       <div class="main-content">
@@ -133,9 +172,19 @@ function renderDashboard() {
   document.querySelectorAll('.nav-link[data-page]').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      renderPage(link.getAttribute('data-page'));
+      const selectedPage = link.getAttribute('data-page');
+      guardarUltimaVista(selectedPage);
+      renderPage(selectedPage);
     });
   });
+
+  const themeBtn = document.getElementById('theme-toggle-btn');
+  themeBtn.innerHTML = document.body.classList.contains('dark-theme')
+    ? '☀️ Tema Claro'
+    : '🌙 Tema Oscuro';
+  themeBtn.addEventListener('click', alternarTema);
+
+  renderPage(obtenerUltimaVistaPorRol());
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     usuarioActual = null;
@@ -618,6 +667,7 @@ function showUpdateForm(usuarioAModificar) {
 }
 // =============== PÁGINAS ==================
 async function renderPage(page) {
+  guardarUltimaVista(page);
   const content = document.getElementById('content-area');
   if (page === 'personal') {
     const empleados = await window.api.getEmpleados();
@@ -648,6 +698,10 @@ async function renderPage(page) {
     content.innerHTML = `
         <div class="card">
           <h2>Gestión de Personal</h2>
+          <div class="filter-toolbar">
+            <input type="text" id="filtroPersonal" class="form-control" placeholder="Buscar por usuario, nombre, rol o turno...">
+            <span id="resumenPersonal" class="filter-summary"></span>
+          </div>
           <div style="margin-bottom:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
             <strong>Leyenda:</strong> 
             <span style="color:#27ae60;">✅ Empleado activo</span> | 
@@ -702,12 +756,30 @@ async function renderPage(page) {
       `;
 
     const tabla = document.getElementById('tablaEmpleados');
+    const filtroPersonal = document.getElementById('filtroPersonal');
+    const resumenPersonal = document.getElementById('resumenPersonal');
     const confirmacionModal = document.getElementById('confirmacionUsuario');
     const tituloModal = document.getElementById('tituloModal');
     const mensajeModal = document.getElementById('mensajeModal');
     const btnAceptar = document.getElementById('aceptarAccionUsuario');
 
     let modoActual = null;
+
+    function actualizarConteoFiltrado() {
+      const filasVisibles = Array.from(tabla.querySelectorAll('tbody tr')).filter((fila) => fila.style.display !== 'none').length;
+      resumenPersonal.textContent = `${filasVisibles} de ${empleados.length} empleados visibles`;
+    }
+
+    filtroPersonal.addEventListener('input', (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      tabla.querySelectorAll('tbody tr').forEach((fila) => {
+        const filaTexto = fila.textContent.toLowerCase();
+        fila.style.display = filaTexto.includes(query) ? '' : 'none';
+      });
+      actualizarConteoFiltrado();
+    });
+
+    actualizarConteoFiltrado();
 
     // ===================== REGISTRAR USUARIO =====================================
     document.getElementById('registrarUsuario').addEventListener('click', () => {
