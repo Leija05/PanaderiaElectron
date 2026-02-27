@@ -7,6 +7,59 @@ const APP_STORAGE_KEYS = {
   tema: 'panaderia-tema',
   ultimaVista: 'panaderia-ultima-vista'
 };
+const ICONS = {
+  success: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.55 17.2 4.8 12.45l1.4-1.4 3.35 3.35 8.25-8.25 1.4 1.4Z"/></svg>',
+  error: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 10.6 4.9-4.9 1.4 1.4-4.9 4.9 4.9 4.9-1.4 1.4-4.9-4.9-4.9 4.9-1.4-1.4 4.9-4.9-4.9-4.9 1.4-1.4Z"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.1 2a9.5 9.5 0 1 0 9.9 12.4A8 8 0 1 1 12.1 2Z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0 4h-1v-3h2v3h-1Zm0-17h-1V2h2v3h-1ZM4.9 6.3l-1.4-1.4L4.9 3.5l1.4 1.4-1.4 1.4Zm14.2 14.2-1.4-1.4 1.4-1.4 1.4 1.4-1.4 1.4ZM2 13v-2h3v2H2Zm17 0v-2h3v2h-3ZM4.9 20.5l-1.4-1.4 1.4-1.4 1.4 1.4-1.4 1.4Zm14.2-14.2-1.4-1.4 1.4-1.4 1.4 1.4-1.4 1.4Z"/></svg>'
+};
+
+function iconHTML(type, label = '') {
+  return `<span class="inline-icon inline-icon-${type}">${ICONS[type] || ''}${label ? `<span>${label}</span>` : ''}</span>`;
+}
+
+function ensureModalRoot() {
+  if (document.getElementById('global-modal-root')) return;
+  const root = document.createElement('div');
+  root.id = 'global-modal-root';
+  document.body.appendChild(root);
+}
+
+function showModal({ title = 'Mensaje', message = '', type = 'warning', showCancel = false, confirmText = 'Aceptar', cancelText = 'Cancelar' }) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+  return new Promise((resolve) => {
+    root.innerHTML = `
+      <div class="app-modal-overlay">
+        <div class="app-modal-card">
+          <div class="app-modal-title">${iconHTML(type, title)}</div>
+          <div class="app-modal-body">${String(message).replaceAll('\n', '<br>')}</div>
+          <div class="app-modal-actions">
+            ${showCancel ? `<button id="modal-cancel" class="btn btn-secondary">${cancelText}</button>` : ''}
+            <button id="modal-confirm" class="btn btn-primary">${confirmText}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const cleanup = (result) => {
+      root.innerHTML = '';
+      resolve(result);
+    };
+
+    document.getElementById('modal-confirm').addEventListener('click', () => cleanup(true));
+    if (showCancel) {
+      document.getElementById('modal-cancel').addEventListener('click', () => cleanup(false));
+    }
+    root.querySelector('.app-modal-overlay').addEventListener('click', (e) => {
+      if (e.target.classList.contains('app-modal-overlay')) cleanup(false);
+    });
+  });
+}
+
+const showAlert = (message, type = 'warning', title = 'Aviso') => showModal({ title, message, type, showCancel: false });
+const showConfirm = (message, title = 'Confirmar') => showModal({ title, message, type: 'warning', showCancel: true, confirmText: 'Confirmar' });
 
 function guardarUltimaVista(page) {
   localStorage.setItem(APP_STORAGE_KEYS.ultimaVista, page);
@@ -36,7 +89,7 @@ function alternarTema() {
 
   const temaBtn = document.getElementById('theme-toggle-btn');
   if (temaBtn) {
-    temaBtn.innerHTML = esOscuro ? '☀️ Tema Claro' : '🌙 Tema Oscuro';
+    temaBtn.innerHTML = esOscuro ? `${iconHTML('sun')} Tema Claro` : `${iconHTML('moon')} Tema Oscuro`;
   }
 }
 
@@ -188,7 +241,7 @@ async function renderLogin() {
         usuarioActual = result.user;
         renderDashboard();
       } else {
-        mostrarErrorLogin('❌ Error', result.message);
+        mostrarErrorLogin('Error', result.message);
       }
     } catch (error) {
       console.warn('DB Offline. Buscando en usuarios locales...');
@@ -199,10 +252,10 @@ async function renderLogin() {
 
       if (userLocal) {
         usuarioActual = userLocal;
-        alert('⚠️ MODO LOCAL ACTIVO, Si quieres usar la app bien, instala xammp y agrega la conexion local en "./includes/conexion.js" y corre la base de datos de "./database/Panaderia.sql"');
+        await showAlert('Modo local activo. Para habilitar la experiencia completa, configura la conexión en ./includes/conexion.js y ejecuta ./database/Panaderia.sql.', 'warning', 'Modo local');
         renderDashboard();
       } else {
-        mostrarErrorLogin('❌ Error de Conexión', 'No hay conexión a la DB y las credenciales locales no coinciden.');
+        mostrarErrorLogin('Error de conexión', 'No hay conexión a la DB y las credenciales locales no coinciden.');
       }
     } finally {
       submitBtn.innerHTML = originalText;
@@ -240,7 +293,7 @@ function renderDashboard() {
     <div class="dashboard-container">
       <div class="sidebar">
         <h3>Menú</h3>
-        <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">🌙 Tema Oscuro</button>
+        <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')} Tema Oscuro</button>
         ${navbar}
       </div>
       <div class="main-content">
@@ -263,8 +316,8 @@ function renderDashboard() {
 
   const themeBtn = document.getElementById('theme-toggle-btn');
   themeBtn.innerHTML = document.body.classList.contains('dark-theme')
-    ? '☀️ Tema Claro'
-    : '🌙 Tema Oscuro';
+    ? 'Tema Claro'
+    : 'Tema Oscuro';
   themeBtn.addEventListener('click', alternarTema);
 
   renderResumenRol();
@@ -394,8 +447,8 @@ function showRegistrationProductForm() {
     modal.remove();
   });
 
-  document.getElementById('cancelarRegistro').addEventListener('click', () => {
-    if (confirm('¿Seguro que deseas cancelar? Se perderán los datos no guardados.')) {
+  document.getElementById('cancelarRegistro').addEventListener('click', async () => {
+    if (await showConfirm('¿Seguro que deseas cancelar? Se perderán los datos no guardados.', 'Cancelar registro')) {
       modal.remove();
     }
   });
@@ -428,7 +481,7 @@ function showRegistrationProductForm() {
       const resultado = await window.api.agregarProducto(productoData);
 
       // Mostrar mensaje de éxito
-      alert(`✅ ${resultado.message}\nID del producto: ${resultado.id}`);
+      await showAlert(`${resultado.message}\nID del producto: ${resultado.id}`, 'success', 'Producto guardado');
 
       // Cerrar modal y recargar la página de inventario
       modal.remove();
@@ -436,7 +489,7 @@ function showRegistrationProductForm() {
 
     } catch (error) {
       console.error('Error al guardar producto:', error);
-      alert('❌ ' + error.message);
+      await showAlert(error.message, 'error', 'Error al guardar producto');
 
       // Restaurar botón
       btnGuardar.disabled = false;
@@ -445,9 +498,9 @@ function showRegistrationProductForm() {
   });
 
   // Cerrar modal al hacer clic fuera del contenido
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener('click', async (e) => {
     if (e.target === modal) {
-      if (confirm('¿Seguro que deseas cancelar? Se perderán los datos no guardados.')) {
+      if (await showConfirm('¿Seguro que deseas cancelar? Se perderán los datos no guardados.', 'Cancelar registro')) {
         modal.remove();
       }
     }
@@ -547,11 +600,12 @@ function showRegistrationForm() {
     const salario = document.getElementById('reg-salario').value;
 
     if (password !== confirm) {
-      return alert('Las contraseñas no coinciden');
+      await showAlert('Las contraseñas no coinciden', 'warning', 'Validación');
+      return;
     }
     if (rol !== 'Cliente') {
-      if (!puesto) return alert('El puesto es requerido para empleados y gerentes');
-      if (!turno && rol !== 'Gerente') return alert('El turno es requerido para empleados');
+      if (!puesto) { await showAlert('El puesto es requerido para empleados y gerentes', 'warning', 'Validación'); return; }
+      if (!turno && rol !== 'Gerente') { await showAlert('El turno es requerido para empleados', 'warning', 'Validación'); return; }
     }
 
     const userData = {
@@ -565,7 +619,7 @@ function showRegistrationForm() {
     };
 
     await window.api.registrarUsuario(userData);
-    alert('Usuario registrado correctamente');
+    await showAlert('Usuario registrado correctamente', 'success', 'Registro exitoso');
     renderDashboard();
   });
 
@@ -625,7 +679,7 @@ function showAddProveedor() {
     };
 
     await window.api.registrarProveedor(userData);
-    alert('Proveedor registrado correctamente');
+    await showAlert('Proveedor registrado correctamente', 'success', 'Registro exitoso');
     renderDashboard();
   });
 
@@ -720,8 +774,8 @@ function showUpdateForm(usuarioAModificar) {
     const turno = document.getElementById('reg-turno').value;
     const salario = document.getElementById('reg-salario').value;
     if (rol !== 'Cliente') {
-      if (!puesto) return alert('El puesto es requerido para empleados y gerentes');
-      if (!turno && rol !== 'Gerente') return alert('El turno es requerido para empleados');
+      if (!puesto) { await showAlert('El puesto es requerido para empleados y gerentes', 'warning', 'Validación'); return; }
+      if (!turno && rol !== 'Gerente') { await showAlert('El turno es requerido para empleados', 'warning', 'Validación'); return; }
     }
 
     const userData = {
@@ -737,11 +791,11 @@ function showUpdateForm(usuarioAModificar) {
     try {
       const result = await window.api.modificarUsuario(userData);
       console.log("Actualización exitosa:", result);
-      alert("Usuario actualizado correctamente");
+      await showAlert('Usuario actualizado correctamente', 'success', 'Actualización exitosa');
       renderDashboard();
     } catch (error) {
       console.error("Error:", error);
-      alert("Error al actualizar usuario");
+      await showAlert('Error al actualizar usuario', 'error', 'Actualización fallida');
     }
   });
 
@@ -761,7 +815,7 @@ async function renderPage(page) {
       // Determinar si el empleado está activo o desactivado
       const estaActivo = e.Activo !== undefined ? e.Activo : true;
       const claseFila = estaActivo ? '' : 'empleado-desactivado';
-      const indicadorEstado = estaActivo ? '✅' : '❌';
+      const indicadorEstado = estaActivo ? iconHTML('success') : iconHTML('error');
 
       return `
         <tr data-index="${index}" data-activo="${estaActivo}" class="${claseFila}">
@@ -788,8 +842,8 @@ async function renderPage(page) {
           </div>
           <div style="margin-bottom:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
             <strong>Leyenda:</strong> 
-            <span style="color:#27ae60;">✅ Empleado activo</span> | 
-            <span style="color:#e74c3c;">❌ Empleado desactivado</span>
+            <span style="color:#27ae60;">${iconHTML('success')} Empleado activo</span> | 
+            <span style="color:#e74c3c;">${iconHTML('error')} Empleado desactivado</span>
           </div>
           <table class="table" id="tablaEmpleados">
             <thead>
@@ -955,12 +1009,12 @@ async function renderPage(page) {
 
       // Validar según el modo
       if (enModoDesactivar && !estaActivo) {
-        alert('Este empleado ya está desactivado. Solo puedes seleccionar empleados activos.');
+        showAlert('Este empleado ya está desactivado. Solo puedes seleccionar empleados activos.', 'warning', 'Selección no válida');
         return;
       }
 
       if (enModoReactivar && estaActivo) {
-        alert('Este empleado ya está activo. Solo puedes seleccionar empleados desactivados.');
+        showAlert('Este empleado ya está activo. Solo puedes seleccionar empleados desactivados.', 'warning', 'Selección no válida');
         return;
       }
 
@@ -1065,7 +1119,7 @@ async function renderPage(page) {
     document.getElementById('aceptarAccionUsuario').addEventListener('click', async () => {
       if(modoActual==='modificar'){
         if (seleccionadosPersonal.size === 0) {
-          alert('No seleccionaste ningún empleado.');
+          await showAlert('No seleccionaste ningún empleado.', 'warning', 'Acción requerida');
           return;
         }
         else
@@ -1083,7 +1137,7 @@ async function renderPage(page) {
     // ===================== PROCESAR CAMBIO DE ESTADO ============================
     async function procesarCambioEstado(nuevoEstado) {
       if (seleccionadosPersonal.size === 0) {
-        alert('No seleccionaste ningún empleado.');
+        await showAlert('No seleccionaste ningún empleado.', 'warning', 'Acción requerida');
         return;
       }
 
@@ -1091,7 +1145,7 @@ async function renderPage(page) {
       const empleadosAProcesar = Array.from(seleccionadosPersonal).map(index => empleados[index]);
       const nombresEmpleados = empleadosAProcesar.map(e => e.NombreCompleto || e.NombreUsuario).join(', ');
 
-      if (!confirm(`¿Estás seguro de que deseas ${accion} ${seleccionadosPersonal.size} empleado(s)?\n\n${nombresEmpleados}`)) {
+      if (!await showConfirm(`¿Estás seguro de que deseas ${accion} ${seleccionadosPersonal.size} empleado(s)?\n\n${nombresEmpleados}`, 'Confirmar cambios')) {
         return;
       }
 
@@ -1110,18 +1164,18 @@ async function renderPage(page) {
           try {
             console.log(`Procesando empleado ID: ${id}, nuevo estado: ${nuevoEstado}`);
             const resultado = await window.api.cambiarEstadoUsuario(id, nuevoEstado);
-            console.log(`✅ Empleado ${id} ${nuevoEstado ? 'reactivado' : 'desactivado'}:`, resultado);
+            console.log(`Empleado ${id} ${nuevoEstado ? 'reactivado' : 'desactivado'}:`, resultado);
             procesadosExitosos++;
           } catch (error) {
-            console.error(`❌ Error procesando empleado ${id}:`, error);
+            console.error(`Error procesando empleado ${id}:`, error);
             errores.push(`ID ${id}: ${error.message}`);
           }
         }
 
         if (errores.length === 0) {
-          alert(`✅ ${procesadosExitosos} empleado(s) ${nuevoEstado ? 'reactivado(s)' : 'desactivado(s)'} correctamente.`);
+          await showAlert(`${procesadosExitosos} empleado(s) ${nuevoEstado ? 'reactivado(s)' : 'desactivado(s)'} correctamente.`, 'success', 'Proceso finalizado');
         } else {
-          alert(`✅ ${procesadosExitosos} empleado(s) procesado(s).\n\n❌ Errores:\n${errores.join('\n')}`);
+          await showAlert(`${procesadosExitosos} empleado(s) procesado(s).\n\nErrores:\n${errores.join('\n')}`, 'warning', 'Proceso con incidencias');
         }
 
         desactivarModoSeleccion();
@@ -1129,7 +1183,7 @@ async function renderPage(page) {
 
       } catch (error) {
         console.error('Error crítico:', error);
-        alert('❌ Error: ' + error.message);
+        await showAlert(error.message, 'error', 'Error crítico');
       }
     }
 
@@ -1147,7 +1201,7 @@ async function renderPage(page) {
       // Determinar si el empleado está activo o desactivado
       const estaActivo = e.Activo !== undefined ? e.Activo : true;
       const claseFila = estaActivo ? '' : 'empleado-desactivado';
-      const indicadorEstado = estaActivo ? '✅' : '❌';
+      const indicadorEstado = estaActivo ? iconHTML('success') : iconHTML('error');
 
       return `
         <tr data-index="${index}" data-activo="${estaActivo}" class="${claseFila}">
@@ -1169,8 +1223,8 @@ async function renderPage(page) {
           <h2>Gestión de Proveedores</h2>
           <div style="margin-bottom:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
             <strong>Leyenda:</strong> 
-            <span style="color:#27ae60;">✅ Proveedor activo</span> | 
-            <span style="color:#e74c3c;">❌ Proveedor desactivado</span>
+            <span style="color:#27ae60;">${iconHTML('success')} Proveedor activo</span> | 
+            <span style="color:#e74c3c;">${iconHTML('error')} Proveedor desactivado</span>
           </div>
           <table class="table" id="tablaProveedores">
             <thead>
@@ -1311,7 +1365,8 @@ async function renderPage(page) {
     // =================== BOTÓN VER DETALLES ===================
     document.getElementById('verDetallesVenta').addEventListener('click', async () => {
       if (seleccionVenta.size !== 1) {
-        return alert('Por favor, selecciona una sola venta para ver los detalles.');
+        await showAlert('Por favor, selecciona una sola venta para ver los detalles.', 'warning', 'Acción requerida');
+        return;
       }
 
       const index = Array.from(seleccionVenta)[0];
@@ -1438,7 +1493,7 @@ async function renderPage(page) {
           top: 0; left: 0; width:100%; height:100%; background: rgba(0,0,0,0.5);
           justify-content:center; align-items:center;">
         <div style="background:white; padding:20px; border-radius:10px; width:500px;">
-          <h3 style="color: #e74c3c;">⚠ Alerta de Inventario Bajo</h3>
+          <h3 style="color: #e74c3c;">${iconHTML('warning')} Alerta de Inventario Bajo</h3>
           <div id="alertaContainer">
             <p>El producto <strong id="productoAlerta"></strong> ha quedado por debajo del nivel mínimo.</p>
             <p><strong>Existencia actual:</strong> <span id="cantidadActualAlerta" style="color: red;"></span></p>
@@ -1467,22 +1522,22 @@ async function renderPage(page) {
     });
 
     // ===================== AGREGAR CANTIDAD ===================================
-    document.getElementById('agregarCantidad').addEventListener('click', () => {
+    document.getElementById('agregarCantidad').addEventListener('click', async () => {
       activarModoAgregarCantidad();
     });
 
-    function activarModoAgregarCantidad() {
+    async function activarModoAgregarCantidad() {
       tabla.classList.add('modo-agregar-cantidad');
       seleccionadosProducto.clear();
-      alert('Selecciona el producto al que deseas agregar cantidad.');
+      await showAlert('Selecciona el producto al que deseas agregar cantidad.', 'warning', 'Inventario');
     }
 
     // ===================== ACTIVAR MODO ELIMINAR ==================================
-    document.getElementById('eliminarProducto').addEventListener('click', () => {
+    document.getElementById('eliminarProducto').addEventListener('click', async () => {
       tabla.classList.add('modo-eliminar');
       confirmacion.style.display = 'flex';
       seleccionadosProducto.clear();
-      alert('Selecciona los productos que deseas dar de baja.');
+      await showAlert('Selecciona los productos que deseas dar de baja.', 'warning', 'Inventario');
     });
 
     // ===================== SELECCIONAR PRODUCTOS ==================================
@@ -1544,8 +1599,8 @@ async function renderPage(page) {
       document.getElementById('noPedir').onclick = () => {
         modalAlerta.style.display = 'none';
         // Opcional: mostrar el modal de agregar cantidad de todas formas
-        setTimeout(() => {
-          if (confirm('¿Deseas agregar cantidad al producto de todas formas?')) {
+        setTimeout(async () => {
+          if (await showConfirm('¿Deseas agregar cantidad al producto de todas formas?', 'Confirmar')) {
             mostrarAgregarCantidad(producto);
           }
         }, 500);
@@ -1553,9 +1608,9 @@ async function renderPage(page) {
     }
 
     // ===================== ACEPTAR ELIMINACIÓN ====================================
-    document.getElementById('aceptarEliminar').addEventListener('click', () => {
+    document.getElementById('aceptarEliminar').addEventListener('click', async () => {
       if (seleccionadosProducto.size === 0) {
-        alert('No seleccionaste ningún producto.');
+        await showAlert('No seleccionaste ningún producto.', 'warning', 'Acción requerida');
         return;
       }
       cantidadContainer.innerHTML = '';
@@ -1591,11 +1646,11 @@ async function renderPage(page) {
       });
 
       if (eliminaciones.length === 0) {
-        alert('Debes ingresar una cantidad válida para al menos un producto.');
+        await showAlert('Debes ingresar una cantidad válida para al menos un producto.', 'warning', 'Validación');
         return;
       }
 
-      if (!confirm('¿Seguro que deseas aplicar las bajas indicadas?')) return;
+      if (!await showConfirm('¿Seguro que deseas aplicar las bajas indicadas?', 'Confirmar bajas')) return;
 
       // Array para productos que necesitan reorden
       let productosNecesitanReorder = [];
@@ -1611,7 +1666,7 @@ async function renderPage(page) {
           }
         } catch (error) {
           console.error('Error al eliminar:', error);
-          alert('Error al eliminar: ' + error.message);
+          await showAlert(`Error al eliminar: ${error.message}`, 'error', 'Operación fallida');
         }
       }
 
@@ -1620,7 +1675,7 @@ async function renderPage(page) {
         await mostrarAlertasReorder(productosNecesitanReorder);
       }
 
-      alert('Bajas aplicadas correctamente.');
+      await showAlert('Bajas aplicadas correctamente.', 'success', 'Operación exitosa');
       modal.style.display = 'none';
       confirmacion.style.display = 'none';
       tabla.classList.remove('modo-eliminar');
@@ -1768,7 +1823,7 @@ async function renderPage(page) {
           const resultado = await window.api.agregarCantidadProducto(producto.IdArticulo || producto.idArticulo, cantidad);
 
           // Mostrar mensaje de éxito
-          alert(`✅ ${resultado.message}\nNueva existencia: ${resultado.cantidadNueva}`);
+          await showAlert(`${resultado.message}\nNueva existencia: ${resultado.cantidadNueva}`, 'success', 'Inventario actualizado');
 
           // Cerrar modal y recargar la página de inventario
           modal.remove();
@@ -1776,7 +1831,7 @@ async function renderPage(page) {
 
         } catch (error) {
           console.error('Error al agregar cantidad:', error);
-          alert('❌ ' + error.message);
+          await showAlert(error.message, 'error', 'Error al agregar cantidad');
 
           // Restaurar botón
           btnConfirmar.disabled = false;
@@ -2050,7 +2105,7 @@ async function renderPage(page) {
           `Total estimado: ${formatearMoneda(pedido.total)}`
         ].join('\n');
         descargarTexto(`${pedido.folio}.txt`, pedidoTexto);
-        alert(`✅ Pedido generado correctamente.\nFolio: ${pedido.folio}`);
+        await showAlert(`Pedido generado correctamente.\nFolio: ${pedido.folio}`, 'success', 'Pedido generado');
         carrito = [];
         actualizarCarrito();
         return;
@@ -2062,7 +2117,7 @@ async function renderPage(page) {
         const res = await window.api.registrarVenta(datosVenta);
 
         if (res.success) {
-          alert(`✅ Venta registrada con éxito.\nID Venta: ${res.idVenta}\nTotal: $${res.total.toFixed(2)}`);
+          await showAlert(`Venta registrada con éxito.\nID Venta: ${res.idVenta}\nTotal: $${res.total.toFixed(2)}`, 'success', 'Venta completada');
           carrito = [];
           actualizarCarrito();
           ocultarAlerta();
@@ -2070,10 +2125,10 @@ async function renderPage(page) {
           // Recargar página para actualizar existencias
           renderPage('ventas');
         } else {
-          mostrarAlerta(`❌ Error al registrar la venta: ${res.error || 'Error desconocido'}`);
+          mostrarAlerta(`Error al registrar la venta: ${res.error || 'Error desconocido'}`);
         }
       } catch (error) {
-        mostrarAlerta(`❌ Error al registrar la venta: ${error.message}`);
+        mostrarAlerta(`Error al registrar la venta: ${error.message}`);
       }
     });
 
