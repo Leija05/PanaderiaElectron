@@ -263,6 +263,33 @@
             white-space: nowrap;
         }
 
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .stat-item {
+            background: var(--color-cream);
+            border: 1px solid #eadfce;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .stat-item strong {
+            font-size: 1.4rem;
+            color: var(--color-brown);
+        }
+
+        .stat-item.warning {
+            border-color: #f1c87b;
+            background: #fff5e6;
+        }
+
         /* Estilos específicos para las pantallas */
         .login-container, .register-container {
             max-width: 500px;

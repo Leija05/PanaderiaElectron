@@ -42,6 +42,89 @@ function alternarTema() {
 
 aplicarTemaGuardado();
 
+function formatearMoneda(valor) {
+  return `$${Number(valor || 0).toFixed(2)}`;
+}
+
+function crearCSV(data, headers) {
+  const encabezado = headers.join(',');
+  const filas = data.map((row) => headers.map((key) => {
+    const raw = row[key] ?? '';
+    const escaped = String(raw).replaceAll('"', '""');
+    return `"${escaped}"`;
+  }).join(','));
+
+  return [encabezado, ...filas].join('\n');
+}
+
+function descargarTexto(nombreArchivo, contenido, tipo = 'text/plain;charset=utf-8;') {
+  const blob = new Blob([contenido], { type: tipo });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nombreArchivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function renderResumenRol() {
+  const content = document.getElementById('content-area');
+  if (!content || !usuarioActual) return;
+
+  try {
+    if (usuarioActual.Rol === 'Gerente') {
+      const [empleados, proveedores, productos] = await Promise.all([
+        window.api.getEmpleados(),
+        window.api.getProveedores(),
+        window.api.getProductos()
+      ]);
+      const productosBajoStock = productos.filter((p) => (p.Cantidad || 0) <= (p.CantidadMinima || 5));
+      content.innerHTML = `
+        <div class="card">
+          <h2>Panel Gerencial</h2>
+          <div class="stats-grid">
+            <div class="stat-item"><strong>${empleados.length}</strong><span>Empleados registrados</span></div>
+            <div class="stat-item"><strong>${proveedores.length}</strong><span>Proveedores activos</span></div>
+            <div class="stat-item"><strong>${productos.length}</strong><span>Productos en catálogo</span></div>
+            <div class="stat-item warning"><strong>${productosBajoStock.length}</strong><span>Productos con stock bajo</span></div>
+          </div>
+          <p style="margin-top:12px;">Tip: revisa Inventario para reabastecer productos críticos.</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (usuarioActual.Rol === 'Empleado') {
+      const productos = await window.api.getProductos();
+      const agotados = productos.filter((p) => (p.Cantidad || 0) === 0).length;
+      content.innerHTML = `
+        <div class="card">
+          <h2>Panel de Caja</h2>
+          <div class="stats-grid">
+            <div class="stat-item"><strong>${productos.length}</strong><span>Productos disponibles</span></div>
+            <div class="stat-item"><strong>${agotados}</strong><span>Productos agotados</span></div>
+          </div>
+          <p style="margin-top:12px;">Puedes iniciar una venta desde el menú lateral.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const productos = await window.api.getProductos();
+    content.innerHTML = `
+      <div class="card">
+        <h2>Bienvenido a Dulce Horno</h2>
+        <div class="stats-grid">
+          <div class="stat-item"><strong>${productos.length}</strong><span>Productos para comprar</span></div>
+        </div>
+        <p style="margin-top:12px;">Explora el catálogo y genera tu pedido en segundos.</p>
+      </div>
+    `;
+  } catch (error) {
+    content.innerHTML = '<div class="card"><h2>Resumen</h2><p>No fue posible cargar estadísticas iniciales.</p></div>';
+  }
+}
+
 // =============== LOGIN ==================
 // 1. Usuarios permitidos para entrar sin base de datos
 const DATOS_LOCAL_BACKUP = {
@@ -184,6 +267,7 @@ function renderDashboard() {
     : '🌙 Tema Oscuro';
   themeBtn.addEventListener('click', alternarTema);
 
+  renderResumenRol();
   renderPage(obtenerUltimaVistaPorRol());
 
   document.getElementById('logout-btn').addEventListener('click', () => {
@@ -1145,6 +1229,10 @@ async function renderPage(page) {
     content.innerHTML = `
     <div class="card">
       <h2>Registro de Ventas</h2>
+      <div class="filter-toolbar">
+        <input type="text" id="filtroVentas" class="form-control" placeholder="Buscar por ID, empleado o fecha...">
+        <button id="exportarVentasCsv" class="btn btn-secondary btn-sm">Exportar CSV</button>
+      </div>
       <table class="table" id="tablaVentas">
         <thead>
           <tr>
@@ -1182,6 +1270,29 @@ async function renderPage(page) {
 
     // =================== SELECCIONAR VENTA ===================
     const filas = document.querySelectorAll('#tablaVentas tbody tr');
+    const filtroVentas = document.getElementById('filtroVentas');
+    const exportarVentasCsv = document.getElementById('exportarVentasCsv');
+
+    filtroVentas.addEventListener('input', (event) => {
+      const query = event.target.value.toLowerCase().trim();
+      filas.forEach((fila) => {
+        fila.style.display = fila.textContent.toLowerCase().includes(query) ? '' : 'none';
+      });
+    });
+
+    exportarVentasCsv.addEventListener('click', () => {
+      const ventasNormalizadas = ventas.map((venta) => ({
+        IdVenta: venta.IdVenta,
+        FechaVenta: venta.FechaVenta,
+        IdEmpleado: venta.IdEmpleado,
+        Subtotal: Number(venta.Subtotal || 0).toFixed(2),
+        Iva: Number(venta.Iva || 0).toFixed(2),
+        Total: Number(venta.Total || 0).toFixed(2)
+      }));
+      const csv = crearCSV(ventasNormalizadas, ['IdVenta', 'FechaVenta', 'IdEmpleado', 'Subtotal', 'Iva', 'Total']);
+      descargarTexto(`ventas-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv;charset=utf-8;');
+    });
+
     filas.forEach((fila) => {
       fila.addEventListener('click', () => {
         const index = parseInt(fila.dataset.index);
@@ -1702,6 +1813,7 @@ async function renderPage(page) {
   if (page === 'ventas' || page === 'compras') {
     const productos = await window.api.getProductos();
     let carrito = [];
+    const esModoCompraCliente = page === 'compras';
 
     // Crear tabla de productos con botón "Agregar"
     let rows = productos.map(p => `
@@ -1725,7 +1837,16 @@ async function renderPage(page) {
     content.innerHTML = `
     <div class="ventas-container">
       <div class="productos card">
-        <h2>Productos Disponibles</h2>
+        <h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2>
+        <div class="filter-toolbar">
+          <input type="text" id="filtroProductos" class="form-control" placeholder="Buscar producto...">
+          <select id="ordenProductos" class="form-control" style="max-width:220px;">
+            <option value="default">Orden por defecto</option>
+            <option value="stockAsc">Stock más bajo</option>
+            <option value="precioAsc">Precio menor a mayor</option>
+            <option value="precioDesc">Precio mayor a menor</option>
+          </select>
+        </div>
         <table class="table">
           <thead>
             <tr>
@@ -1765,7 +1886,7 @@ async function renderPage(page) {
           </div>
           <div class="acciones">
             <button id="btnPagar" class="btn btn-success">
-              <i class="fas fa-cash-register"></i> Confirmar Venta
+              <i class="fas fa-cash-register"></i> ${esModoCompraCliente ? 'Generar Pedido' : 'Confirmar Venta'}
             </button>
             <button id="btnVaciar" class="btn btn-danger">
               <i class="fas fa-trash"></i> Vaciar Carrito
@@ -1776,10 +1897,52 @@ async function renderPage(page) {
     </div>
   `;
 
+    const tablaProductosBody = document.querySelector('.productos .table tbody');
+    const filtroProductos = document.getElementById('filtroProductos');
+    const ordenProductos = document.getElementById('ordenProductos');
+
+    function renderTablaProductos() {
+      const query = filtroProductos.value.toLowerCase().trim();
+      const orden = ordenProductos.value;
+
+      const productosFiltrados = productos
+        .filter((p) => (p.Nombre || p.nombre || '').toLowerCase().includes(query))
+        .sort((a, b) => {
+          const precioA = Number(a.PrecioVenta || a.precioVenta || 0);
+          const precioB = Number(b.PrecioVenta || b.precioVenta || 0);
+          const stockA = Number(a.Cantidad || a.cantidad || 0);
+          const stockB = Number(b.Cantidad || b.cantidad || 0);
+          if (orden === 'stockAsc') return stockA - stockB;
+          if (orden === 'precioAsc') return precioA - precioB;
+          if (orden === 'precioDesc') return precioB - precioA;
+          return 0;
+        });
+
+      tablaProductosBody.innerHTML = productosFiltrados.map(p => `
+      <tr>
+        <td>${p.Nombre || p.nombre || 'N/A'}</td>
+        <td>${p.Cantidad || p.cantidad || 0}</td>
+        <td>${formatearMoneda(p.PrecioVenta || p.precioVenta || 0)}</td>
+        <td>
+          <button class="btn btn-sm btn-primary agregar-btn" 
+                  data-id="${p.IdArticulo || p.idArticulo || ''}" 
+                  data-nombre="${p.Nombre || p.nombre || ''}" 
+                  data-precio="${p.PrecioVenta || p.precioVenta || 0}"
+                  data-existencia="${p.Cantidad || p.cantidad || 0}"
+                  ${(p.Cantidad || p.cantidad || 0) <= 0 ? 'disabled' : ''}>
+            <i class="fas fa-cart-plus"></i> Agregar
+          </button>
+        </td>
+      </tr>
+    `).join('');
+      bindEventosAgregar();
+    }
+
     // =============== EVENTOS ===============
 
     // Agregar producto al carrito
-    document.querySelectorAll('.agregar-btn').forEach(btn => {
+    function bindEventosAgregar() {
+      document.querySelectorAll('.agregar-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = parseInt(btn.dataset.id);
         const nombre = btn.dataset.nombre;
@@ -1821,7 +1984,12 @@ async function renderPage(page) {
           mostrarAlerta(`Error: ${error.message}`);
         }
       });
-    });
+      });
+    }
+
+    filtroProductos.addEventListener('input', renderTablaProductos);
+    ordenProductos.addEventListener('change', renderTablaProductos);
+    bindEventosAgregar();
 
     // Vaciar carrito
     document.getElementById('btnVaciar').addEventListener('click', () => {
@@ -1864,6 +2032,29 @@ async function renderPage(page) {
           precio: item.precio
         }))
       };
+
+      if (esModoCompraCliente) {
+        const pedido = {
+          folio: `PED-${Date.now()}`,
+          cliente: usuarioActual.NombreUsuario,
+          fecha: new Date().toLocaleString(),
+          total: carrito.reduce((acc, item) => acc + (item.precio * item.cantidad), 0) * 1.16,
+          productos: carrito.map((item) => `${item.nombre} x${item.cantidad}`)
+        };
+        const pedidoTexto = [
+          `Folio: ${pedido.folio}`,
+          `Cliente: ${pedido.cliente}`,
+          `Fecha: ${pedido.fecha}`,
+          '--- Productos ---',
+          ...pedido.productos,
+          `Total estimado: ${formatearMoneda(pedido.total)}`
+        ].join('\n');
+        descargarTexto(`${pedido.folio}.txt`, pedidoTexto);
+        alert(`✅ Pedido generado correctamente.\nFolio: ${pedido.folio}`);
+        carrito = [];
+        actualizarCarrito();
+        return;
+      }
 
       console.log('Enviando venta:', datosVenta);
 
@@ -2024,6 +2215,8 @@ async function renderPage(page) {
         });
       });
     }
+
+    renderTablaProductos();
   }
 }
 renderLogin();
