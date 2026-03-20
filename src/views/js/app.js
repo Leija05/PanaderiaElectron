@@ -457,7 +457,6 @@ function renderDashboard(updateStatus = null) {
           </div>
           <div class="client-pos-actions">
             <button id="client-shift-cut-btn" class="btn btn-warning">${iconHTML('warning')} Corte de autocobro</button>
-            <button id="logout-btn" class="btn btn-danger">Cerrar Sesión</button>
           </div>
         </div>
         ${renderUpdateStatusBanner(updateStatus)}
@@ -471,9 +470,6 @@ function renderDashboard(updateStatus = null) {
     }
 
     document.getElementById('client-shift-cut-btn').addEventListener('click', ejecutarCorteTurno);
-    document.getElementById('logout-btn').addEventListener('click', () => {
-      cerrarSesionActual();
-    });
 
     renderPage('compras');
     return;
@@ -491,8 +487,7 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
   } else if (usuarioActual.Rol === 'Empleado') {
     navbar = `
-      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>
-      <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
+      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
   } else {
     navbar = `<a href="#" class="nav-link" data-page="compras">Comprar</a>`;
   }
@@ -547,9 +542,12 @@ function renderDashboard(updateStatus = null) {
     shiftCutBtn.addEventListener('click', ejecutarCorteTurno);
   }
 
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    cerrarSesionActual();
-  });
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      cerrarSesionActual();
+    });
+  }
 
   renderPage(obtenerUltimaVistaPorRol());
 }
