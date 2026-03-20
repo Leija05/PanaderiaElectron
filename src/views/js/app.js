@@ -5,8 +5,10 @@ let usuarioAModificar = [];
 const appContainer = document.getElementById('app-container');
 const APP_STORAGE_KEYS = {
   tema: 'panaderia-tema',
-  ultimaVista: 'panaderia-ultima-vista'
+  ultimaVista: 'panaderia-ultima-vista',
+  actualizacionVista: 'panaderia-update-vista'
 };
+const DEFAULT_BOLILLO_WEIGHT_KG = 0.065;
 const ICONS = {
   success: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.55 17.2 4.8 12.45l1.4-1.4 3.35 3.35 8.25-8.25 1.4 1.4Z"/></svg>',
   error: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 10.6 4.9-4.9 1.4 1.4-4.9 4.9 4.9 4.9-1.4 1.4-4.9-4.9-4.9 4.9-1.4-1.4 4.9-4.9-4.9-4.9 1.4-1.4Z"/></svg>',
@@ -61,11 +63,18 @@ function showModal({ title = 'Mensaje', message = '', type = 'warning', showCanc
 const showAlert = (message, type = 'warning', title = 'Aviso') => showModal({ title, message, type, showCancel: false });
 const showConfirm = (message, title = 'Confirmar') => showModal({ title, message, type: 'warning', showCancel: true, confirmText: 'Confirmar' });
 
+function esVistaCliente() {
+  return usuarioActual?.Rol === 'Cliente';
+}
+
 function guardarUltimaVista(page) {
+  if (esVistaCliente()) return;
   localStorage.setItem(APP_STORAGE_KEYS.ultimaVista, page);
 }
 
 function obtenerUltimaVistaPorRol() {
+  if (esVistaCliente()) return 'compras';
+
   const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : 'personal';
   const guardada = localStorage.getItem(APP_STORAGE_KEYS.ultimaVista);
 
@@ -73,17 +82,24 @@ function obtenerUltimaVistaPorRol() {
 
   const paginasPermitidas = usuarioActual?.Rol === 'Empleado'
     ? ['ventas']
-    : ['personal', 'proveedores', 'inventario', 'registroVenta'];
+    : ['personal', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
 
   return paginasPermitidas.includes(guardada) ? guardada : fallback;
 }
 
 function aplicarTemaGuardado() {
   const tema = localStorage.getItem(APP_STORAGE_KEYS.tema) || 'claro';
-  document.body.classList.toggle('dark-theme', tema === 'oscuro');
+  const debeUsarOscuro = tema === 'oscuro' && !esVistaCliente();
+  document.body.classList.toggle('dark-theme', debeUsarOscuro);
 }
 
 function alternarTema() {
+  if (esVistaCliente()) {
+    document.body.classList.remove('dark-theme');
+    localStorage.setItem(APP_STORAGE_KEYS.tema, 'claro');
+    return;
+  }
+
   const esOscuro = document.body.classList.toggle('dark-theme');
   localStorage.setItem(APP_STORAGE_KEYS.tema, esOscuro ? 'oscuro' : 'claro');
 
@@ -91,6 +107,148 @@ function alternarTema() {
   if (temaBtn) {
     temaBtn.innerHTML = esOscuro ? `${iconHTML('sun')} Tema Claro` : `${iconHTML('moon')} Tema Oscuro`;
   }
+}
+
+function formatearFechaHora(valor) {
+  if (!valor) return 'N/D';
+  const fecha = new Date(valor);
+  return Number.isNaN(fecha.getTime()) ? String(valor) : fecha.toLocaleString('es-MX');
+}
+
+function obtenerCanalActual() {
+  return esVistaCliente() ? 'Autocobro' : 'CajaEmpleado';
+}
+
+async function pedirAutorizacionGerente(canal) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+
+  return new Promise((resolve) => {
+    root.innerHTML = `
+      <div class="app-modal-overlay">
+        <div class="app-modal-card auth-modal-card">
+          <div class="app-modal-title">${iconHTML('warning', 'Autorización de gerente')}</div>
+          <div class="app-modal-body">
+            <p>Para confirmar el corte de <strong>${canal === 'Autocobro' ? 'autocobro' : 'caja del empleado'}</strong>, ingresa un usuario y contraseña con rol Gerente.</p>
+            <div class="form-group">
+              <label for="gerente-usuario">Usuario gerente</label>
+              <input id="gerente-usuario" class="form-control" type="text" autocomplete="username">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="gerente-password">Contraseña</label>
+              <input id="gerente-password" class="form-control" type="password" autocomplete="current-password">
+            </div>
+          </div>
+          <div class="app-modal-actions">
+            <button id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+            <button id="modal-confirm" class="btn btn-primary">Autorizar corte</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const cleanup = (result) => {
+      root.innerHTML = '';
+      resolve(result);
+    };
+
+    document.getElementById('modal-cancel').addEventListener('click', () => cleanup(null));
+    document.getElementById('modal-confirm').addEventListener('click', () => {
+      cleanup({
+        gerenteUsuario: document.getElementById('gerente-usuario').value.trim(),
+        gerentePassword: document.getElementById('gerente-password').value
+      });
+    });
+  });
+}
+
+async function ejecutarCorteTurno() {
+  const credenciales = await pedirAutorizacionGerente(obtenerCanalActual());
+  if (!credenciales) return;
+
+  if (!credenciales.gerenteUsuario || !credenciales.gerentePassword) {
+    await showAlert('Debes capturar usuario y contraseña del gerente para continuar.', 'warning', 'Autorización requerida');
+    return;
+  }
+
+  try {
+    const resultado = await window.api.registrarCorteTurno({
+      channel: obtenerCanalActual(),
+      idEmpleado: esVistaCliente() ? null : (usuarioActual.IdEmpleado || usuarioActual.idEmpleado || null),
+      idCliente: esVistaCliente() ? (usuarioActual.IdEmpleado || usuarioActual.idEmpleado || null) : null,
+      ...credenciales
+    });
+
+    const resumen = resultado.resumen;
+    await showAlert(
+      `Corte registrado correctamente.
+
+Canal: ${resumen.canal}
+Ventas incluidas: ${resumen.totalVentas}
+Importe total: ${formatearMoneda(resumen.totalImporte)}
+Desde: ${formatearFechaHora(resumen.fechaInicio)}
+Hasta: ${formatearFechaHora(resumen.fechaFin)}
+Autorizó: ${resultado.autorizadoPor}`,
+      'success',
+      'Corte completado'
+    );
+  } catch (error) {
+    await showAlert(error.message || 'No fue posible registrar el corte.', 'error', 'Corte rechazado');
+  }
+}
+
+function renderUpdateStatusBanner(status) {
+  if (!status || ['idle', 'development', 'up_to_date'].includes(status.status)) {
+    return '';
+  }
+
+  const version = status.downloadedVersion || status.availableVersion;
+  const action = status.status === 'pending'
+    ? `<button id="install-update-btn" class="btn btn-warning btn-sm">Instalar al reiniciar</button>`
+    : '';
+
+  return `
+    <div class="update-banner ${status.status}">
+      <div>
+        <strong>Actualización pendiente</strong>
+        <p>${status.message || 'Hay una actualización disponible.'}${version ? ` Versión: ${version}.` : ''}</p>
+      </div>
+      <div>${action}</div>
+    </div>
+  `;
+}
+
+async function obtenerEstadoActualizacion() {
+  try {
+    return await window.api.getUpdateStatus();
+  } catch (error) {
+    return null;
+  }
+}
+
+async function instalarActualizacionPendiente() {
+  try {
+    const resultado = await window.api.installPendingUpdate();
+    if (!resultado.success) {
+      await showAlert(resultado.message || 'Todavía no hay una actualización descargada.', 'warning', 'Actualización');
+      return;
+    }
+    await showAlert('La aplicación se cerrará para instalar la actualización descargada.', 'success', 'Instalando actualización');
+  } catch (error) {
+    await showAlert(error.message || 'No fue posible iniciar la instalación de la actualización.', 'error', 'Actualización');
+  }
+}
+
+async function notificarActualizacionPendienteUnaVez() {
+  const estado = await obtenerEstadoActualizacion();
+  if (!estado || !['available', 'pending'].includes(estado.status)) return;
+
+  const ultimaVersionMostrada = localStorage.getItem(APP_STORAGE_KEYS.actualizacionVista);
+  const versionActual = estado.downloadedVersion || estado.availableVersion || estado.version;
+  if (ultimaVersionMostrada === versionActual) return;
+
+  localStorage.setItem(APP_STORAGE_KEYS.actualizacionVista, versionActual);
+  await showAlert(estado.message || 'Hay una actualización pendiente para esta estación.', 'warning', 'Actualización pendiente');
 }
 
 aplicarTemaGuardado();
@@ -131,7 +289,7 @@ async function renderResumenRol() {
         window.api.getProveedores(),
         window.api.getProductos()
       ]);
-      const productosBajoStock = productos.filter((p) => (p.Cantidad || 0) <= (p.CantidadMinima || 5));
+      const productosBajoStock = productos.filter((p) => Number(p.Cantidad || 0) <= Number(p.Minimo || p.CantidadMinima || 5));
       content.innerHTML = `
         <div class="card">
           <h2>Panel Gerencial</h2>
@@ -239,7 +397,9 @@ async function renderLogin() {
 
       if (result.success) {
         usuarioActual = result.user;
-        renderDashboard();
+        const updateStatus = await obtenerEstadoActualizacion();
+        renderDashboard(updateStatus);
+        await notificarActualizacionPendienteUnaVez();
       } else {
         mostrarErrorLogin('Error', result.message);
       }
@@ -253,7 +413,8 @@ async function renderLogin() {
       if (userLocal) {
         usuarioActual = userLocal;
         await showAlert('Modo local activo. Para habilitar la experiencia completa, configura la conexión en ./includes/conexion.js y ejecuta ./database/Panaderia.sql.', 'warning', 'Modo local');
-        renderDashboard();
+        const updateStatus = await obtenerEstadoActualizacion();
+        renderDashboard(updateStatus);
       } else {
         mostrarErrorLogin('Error de conexión', 'No hay conexión a la DB y las credenciales locales no coinciden.');
       }
@@ -271,7 +432,45 @@ async function renderLogin() {
 }
 
 // =============== DASHBOARD ==================
-function renderDashboard() {
+function renderDashboard(updateStatus = null) {
+  aplicarTemaGuardado();
+
+  if (esVistaCliente()) {
+    document.body.classList.remove('dark-theme');
+    localStorage.setItem(APP_STORAGE_KEYS.tema, 'claro');
+    appContainer.innerHTML = `
+      <div class="client-pos-layout">
+        <div class="client-pos-header card">
+          <div>
+            <h2>Autocobro Dulce Horno</h2>
+            <p>Bienvenido, ${usuarioActual.NombreCompleto || usuarioActual.NombreUsuario}. Esta vista solo muestra el punto de venta.</p>
+          </div>
+          <div class="client-pos-actions">
+            <button id="client-shift-cut-btn" class="btn btn-warning">${iconHTML('warning')} Corte de autocobro</button>
+            <button id="logout-btn" class="btn btn-danger">Cerrar Sesión</button>
+          </div>
+        </div>
+        ${renderUpdateStatusBanner(updateStatus)}
+        <div id="content-area"></div>
+      </div>
+    `;
+
+    const updateBtn = document.getElementById('install-update-btn');
+    if (updateBtn) {
+      updateBtn.addEventListener('click', instalarActualizacionPendiente);
+    }
+
+    document.getElementById('client-shift-cut-btn').addEventListener('click', ejecutarCorteTurno);
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      usuarioActual = null;
+      localStorage.removeItem(APP_STORAGE_KEYS.ultimaVista);
+      renderLogin();
+    });
+
+    renderPage('compras');
+    return;
+  }
+
   let navbar = '';
 
   if (usuarioActual.Rol === 'Gerente') {
@@ -280,10 +479,11 @@ function renderDashboard() {
       <a href="#" class="nav-link" data-page="proveedores">Gestión de Proveedores</a>
       <a href="#" class="nav-link" data-page="inventario">Inventario</a>
       <a href="#" class="nav-link" data-page="registroVenta">Registro Ventas</a>
+      <a href="#" class="nav-link" data-page="reportes">Reportes</a>
       <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
   } else if (usuarioActual.Rol === 'Empleado') {
     navbar = `
-      <a href="#" class="nav-link" data-page="ventas">Ventas</a>
+      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>
       <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
   } else {
     navbar = `<a href="#" class="nav-link" data-page="compras">Comprar</a>`;
@@ -297,15 +497,22 @@ function renderDashboard() {
         ${navbar}
       </div>
       <div class="main-content">
+        ${renderUpdateStatusBanner(updateStatus)}
         <div class="card">
-          <h2>Bienvenido, ${usuarioActual.NombreUsuario} (${usuarioActual.Rol})</h2>
+          <div class="dashboard-header-row">
+            <div>
+              <h2>Bienvenido, ${usuarioActual.NombreUsuario} (${usuarioActual.Rol})</h2>
+              <p class="dashboard-subtitle">Administra ventas, inventario, reportes y cortes desde un solo lugar.</p>
+            </div>
+            ${usuarioActual.Rol === 'Empleado' ? `<button id="shift-cut-btn" class="btn btn-warning">${iconHTML('warning')} Corte de turno</button>` : ''}
+          </div>
           <div id="content-area"></div>
         </div>
       </div>
     </div>
   `;
 
-  document.querySelectorAll('.nav-link[data-page]').forEach(link => {
+  document.querySelectorAll('.nav-link[data-page]').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const selectedPage = link.getAttribute('data-page');
@@ -315,18 +522,30 @@ function renderDashboard() {
   });
 
   const themeBtn = document.getElementById('theme-toggle-btn');
-  themeBtn.innerHTML = document.body.classList.contains('dark-theme')
-    ? 'Tema Claro'
-    : 'Tema Oscuro';
-  themeBtn.addEventListener('click', alternarTema);
+  if (themeBtn) {
+    themeBtn.innerHTML = document.body.classList.contains('dark-theme')
+      ? `${iconHTML('sun')} Tema Claro`
+      : `${iconHTML('moon')} Tema Oscuro`;
+    themeBtn.addEventListener('click', alternarTema);
+  }
 
-  renderResumenRol();
-  renderPage(obtenerUltimaVistaPorRol());
+  const updateBtn = document.getElementById('install-update-btn');
+  if (updateBtn) {
+    updateBtn.addEventListener('click', instalarActualizacionPendiente);
+  }
+
+  const shiftCutBtn = document.getElementById('shift-cut-btn');
+  if (shiftCutBtn) {
+    shiftCutBtn.addEventListener('click', ejecutarCorteTurno);
+  }
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     usuarioActual = null;
+    localStorage.removeItem(APP_STORAGE_KEYS.ultimaVista);
     renderLogin();
   });
+
+  renderPage(obtenerUltimaVistaPorRol());
 }
 
 // ===================== REGISTRO PRODUCTO ==============
@@ -1262,6 +1481,205 @@ async function renderPage(page) {
     });
 
   };
+  // =============== REPORTES ==================
+  if (page === 'reportes') {
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+
+    content.innerHTML = `
+      <div class="card">
+        <div class="report-header-row">
+          <div>
+            <h2>Reportes de operación</h2>
+            <p>Consulta reportes semanales, mensuales o por fecha, el inventario disponible y el desempeño por canal de venta.</p>
+          </div>
+          <button id="exportarReporteCsv" class="btn btn-secondary">Exportar ventas del periodo</button>
+        </div>
+        <div class="filter-toolbar report-filter-toolbar">
+          <select id="reportMode" class="form-control" style="max-width:220px;">
+            <option value="weekly">Semanal</option>
+            <option value="monthly">Mensual</option>
+            <option value="custom">Por fecha</option>
+          </select>
+          <input type="date" id="reportReferenceDate" class="form-control" value="${fechaHoy}" style="max-width:190px;">
+          <input type="date" id="reportStartDate" class="form-control" value="${fechaHoy}" style="max-width:190px; display:none;">
+          <input type="date" id="reportEndDate" class="form-control" value="${fechaHoy}" style="max-width:190px; display:none;">
+          <button id="aplicarReporte" class="btn btn-primary">Actualizar reporte</button>
+        </div>
+        <div id="reportes-content">
+          <p>Cargando reporte...</p>
+        </div>
+      </div>
+    `;
+
+    const reportMode = document.getElementById('reportMode');
+    const reportReferenceDate = document.getElementById('reportReferenceDate');
+    const reportStartDate = document.getElementById('reportStartDate');
+    const reportEndDate = document.getElementById('reportEndDate');
+    const exportarReporteCsv = document.getElementById('exportarReporteCsv');
+    const reportesContent = document.getElementById('reportes-content');
+
+    function toggleDateInputs() {
+      const esCustom = reportMode.value === 'custom';
+      reportReferenceDate.style.display = esCustom ? 'none' : '';
+      reportStartDate.style.display = esCustom ? '' : 'none';
+      reportEndDate.style.display = esCustom ? '' : 'none';
+    }
+
+    async function cargarReporte() {
+      reportesContent.innerHTML = '<p>Cargando reporte...</p>';
+      try {
+        const filtros = {
+          mode: reportMode.value,
+          referenceDate: reportReferenceDate.value,
+          startDate: reportStartDate.value,
+          endDate: reportEndDate.value
+        };
+        const reporte = await window.api.getReportes(filtros);
+        exportarReporteCsv.dataset.reporte = JSON.stringify(reporte.ventas || []);
+
+        const resumen = reporte.resumen;
+        const ventasPorDia = (reporte.ventasPorDia || []).map((item) => `
+          <tr>
+            <td>${item.fecha}</td>
+            <td>${item.ventas}</td>
+            <td>${formatearMoneda(item.total)}</td>
+            <td>${formatearMoneda(item.autocobro)}</td>
+            <td>${formatearMoneda(item.cajaEmpleado)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5">Sin ventas en el periodo.</td></tr>';
+
+        const canales = (reporte.porCanal || []).map((item) => `
+          <tr>
+            <td>${item.canal}</td>
+            <td>${item.ventas}</td>
+            <td>${formatearMoneda(item.total)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="3">Sin datos</td></tr>';
+
+        const topProductos = (reporte.productosMasVendidos || []).slice(0, 8).map((item) => `
+          <tr>
+            <td>${item.producto}</td>
+            <td>${item.cantidadVendida}</td>
+            <td>${formatearMoneda(item.importe)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="3">Sin datos</td></tr>';
+
+        const stockBajo = (reporte.inventarioStockBajo || []).map((item) => `
+          <tr>
+            <td>${item.Nombre}</td>
+            <td>${item.Cantidad}</td>
+            <td>${item.Minimo}</td>
+            <td>${formatearMoneda(item.PrecioCompra)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4">No hay alertas de stock en este momento.</td></tr>';
+
+        const inventario = (reporte.inventario || []).map((item) => `
+          <tr>
+            <td>${item.Nombre}</td>
+            <td>${item.Descripcion || 'Sin descripción'}</td>
+            <td>${item.Cantidad}</td>
+            <td>${item.Minimo}</td>
+            <td>${formatearMoneda(item.PrecioCompra)}</td>
+            <td>${formatearMoneda(item.PrecioVenta)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">Sin inventario</td></tr>';
+
+        reportesContent.innerHTML = `
+          <div class="stats-grid report-stats-grid">
+            <div class="stat-item"><strong>${resumen.ventas}</strong><span>Ventas del periodo</span></div>
+            <div class="stat-item"><strong>${formatearMoneda(resumen.totalIngresos)}</strong><span>Ingresos totales</span></div>
+            <div class="stat-item"><strong>${resumen.articulosVendidos}</strong><span>Artículos vendidos</span></div>
+            <div class="stat-item warning"><strong>${resumen.productosStockBajo}</strong><span>Alertas de stock</span></div>
+          </div>
+
+          <div class="card nested-card info-highlight-card">
+            <h3>Revisión de pesaje del bolillo</h3>
+            <p>Bolillos vendidos: <strong>${resumen.bolilloPiezas}</strong></p>
+            <p>Peso estimado consumido: <strong>${resumen.bolilloKilosEstimados} kg</strong></p>
+            <p class="helper-text">Estimación calculada con ${DEFAULT_BOLILLO_WEIGHT_KG} kg por bolillo. Úsalo para revisar consumo semanal, mensual o por rango de fechas.</p>
+          </div>
+
+          <div class="report-grid">
+            <div class="card nested-card">
+              <h3>Ventas por día</h3>
+              <table class="table">
+                <thead>
+                  <tr><th>Fecha</th><th>Ventas</th><th>Total</th><th>Autocobro</th><th>Caja empleado</th></tr>
+                </thead>
+                <tbody>${ventasPorDia}</tbody>
+              </table>
+            </div>
+
+            <div class="card nested-card">
+              <h3>Canales de cobro</h3>
+              <table class="table">
+                <thead>
+                  <tr><th>Canal</th><th>Ventas</th><th>Total</th></tr>
+                </thead>
+                <tbody>${canales}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="report-grid">
+            <div class="card nested-card">
+              <h3>Productos más vendidos</h3>
+              <table class="table">
+                <thead>
+                  <tr><th>Producto</th><th>Cantidad</th><th>Importe</th></tr>
+                </thead>
+                <tbody>${topProductos}</tbody>
+              </table>
+            </div>
+
+            <div class="card nested-card">
+              <h3>Alertas de stock</h3>
+              <table class="table">
+                <thead>
+                  <tr><th>Producto</th><th>Existencia</th><th>Mínimo</th><th>Costo</th></tr>
+                </thead>
+                <tbody>${stockBajo}</tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card nested-card">
+            <h3>Inventario de productos y materia prima</h3>
+            <table class="table">
+              <thead>
+                <tr><th>Producto</th><th>Descripción</th><th>Existencia</th><th>Mínimo</th><th>Compra</th><th>Venta</th></tr>
+              </thead>
+              <tbody>${inventario}</tbody>
+            </table>
+          </div>
+        `;
+      } catch (error) {
+        reportesContent.innerHTML = `<div class="alert alert-danger">No fue posible generar el reporte: ${error.message}</div>`;
+      }
+    }
+
+    reportMode.addEventListener('change', () => {
+      toggleDateInputs();
+      cargarReporte();
+    });
+    document.getElementById('aplicarReporte').addEventListener('click', cargarReporte);
+    exportarReporteCsv.addEventListener('click', () => {
+      const ventasPeriodo = JSON.parse(exportarReporteCsv.dataset.reporte || '[]');
+      const csv = crearCSV(ventasPeriodo.map((venta) => ({
+        IdVenta: venta.IdVenta,
+        FechaVenta: venta.FechaVenta,
+        Canal: venta.Canal,
+        Empleado: venta.EmpleadoNombre || 'Autocobro / Sistema',
+        Cliente: venta.ClienteNombre || 'Mostrador',
+        Total: Number(venta.Total || 0).toFixed(2)
+      })), ['IdVenta', 'FechaVenta', 'Canal', 'Empleado', 'Cliente', 'Total']);
+      descargarTexto(`reporte-ventas-${new Date().toISOString().slice(0, 10)}.csv`, csv, 'text/csv;charset=utf-8;');
+    });
+
+    toggleDateInputs();
+    await cargarReporte();
+  }
+
   // =============== REGISTRO VENTAS ==================
   let seleccionVenta = new Set();
 
@@ -1941,10 +2359,13 @@ async function renderPage(page) {
           </div>
           <div class="acciones">
             <button id="btnPagar" class="btn btn-success">
-              <i class="fas fa-cash-register"></i> ${esModoCompraCliente ? 'Generar Pedido' : 'Confirmar Venta'}
+              <i class="fas fa-cash-register"></i> ${esModoCompraCliente ? 'Confirmar compra' : 'Confirmar Venta'}
             </button>
             <button id="btnVaciar" class="btn btn-danger">
               <i class="fas fa-trash"></i> Vaciar Carrito
+            </button>
+            <button id="btnCorteCaja" class="btn btn-warning">
+              <i class="fas fa-user-shield"></i> ${esModoCompraCliente ? 'Corte autocobro' : 'Corte de turno'}
             </button>
           </div>
         </div>
@@ -2053,6 +2474,8 @@ async function renderPage(page) {
       ocultarAlerta();
     });
 
+    document.getElementById('btnCorteCaja').addEventListener('click', ejecutarCorteTurno);
+
     // Pagar / Registrar venta
     document.getElementById('btnPagar').addEventListener('click', async () => {
       if (carrito.length === 0) {
@@ -2079,7 +2502,9 @@ async function renderPage(page) {
       if (hayProblemas) return;
 
       const datosVenta = {
-        idEmpleado: usuarioActual.idEmpleado || usuarioActual.IdEmpleado,
+        idEmpleado: esModoCompraCliente ? null : (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null),
+        idCliente: esModoCompraCliente ? (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null) : null,
+        canal: esModoCompraCliente ? 'Autocobro' : 'CajaEmpleado',
         carrito: carrito.map(item => ({
           id: item.id,
           nombre: item.nombre,
@@ -2088,42 +2513,19 @@ async function renderPage(page) {
         }))
       };
 
-      if (esModoCompraCliente) {
-        const pedido = {
-          folio: `PED-${Date.now()}`,
-          cliente: usuarioActual.NombreUsuario,
-          fecha: new Date().toLocaleString(),
-          total: carrito.reduce((acc, item) => acc + (item.precio * item.cantidad), 0) * 1.16,
-          productos: carrito.map((item) => `${item.nombre} x${item.cantidad}`)
-        };
-        const pedidoTexto = [
-          `Folio: ${pedido.folio}`,
-          `Cliente: ${pedido.cliente}`,
-          `Fecha: ${pedido.fecha}`,
-          '--- Productos ---',
-          ...pedido.productos,
-          `Total estimado: ${formatearMoneda(pedido.total)}`
-        ].join('\n');
-        descargarTexto(`${pedido.folio}.txt`, pedidoTexto);
-        await showAlert(`Pedido generado correctamente.\nFolio: ${pedido.folio}`, 'success', 'Pedido generado');
-        carrito = [];
-        actualizarCarrito();
-        return;
-      }
-
       console.log('Enviando venta:', datosVenta);
 
       try {
         const res = await window.api.registrarVenta(datosVenta);
 
         if (res.success) {
-          await showAlert(`Venta registrada con éxito.\nID Venta: ${res.idVenta}\nTotal: $${res.total.toFixed(2)}`, 'success', 'Venta completada');
+          await showAlert(`${esModoCompraCliente ? 'Compra registrada con éxito' : 'Venta registrada con éxito'}.\nID Venta: ${res.idVenta}\nCanal: ${res.canal}\nTotal: $${res.total.toFixed(2)}`, 'success', esModoCompraCliente ? 'Compra completada' : 'Venta completada');
           carrito = [];
           actualizarCarrito();
           ocultarAlerta();
 
           // Recargar página para actualizar existencias
-          renderPage('ventas');
+          renderPage(esModoCompraCliente ? 'compras' : 'ventas');
         } else {
           mostrarAlerta(`Error al registrar la venta: ${res.error || 'Error desconocido'}`);
         }
