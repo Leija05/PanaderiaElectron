@@ -119,6 +119,13 @@ function obtenerCanalActual() {
   return esVistaCliente() ? 'Autocobro' : 'CajaEmpleado';
 }
 
+function cerrarSesionActual() {
+  usuarioActual = null;
+  carrito = [];
+  localStorage.removeItem(APP_STORAGE_KEYS.ultimaVista);
+  renderLogin();
+}
+
 async function pedirAutorizacionGerente(canal) {
   ensureModalRoot();
   const root = document.getElementById('global-modal-root');
@@ -188,10 +195,13 @@ Ventas incluidas: ${resumen.totalVentas}
 Importe total: ${formatearMoneda(resumen.totalImporte)}
 Desde: ${formatearFechaHora(resumen.fechaInicio)}
 Hasta: ${formatearFechaHora(resumen.fechaFin)}
-Autorizó: ${resultado.autorizadoPor}`,
+Autorizó: ${resultado.autorizadoPor}
+
+La sesión actual se cerrará para permitir el acceso del siguiente empleado.`,
       'success',
       'Corte completado'
     );
+    cerrarSesionActual();
   } catch (error) {
     await showAlert(error.message || 'No fue posible registrar el corte.', 'error', 'Corte rechazado');
   }
@@ -462,9 +472,7 @@ function renderDashboard(updateStatus = null) {
 
     document.getElementById('client-shift-cut-btn').addEventListener('click', ejecutarCorteTurno);
     document.getElementById('logout-btn').addEventListener('click', () => {
-      usuarioActual = null;
-      localStorage.removeItem(APP_STORAGE_KEYS.ultimaVista);
-      renderLogin();
+      cerrarSesionActual();
     });
 
     renderPage('compras');
@@ -540,9 +548,7 @@ function renderDashboard(updateStatus = null) {
   }
 
   document.getElementById('logout-btn').addEventListener('click', () => {
-    usuarioActual = null;
-    localStorage.removeItem(APP_STORAGE_KEYS.ultimaVista);
-    renderLogin();
+    cerrarSesionActual();
   });
 
   renderPage(obtenerUltimaVistaPorRol());
