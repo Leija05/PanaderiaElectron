@@ -1,826 +1,837 @@
-//cargar de pagina en app
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const db = require('./includes/conexion.js'); // Importa el módulo de conexión a la base de datos
-if (process.env.NODE_ENV === 'prdoduction') {
-  require('electron-reload')(__dirname, {
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+const db = require('./includes/conexion.js');
 
+const DEFAULT_BOLILLO_WEIGHT_KG = 0.065;
+let mainWindow = null;
+let updateState = {
+  status: 'idle',
+  version: app.getVersion(),
+  availableVersion: null,
+  downloadedVersion: null,
+  message: 'Sin revisión de actualizaciones todavía.'
+};
+
+function query(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
   });
+}
+
+function beginTransaction() {
+  return new Promise((resolve, reject) => db.beginTransaction((error) => error ? reject(error) : resolve()));
+}
+
+function commit() {
+  return new Promise((resolve, reject) => db.commit((error) => error ? reject(error) : resolve()));
+}
+
+function rollback() {
+  return new Promise((resolve) => db.rollback(() => resolve()));
+}
+
+function normalizeDate(value, { endOfDay = false } = {}) {
+  const base = value ? new Date(value) : new Date();
+  if (Number.isNaN(base.getTime())) {
+    throw new Error('Fecha inválida.');
+  }
+
+  if (endOfDay) {
+    base.setHours(23, 59, 59, 999);
+  } else {
+    base.setHours(0, 0, 0, 0);
+  }
+
+  const year = base.getFullYear();
+  const month = String(base.getMonth() + 1).padStart(2, '0');
+  const day = String(base.getDate()).padStart(2, '0');
+  const hours = String(base.getHours()).padStart(2, '0');
+  const minutes = String(base.getMinutes()).padStart(2, '0');
+  const seconds = String(base.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatSqlDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function setUpdateState(nextState) {
+  updateState = {
+    ...updateState,
+    ...nextState
+  };
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', updateState);
+  }
+}
+
+async function ensureSupportTables() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS VentasCanal (
+      IdVenta INT PRIMARY KEY,
+      Canal ENUM('Autocobro', 'CajaEmpleado', 'SinClasificar') NOT NULL DEFAULT 'SinClasificar',
+      FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (IdVenta) REFERENCES Ventas(IdVenta) ON DELETE CASCADE
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS CortesTurno (
+      IdCorte INT AUTO_INCREMENT PRIMARY KEY,
+      Canal ENUM('Autocobro', 'CajaEmpleado') NOT NULL,
+      IdEmpleado INT NULL,
+      IdCliente INT NULL,
+      FechaInicio DATETIME NOT NULL,
+      FechaFin DATETIME NOT NULL,
+      TotalVentas INT NOT NULL DEFAULT 0,
+      TotalImporte DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      ResumenJSON TEXT,
+      AutorizadoPor INT NOT NULL,
+      FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado),
+      FOREIGN KEY (IdCliente) REFERENCES Empleados(IdEmpleado),
+      FOREIGN KEY (AutorizadoPor) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    INSERT INTO VentasCanal (IdVenta, Canal)
+    SELECT v.IdVenta,
+           CASE WHEN v.IdEmpleado IS NULL THEN 'Autocobro' ELSE 'CajaEmpleado' END AS Canal
+    FROM Ventas v
+    LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
+    WHERE vc.IdVenta IS NULL
+  `);
+}
+
+function configureAutoUpdates() {
+  log.transports.file.level = 'info';
+  autoUpdater.logger = log;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  autoUpdater.on('checking-for-update', () => {
+    setUpdateState({
+      status: 'checking',
+      message: 'Buscando actualizaciones en GitHub...'
+    });
+  });
+
+  autoUpdater.on('update-available', async (info) => {
+    setUpdateState({
+      status: 'available',
+      availableVersion: info.version,
+      message: `Nueva versión detectada: ${info.version}. Se está descargando en segundo plano.`
+    });
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Actualización pendiente',
+        message: 'Se detectó una nueva versión disponible.',
+        detail: `Versión actual: ${app.getVersion()}\nNueva versión: ${info.version}\n\nLa actualización se descargará automáticamente y se notificará cuando esté lista.`
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    setUpdateState({
+      status: 'pending',
+      downloadedVersion: info.version,
+      availableVersion: info.version,
+      message: `Actualización ${info.version} descargada. Quedará pendiente para instalarse.`
+    });
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Actualización pendiente',
+        message: 'Hay una actualización pendiente para instalar.',
+        detail: `La versión ${info.version} ya se descargó. Reinicia la aplicación cuando sea conveniente para instalarla.`
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    setUpdateState({
+      status: 'up_to_date',
+      availableVersion: null,
+      downloadedVersion: null,
+      message: 'Ya tienes la versión más reciente instalada.'
+    });
+  });
+
+  autoUpdater.on('error', (error) => {
+    log.error('AutoUpdater error:', error);
+    setUpdateState({
+      status: 'error',
+      message: `No fue posible revisar actualizaciones: ${error.message}`
+    });
+  });
+}
+
+async function checkForAppUpdates() {
+  if (!app.isPackaged) {
+    setUpdateState({
+      status: 'development',
+      message: 'La revisión automática de actualizaciones solo está disponible en builds empaquetados.'
+    });
+    return;
+  }
+
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    log.error('checkForUpdates failed:', error);
+    setUpdateState({
+      status: 'error',
+      message: `Error al consultar GitHub: ${error.message}`
+    });
+  }
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+  mainWindow = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    minWidth: 1100,
+    minHeight: 720,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false,
-    },
+      nodeIntegration: false
+    }
   });
-win.loadFile('src/views/index.html')
-}
-app.whenReady().then(createWindow);
 
-// ========================
-// LOGICA PARA OBTENER VENTAS Y DETALLES
-// ========================
-ipcMain.handle('getVentas', async () => {
-   return new Promise((resolve, reject) => {
-    db.query("SELECT * FROM Ventas", (error, results) => {
-      if (error) {
-        console.error("Error al obtener las Ventas:", error);
-        reject(new Error("Error al obtener las Ventas: " + error.message));
-      } else {
-        resolve(results);
-      }
-    });
+  mainWindow.loadFile(path.join(__dirname, 'views', 'index.html'));
+}
+
+function sanitizeChannel(channel) {
+  return channel === 'Autocobro' ? 'Autocobro' : channel === 'CajaEmpleado' ? 'CajaEmpleado' : 'SinClasificar';
+}
+
+async function resolveReportRange(filters = {}) {
+  const mode = filters.mode || 'weekly';
+  const reference = filters.referenceDate ? new Date(filters.referenceDate) : new Date();
+
+  if (Number.isNaN(reference.getTime())) {
+    throw new Error('Fecha de referencia inválida.');
+  }
+
+  const start = new Date(reference);
+  const end = new Date(reference);
+
+  if (mode === 'monthly') {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(end.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+  } else if (mode === 'custom') {
+    return {
+      start: normalizeDate(filters.startDate),
+      end: normalizeDate(filters.endDate || filters.startDate, { endOfDay: true })
+    };
+  } else {
+    const day = start.getDay();
+    const diffToMonday = (day + 6) % 7;
+    start.setDate(start.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+    end.setTime(start.getTime());
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    start: normalizeDate(start),
+    end: normalizeDate(end, { endOfDay: true })
+  };
+}
+
+async function getManagerByCredentials(username, password) {
+  const rows = await query(
+    `SELECT IdEmpleado, NombreCompleto, NombreUsuario, Rol, Activo
+     FROM Empleados
+     WHERE NombreUsuario = ? AND Password = ? AND Rol = 'Gerente'`,
+    [username, password]
+  );
+
+  if (!rows.length) {
+    throw new Error('Las credenciales del gerente no son válidas.');
+  }
+
+  if (!rows[0].Activo) {
+    throw new Error('El gerente seleccionado está desactivado.');
+  }
+
+  return rows[0];
+}
+
+async function getLastCutRange({ channel, idEmpleado = null, idCliente = null }) {
+  const rows = await query(
+    `SELECT FechaFin
+     FROM CortesTurno
+     WHERE Canal = ?
+       AND ((IdEmpleado IS NULL AND ? IS NULL) OR IdEmpleado = ?)
+       AND ((IdCliente IS NULL AND ? IS NULL) OR IdCliente = ?)
+     ORDER BY FechaFin DESC
+     LIMIT 1`,
+    [channel, idEmpleado, idEmpleado, idCliente, idCliente]
+  );
+
+  if (rows.length) {
+    return rows[0].FechaFin;
+  }
+
+  const salesRows = await query(
+    `SELECT MIN(v.FechaVenta) AS PrimeraVenta
+     FROM Ventas v
+     LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
+     WHERE COALESCE(vc.Canal, 'SinClasificar') = ?
+       AND ((v.IdEmpleado IS NULL AND ? IS NULL) OR v.IdEmpleado = ?)
+       AND ((v.IdCliente IS NULL AND ? IS NULL) OR v.IdCliente = ?)`,
+    [channel, idEmpleado, idEmpleado, idCliente, idCliente]
+  );
+
+  return salesRows[0]?.PrimeraVenta || normalizeDate(new Date());
+}
+
+app.whenReady().then(async () => {
+  await ensureSupportTables();
+  createWindow();
+  configureAutoUpdates();
+  checkForAppUpdates();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
+
+ipcMain.handle('getUpdateStatus', async () => updateState);
+ipcMain.handle('installPendingUpdate', async () => {
+  if (updateState.status !== 'pending') {
+    return { success: false, message: 'No hay una actualización descargada para instalar.' };
+  }
+
+  setImmediate(() => autoUpdater.quitAndInstall());
+  return { success: true };
+});
+
+ipcMain.handle('getVentas', async () => query('SELECT * FROM Ventas ORDER BY FechaVenta DESC'));
 
 ipcMain.handle('getDetallesVenta', async (event, idVenta) => {
-  return new Promise((resolve, reject) => {
-    // 1️⃣ Obtener la venta principal
-    db.query("SELECT * FROM Ventas WHERE IdVenta = ?", [idVenta], (error, ventas) => {
-      if (error || ventas.length === 0) {
-        console.error("❌ Error al obtener la venta:", error);
-        return reject(new Error("No se encontró la venta"));
-      }
+  const ventas = await query('SELECT * FROM Ventas WHERE IdVenta = ?', [idVenta]);
+  if (!ventas.length) {
+    throw new Error('No se encontró la venta.');
+  }
 
-      const venta = ventas[0];
+  const venta = ventas[0];
+  const empleados = venta.IdEmpleado
+    ? await query('SELECT IdEmpleado, NombreCompleto, Turno FROM Empleados WHERE IdEmpleado = ?', [venta.IdEmpleado])
+    : [];
 
-      // 2️⃣ Obtener información del empleado
-      db.query("SELECT IdEmpleado, NombreCompleto, Turno FROM Empleados WHERE IdEmpleado = ?", [venta.IdEmpleado], (errorEmp, empleados) => {
-        if (errorEmp) {
-          console.error("❌ Error al obtener el empleado:", errorEmp);
-          return reject(new Error("Error al obtener el empleado"));
-        }
+  const detalles = await query(
+    `SELECT vd.IdArticulo, a.Nombre AS NombreProducto, vd.Cantidad, vd.PrecioUnitario, vd.Subtotal
+     FROM VentaDetalle vd
+     JOIN Articulos a ON vd.IdArticulo = a.IdArticulo
+     WHERE vd.IdVenta = ?`,
+    [idVenta]
+  );
 
-        const empleado = empleados[0] || { NombreCompleto: "Desconocido" };
-
-        // 3️⃣ Obtener productos vendidos (JOIN con Articulos)
-        const queryDetalles = `
-          SELECT 
-            vd.IdArticulo, 
-            a.Nombre AS NombreProducto,
-            vd.Cantidad, 
-            vd.PrecioUnitario, 
-            vd.Subtotal
-          FROM VentaDetalle vd
-          JOIN Articulos a ON vd.IdArticulo = a.IdArticulo
-          WHERE vd.IdVenta = ?;
-        `;
-
-        db.query(queryDetalles, [idVenta], (errorDet, detalles) => {
-          if (errorDet) {
-            console.error("❌ Error al obtener los detalles de la venta:", errorDet);
-            return reject(new Error("Error al obtener los detalles de la venta"));
-          }
-
-          // 4️⃣ Armar respuesta final
-          resolve({
-            Empleado: empleado,
-            Productos: detalles
-          });
-        });
-      });
-    });
-  });
+  return {
+    Empleado: empleados[0] || { NombreCompleto: 'Autocobro / Sistema' },
+    Productos: detalles
+  };
 });
 
+ipcMain.handle('getArticulos', async () => query('SELECT * FROM Articulos ORDER BY Nombre ASC'));
 
-// ========================
-// LOGICA PARA CONSULTAR ARTICULOS
-// ========================
-ipcMain.handle('getArticulos', async () => {
-  const [rows] = await db.query('SELECT * FROM articulos');
-  return rows;
-});
-
-// ========================
-// LOGICA PARA HACER LOGIN 
-// ========================
 ipcMain.handle('login', async (event, username, password) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      'SELECT * FROM empleados WHERE NombreUsuario = ? AND Password = ?',
-      [username, password],
-      (err, results) => {
-        if (err) {
-          reject(err);
-        } else {
-          if (results.length > 0) {
-            const usuario = results[0];
-            if (usuario.Activo === 0 || usuario.Activo === false) {
-              resolve({ 
-                success: false, 
-                error: 'Usuario desactivado',
-                message: 'Este usuario ha sido desactivado y no puede acceder al sistema.'
-              });
-            } else {
-              resolve({ 
-                success: true, 
-                user: usuario 
-              });
-            }
-          } else {
-            resolve({ 
-              success: false, 
-              error: 'Credenciales incorrectas',
-              message: 'Usuario o contraseña incorrectos'
-            });
-          }
-        }
-      }
-    );
-  });
+  const results = await query(
+    'SELECT * FROM Empleados WHERE NombreUsuario = ? AND Password = ?',
+    [username, password]
+  );
+
+  if (!results.length) {
+    return {
+      success: false,
+      error: 'Credenciales incorrectas',
+      message: 'Usuario o contraseña incorrectos'
+    };
+  }
+
+  const usuario = results[0];
+  if (!usuario.Activo) {
+    return {
+      success: false,
+      error: 'Usuario desactivado',
+      message: 'Este usuario ha sido desactivado y no puede acceder al sistema.'
+    };
+  }
+
+  return { success: true, user: usuario };
 });
 
-// ========================
-// LOGICA PARA REGISTRAR USUARIO
-// ========================
 ipcMain.handle('registrarUsuario', async (event, data) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      'INSERT INTO empleados (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, FechaRegistro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [data.username, data.password, data.rol, data.puesto, data.turno, data.salario, data.name, new Date() || ''],
-      (err, results) => {
-        if (err) {
-          console.error('Error al registrar usuario:', err);
-          reject(err);
-        } else {
-          resolve({ id: results.insertId });
-        }
-      }
-    );
-  });
+  const results = await query(
+    `INSERT INTO Empleados
+     (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, FechaRegistro)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [data.username, data.password, data.rol, data.puesto, data.turno, data.salario, data.name, new Date()]
+  );
+  return { id: results.insertId };
 });
 
-// ========================
-// LOGICA PARA REGISTRAR PROVEEDOR
-// ========================
 ipcMain.handle('registrarProveedor', async (event, data) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      'INSERT INTO Proveedores (Nombre, Direccion, Telefono, Correo, Contacto, RUC) VALUES (?, ?, ?, ?, ?, ?)',
-      [data.name, data.direccion, data.telefono, data.mail, data.contacto, null],
-      (err, results) => {
-        if (err) {
-          console.error('Error al registrar proveedor:', err);
-          reject(err);
-        } else {
-          resolve({ id: results.insertId });
-        }
-      }
-    );
-  });
+  const results = await query(
+    'INSERT INTO Proveedores (Nombre, Direccion, Telefono, Correo, Contacto, RUC) VALUES (?, ?, ?, ?, ?, ?)',
+    [data.name, data.direccion, data.telefono, data.mail, data.contacto, null]
+  );
+  return { id: results.insertId };
 });
 
-// ========================
-// LOGICA PARA MODIFICAR USUARIO
-// ========================
-ipcMain.handle('modificarUsuario', async (event, data) => {
-  return new Promise((resolve, reject) => {
-    const sql = `
-      UPDATE empleados 
-      SET NombreUsuario = ?, Rol = ?, Puesto = ?, Turno = ?, Salario = ?, NombreCompleto = ?
-      WHERE IdEmpleado = ?`;
+ipcMain.handle('modificarUsuario', async (event, data) => query(
+  `UPDATE Empleados
+   SET NombreUsuario = ?, Rol = ?, Puesto = ?, Turno = ?, Salario = ?, NombreCompleto = ?
+   WHERE IdEmpleado = ?`,
+  [data.username, data.rol, data.puesto, data.turno, data.salario, data.name, data.id]
+));
 
-    db.query(
-      sql,
-      [data.username,data.rol,data.puesto,data.turno,data.salario,data.name,data.id],
-      (err, results) => {
-        if (err) {
-          console.error('Error al modificar usuario:', err);
-          reject(err);
-        } else {
-          resolve(results);
-        }
-      }
-    );
-  });
-});
-// ========================
-// LOGICA PARA ELIMINAR USUARIO
-// ========================
-ipcMain.handle('deleteUsuario', async (event, idEmpleado) => {
-  return new Promise((resolve, reject) => {
-    db.query('SELECT IdEmpleado, Rol FROM Empleados WHERE IdEmpleado = ?', [idEmpleado], (err, rows) => {
-      if (err) return reject(err);
-      if (!rows || rows.length === 0) return reject(new Error('Empleado no encontrado'));
+async function eliminarEmpleadoSeguro(idEmpleado) {
+  const rows = await query('SELECT IdEmpleado, Rol FROM Empleados WHERE IdEmpleado = ?', [idEmpleado]);
+  if (!rows.length) {
+    throw new Error('Empleado no encontrado');
+  }
 
-      const empleado = rows[0];
-      if (empleado.Rol === 'Gerente') {
-        db.query('SELECT COUNT(*) as totalGerentes FROM Empleados WHERE Rol = "Gerente"', (err2, countRows) => {
-          if (err2) return reject(err2);
+  const empleado = rows[0];
+  if (empleado.Rol === 'Gerente') {
+    const gerentes = await query('SELECT COUNT(*) AS totalGerentes FROM Empleados WHERE Rol = "Gerente" AND Activo = 1');
+    if (gerentes[0].totalGerentes <= 1) {
+      throw new Error('No se puede eliminar el único gerente del sistema');
+    }
+  }
 
-          if (countRows[0].totalGerentes <= 1) {
-            return reject(new Error('No se puede eliminar el único gerente del sistema'));
-          }
-          eliminarEmpleado(idEmpleado, resolve, reject);
-        });
-      } else {
-        eliminarEmpleado(idEmpleado, resolve, reject);
-      }
-    });
-  });
-});
+  await beginTransaction();
+  try {
+    const [ventas, compras, envios, movimientos] = await Promise.all([
+      query('SELECT COUNT(*) AS count FROM Ventas WHERE IdEmpleado = ?', [idEmpleado]),
+      query('SELECT COUNT(*) AS count FROM Compras WHERE IdEmpleado = ?', [idEmpleado]),
+      query('SELECT COUNT(*) AS count FROM Envios WHERE IdEmpleadoRepartidor = ?', [idEmpleado]),
+      query('SELECT COUNT(*) AS count FROM MovimientosInventario WHERE IdEmpleado = ?', [idEmpleado])
+    ]);
 
-function eliminarEmpleado(idEmpleado, resolve, reject) {
-  db.beginTransaction((err) => {
-    if (err) return reject(err);
-    db.query('SELECT COUNT(*) as count FROM Ventas WHERE IdEmpleado = ?', [idEmpleado, idEmpleado], (err1, ventaRows) => {
-      if (err1) return db.rollback(() => reject(err1));
-      db.query('SELECT COUNT(*) as count FROM Compras WHERE IdEmpleado = ?', [idEmpleado], (err2, compraRows) => {
-        if (err2) return db.rollback(() => reject(err2));
-        db.query('SELECT COUNT(*) as count FROM Envios WHERE IdEmpleadoRepartidor = ?', [idEmpleado, idEmpleado], (err3, envioRows) => {
-          if (err3) return db.rollback(() => reject(err3));
-          db.query('SELECT COUNT(*) as count FROM MovimientosInventario WHERE IdEmpleado = ?', [idEmpleado], (err4, movimientoRows) => {
-            if (err4) return db.rollback(() => reject(err4));
-            const tieneRelaciones =
-              ventaRows[0].count > 0 ||
-              compraRows[0].count > 0 ||
-              envioRows[0].count > 0 ||
-              movimientoRows[0].count > 0;
-            if (tieneRelaciones) {
-              db.query('UPDATE Empleados SET Activo = FALSE WHERE IdEmpleado = ?', [idEmpleado], (err5) => {
-                if (err5) return db.rollback(() => reject(err5));
+    const tieneRelaciones =
+      ventas[0].count > 0 ||
+      compras[0].count > 0 ||
+      envios[0].count > 0 ||
+      movimientos[0].count > 0;
 
-                db.commit((err6) => {
-                  if (err6) return db.rollback(() => reject(err6));
-                  resolve({
-                    ok: true,
-                    idEmpleado,
-                    message: 'Usuario desactivado (tenía registros relacionados)',
-                    tipo: 'desactivacion'
-                  });
-                });
-              });
-            } else {
-              db.query('DELETE FROM Empleados WHERE IdEmpleado = ?', [idEmpleado], (err5) => {
-                if (err5) return db.rollback(() => reject(err5));
+    if (tieneRelaciones) {
+      await query('UPDATE Empleados SET Activo = FALSE WHERE IdEmpleado = ?', [idEmpleado]);
+      await commit();
+      return {
+        ok: true,
+        idEmpleado,
+        message: 'Usuario desactivado (tenía registros relacionados)',
+        tipo: 'desactivacion'
+      };
+    }
 
-                db.commit((err6) => {
-                  if (err6) return db.rollback(() => reject(err6));
-                  resolve({
-                    ok: true,
-                    idEmpleado,
-                    message: 'Usuario eliminado permanentemente',
-                    tipo: 'eliminacion'
-                  });
-                });
-              });
-            }
-          });
-        });
-      });
-    });
-  });
+    await query('DELETE FROM Empleados WHERE IdEmpleado = ?', [idEmpleado]);
+    await commit();
+    return {
+      ok: true,
+      idEmpleado,
+      message: 'Usuario eliminado permanentemente',
+      tipo: 'eliminacion'
+    };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
 }
 
-// ========================
-// LOGICA PARA OBTENER EMPLEADOS
-// ========================
-ipcMain.handle('getEmpleados', async () => {
-  return new Promise((resolve, reject) => {
-    db.query("SELECT * FROM Empleados ORDER BY Activo DESC, IdEmpleado ASC", (error, results) => {
-      if (error) {
-        console.error("Error al obtener empleados:", error);
-        reject(new Error("Error al obtener empleados: " + error.message));
-      } else {
-        resolve(results);
-      }
-    });
-  });
-});
+ipcMain.handle('deleteUsuario', async (event, idEmpleado) => eliminarEmpleadoSeguro(idEmpleado));
 
-// ========================
-// LOGICA PARA OBTENER PROVEEDORES
-// ========================
-ipcMain.handle('getProveedores', async () => {
-  return new Promise((resolve, reject) => {
-    db.query("SELECT * FROM Proveedores ORDER BY IdProveedor ASC", (error, results) => {
-      if (error) {
-        console.error("Error al obtener proveedores:", error);
-        reject(new Error("Error al obtener proveedores: " + error.message));
-      } else {
-        resolve(results);
-      }
-    });
-  });
-});
+ipcMain.handle('getEmpleados', async () => query('SELECT * FROM Empleados ORDER BY Activo DESC, IdEmpleado ASC'));
+ipcMain.handle('getProveedores', async () => query('SELECT * FROM Proveedores ORDER BY IdProveedor ASC'));
 
-// ===================
-// LOGICA PARA CAMBIAR ESTADO DEL USUARIO (ACTIVAR/DESACTIVAR)
-// ===================
-ipcMain.handle("cambiarEstadoUsuario", async (event, idEmpleado, nuevoEstado) => {
-  return new Promise((resolve, reject) => {
-    console.log("Cambiando estado del empleado:", { idEmpleado, nuevoEstado });
+ipcMain.handle('cambiarEstadoUsuario', async (event, idEmpleado, nuevoEstado) => {
+  const idNum = Number(idEmpleado);
+  const estado = Boolean(nuevoEstado);
 
-    const idNum = Number(idEmpleado);
-    const estado = Boolean(nuevoEstado);
-    
-    if (isNaN(idNum) || idNum <= 0) {
-      return reject(new Error("ID de empleado inválido."));
-    }
+  if (Number.isNaN(idNum) || idNum <= 0) {
+    throw new Error('ID de empleado inválido.');
+  }
 
-    // Verificar que el empleado existe
-    db.query(
-      "SELECT IdEmpleado, NombreCompleto, Rol FROM Empleados WHERE IdEmpleado = ?",
-      [idNum],
-      (selectError, selectResults) => {
-        if (selectError) {
-          return reject(new Error("Error al verificar empleado: " + selectError.message));
-        }
+  const selectResults = await query(
+    'SELECT IdEmpleado, NombreCompleto, Rol FROM Empleados WHERE IdEmpleado = ?',
+    [idNum]
+  );
 
-        if (selectResults.length === 0) {
-          return reject(new Error("Empleado no encontrado."));
-        }
+  if (!selectResults.length) {
+    throw new Error('Empleado no encontrado.');
+  }
 
-        const empleado = selectResults[0];
-
-        // Validación especial para administradores
-        if (empleado.Rol === 'Gerente' && !estado) {
-          // Verificar que no sea el último administrador activo
-          db.query(
-            "SELECT COUNT(*) as total FROM Empleados WHERE Rol = 'Gerente' AND Activo = 1",
-            (countError, countResults) => {
-              if (countError) {
-                return reject(new Error("Error al verificar administradores: " + countError.message));
-              }
-
-              const totalAdmins = countResults[0].total;
-              if (totalAdmins <= 1) {
-                return reject(new Error("No se puede desactivar el único administrador del sistema."));
-              }
-
-              actualizarEstadoEmpleado(idNum, estado, empleado.NombreCompleto, resolve, reject);
-            }
-          );
-        } else {
-          actualizarEstadoEmpleado(idNum, estado, empleado.NombreCompleto, resolve, reject);
-        }
-      }
+  const empleado = selectResults[0];
+  if (empleado.Rol === 'Gerente' && !estado) {
+    const countResults = await query(
+      "SELECT COUNT(*) AS total FROM Empleados WHERE Rol = 'Gerente' AND Activo = 1"
     );
-  });
+
+    if (countResults[0].total <= 1) {
+      throw new Error('No se puede desactivar el único administrador del sistema.');
+    }
+  }
+
+  const updateResults = await query('UPDATE Empleados SET Activo = ? WHERE IdEmpleado = ?', [estado, idNum]);
+  if (!updateResults.affectedRows) {
+    throw new Error('No se pudo actualizar el empleado.');
+  }
+
+  return {
+    success: true,
+    message: `Empleado ${empleado.NombreCompleto} ${estado ? 'reactivado' : 'desactivado'} correctamente.`,
+    idEmpleado: idNum,
+    nuevoEstado: estado
+  };
 });
 
-function actualizarEstadoEmpleado(idEmpleado, nuevoEstado, nombreEmpleado, resolve, reject) {
-  const query = "UPDATE Empleados SET Activo = ? WHERE IdEmpleado = ?";
-  
-  db.query(query, [nuevoEstado, idEmpleado], (updateError, updateResults) => {
-    if (updateError) {
-      reject(new Error("Error al actualizar empleado: " + updateError.message));
-    } else if (updateResults.affectedRows === 0) {
-      reject(new Error("No se pudo actualizar el empleado."));
-    } else {
-      const accion = nuevoEstado ? "reactivado" : "desactivado";
-      console.log(`✅ Empleado ${nombreEmpleado} ${accion} correctamente`);
-      resolve({
-        success: true,
-        message: `Empleado ${nombreEmpleado} ${accion} correctamente.`,
-        idEmpleado: idEmpleado,
-        nuevoEstado: nuevoEstado
-      });
-    }
-  });
-}
+ipcMain.handle('getProductos', async () => query('SELECT * FROM Articulos ORDER BY Nombre ASC'));
 
-// ========================
-// Logica para OBTENER PRODUCTOS
-// ========================
-ipcMain.handle('getProductos', async () => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      'SELECT * FROM Articulos',
-      (err, results) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(results);
-        }
+ipcMain.handle('verificarExistencia', async (event, idArticulo, cantidadRequerida) => {
+  const results = await query('SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?', [idArticulo]);
+  if (!results.length) {
+    throw new Error('Producto no encontrado');
+  }
+
+  const producto = results[0];
+  const disponible = Number(producto.Cantidad || 0);
+  return {
+    disponible,
+    puedeVender: disponible >= cantidadRequerida,
+    producto: producto.Nombre,
+    mensaje: disponible >= cantidadRequerida ? 'Disponible' : `Solo hay ${disponible} unidades disponibles`
+  };
+});
+
+ipcMain.handle('registrarVenta', async (event, ventaData) => {
+  const {
+    idEmpleado = null,
+    idCliente = null,
+    canal = idEmpleado ? 'CajaEmpleado' : 'Autocobro',
+    carrito = []
+  } = ventaData || {};
+
+  if (!carrito.length) {
+    throw new Error('El carrito está vacío.');
+  }
+
+  await beginTransaction();
+  try {
+    for (const item of carrito) {
+      const results = await query('SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?', [item.id]);
+      if (!results.length) {
+        throw new Error(`Producto ${item.nombre} no encontrado.`);
       }
+
+      const producto = results[0];
+      if (Number(producto.Cantidad) < Number(item.cantidad)) {
+        throw new Error(`No hay suficiente existencia de ${producto.Nombre}. Disponible: ${producto.Cantidad}, solicitado: ${item.cantidad}`);
+      }
+    }
+
+    const subtotal = carrito.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
+    const iva = subtotal * 0.16;
+    const total = subtotal + iva;
+
+    const ventaResults = await query(
+      `INSERT INTO Ventas (IdEmpleado, IdCliente, Subtotal, Iva, Total, TipoVenta, Estado)
+       VALUES (?, ?, ?, ?, ?, 'Mostrador', 'Completada')`,
+      [idEmpleado, idCliente, subtotal, iva, total]
     );
-  });
+
+    const idVenta = ventaResults.insertId;
+
+    for (const item of carrito) {
+      const subtotalItem = Number(item.precio) * Number(item.cantidad);
+      await query(
+        `INSERT INTO VentaDetalle (IdVenta, IdArticulo, Cantidad, PrecioUnitario, Subtotal)
+         VALUES (?, ?, ?, ?, ?)`,
+        [idVenta, item.id, item.cantidad, item.precio, subtotalItem]
+      );
+
+      const beforeRows = await query('SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?', [item.id]);
+      const cantidadAnterior = Number(beforeRows[0].Cantidad);
+      const cantidadNueva = cantidadAnterior - Number(item.cantidad);
+
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [cantidadNueva, item.id]);
+
+      await query(
+        `INSERT INTO MovimientosInventario
+         (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, Motivo, IdReferencia, TipoReferencia, IdEmpleado)
+         VALUES (?, 'Salida', ?, ?, ?, 'Venta', ?, 'Venta', ?)`,
+        [item.id, item.cantidad, cantidadAnterior, cantidadNueva, idVenta, idEmpleado]
+      );
+    }
+
+    await query('INSERT INTO VentasCanal (IdVenta, Canal) VALUES (?, ?)', [idVenta, sanitizeChannel(canal)]);
+    await commit();
+
+    return {
+      success: true,
+      idVenta,
+      total,
+      canal: sanitizeChannel(canal),
+      message: 'Venta registrada exitosamente'
+    };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
 });
 
-// ===================
-// LOGICA PARA VERIFICAR EXISTENCIA
-// ===================
-ipcMain.handle("verificarExistencia", async (event, idArticulo, cantidadRequerida) => {
-  return new Promise((resolve, reject) => {
-    db.query(
-      "SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?",
-      [idArticulo],
-      (error, results) => {
-        if (error) {
-          reject(new Error("Error al verificar existencia: " + error.message));
-        } else if (results.length === 0) {
-          reject(new Error("Producto no encontrado"));
-        } else {
-          const producto = results[0];
-          const disponible = producto.Cantidad;
-          
-          resolve({
-            disponible: disponible,
-            puedeVender: disponible >= cantidadRequerida,
-            producto: producto.Nombre,
-            mensaje: disponible >= cantidadRequerida 
-              ? "Disponible" 
-              : `Solo hay ${disponible} unidades disponibles`
-          });
-        }
-      }
-    );
-  });
+ipcMain.handle('agregarCantidadProducto', async (event, idArticulo, cantidad) => {
+  const idNum = Number(idArticulo);
+  const cantidadNum = Number(cantidad);
+
+  if (Number.isNaN(idNum) || idNum <= 0) throw new Error('ID de artículo inválido.');
+  if (Number.isNaN(cantidadNum) || cantidadNum <= 0) throw new Error('Cantidad inválida. Debe ser un número mayor a 0.');
+
+  const results = await query('SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?', [idNum]);
+  if (!results.length) throw new Error('Artículo no encontrado.');
+
+  const producto = results[0];
+  const cantidadActual = Number(producto.Cantidad);
+  const nuevaCantidad = cantidadActual + cantidadNum;
+
+  await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [nuevaCantidad, idNum]);
+
+  return {
+    success: true,
+    message: `Se agregaron ${cantidadNum} unidades al producto "${producto.Nombre}".`,
+    cantidadAnterior: cantidadActual,
+    cantidadNueva: nuevaCantidad,
+    producto: producto.Nombre
+  };
 });
 
-// ===================
-// LOGICA PARA REGISTRAR VENTA
-// ===================
-ipcMain.handle("registrarVenta", async (event, ventaData) => {
-  return new Promise((resolve, reject) => {
-    console.log("Registrando venta:", ventaData);
+ipcMain.handle('agregarProducto', async (event, productoData) => {
+  const { nombre, descripcion, cantidad, minimo, precioVenta, precioCompra } = productoData || {};
 
-    const { idEmpleado, carrito } = ventaData;
+  if (!nombre?.trim()) throw new Error('El nombre del producto es requerido.');
+  if (!descripcion?.trim()) throw new Error('La descripción del producto es requerida.');
+  if (Number.isNaN(Number(cantidad)) || Number(cantidad) < 0) throw new Error('La cantidad debe ser un número válido mayor o igual a 0.');
+  if (Number.isNaN(Number(minimo)) || Number(minimo) < 0) throw new Error('El mínimo debe ser un número válido mayor o igual a 0.');
+  if (Number.isNaN(Number(precioVenta)) || Number(precioVenta) < 0) throw new Error('El precio de venta debe ser un número válido mayor o igual a 0.');
+  if (Number.isNaN(Number(precioCompra)) || Number(precioCompra) < 0) throw new Error('El precio de compra debe ser un número válido mayor o igual a 0.');
 
-    if (!idEmpleado) {
-      return reject(new Error("ID de empleado es requerido."));
-    }
+  const results = await query(
+    `INSERT INTO Articulos (Nombre, Descripcion, Cantidad, Minimo, PrecioVenta, PrecioCompra)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [nombre.trim(), descripcion.trim(), Number(cantidad), Number(minimo), Number(precioVenta), Number(precioCompra)]
+  );
 
-    if (!carrito || carrito.length === 0) {
-      return reject(new Error("El carrito está vacío."));
-    }
-
-    db.beginTransaction((err) => {
-      if (err) {
-        return reject(new Error("Error al iniciar transacción: " + err.message));
-      }
-
-      // 1. Verificar existencias primero
-      let verificacionesCompletadas = 0;
-      let errores = [];
-
-      carrito.forEach((item) => {
-        db.query(
-          "SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?",
-          [item.id],
-          (error, results) => {
-            if (error) {
-              errores.push(`Error al verificar producto ${item.nombre}: ${error.message}`);
-            } else if (results.length === 0) {
-              errores.push(`Producto ${item.nombre} no encontrado.`);
-            } else {
-              const producto = results[0];
-              if (producto.Cantidad < item.cantidad) {
-                errores.push(
-                  `No hay suficiente existencia de ${producto.Nombre}. Disponible: ${producto.Cantidad}, Solicitado: ${item.cantidad}`
-                );
-              }
-            }
-
-            verificacionesCompletadas++;
-            
-            // Cuando todas las verificaciones estén completas
-            if (verificacionesCompletadas === carrito.length) {
-              if (errores.length > 0) {
-                db.rollback(() => {
-                  reject(new Error(errores.join("\n")));
-                });
-                return;
-              }
-
-              // 2. Calcular totales
-              let subtotal = 0;
-              carrito.forEach(item => {
-                subtotal += item.precio * item.cantidad;
-              });
-              const iva = subtotal * 0.16; // 16% de IVA
-              const total = subtotal + iva;
-
-              // 3. Insertar venta principal
-              const insertVentaQuery = `
-                INSERT INTO Ventas (IdEmpleado, IdCliente, Subtotal, Iva, Total, TipoVenta, Estado) 
-                VALUES (?, NULL, ?, ?, ?, 'Mostrador', 'Completada')
-              `;
-
-              db.query(
-                insertVentaQuery,
-                [idEmpleado, subtotal, iva, total],
-                (error, ventaResults) => {
-                  if (error) {
-                    db.rollback(() => {
-                      reject(new Error("Error al registrar venta: " + error.message));
-                    });
-                    return;
-                  }
-
-                  const idVenta = ventaResults.insertId;
-                  let detallesInsertados = 0;
-
-                  // 4. Insertar detalles de venta y actualizar inventario
-                  carrito.forEach((item) => {
-                    const subtotalItem = item.precio * item.cantidad;
-                    
-                    // Insertar detalle de venta
-                    const insertDetalleQuery = `
-                      INSERT INTO VentaDetalle (IdVenta, IdArticulo, Cantidad, PrecioUnitario, Subtotal) 
-                      VALUES (?, ?, ?, ?, ?)
-                    `;
-
-                    db.query(
-                      insertDetalleQuery,
-                      [idVenta, item.id, item.cantidad, item.precio, subtotalItem],
-                      (error) => {
-                        if (error) {
-                          db.rollback(() => {
-                            reject(new Error("Error al registrar detalle de venta: " + error.message));
-                          });
-                          return;
-                        }
-
-                        // Actualizar inventario
-                        const updateInventarioQuery = `
-                          UPDATE Articulos SET Cantidad = Cantidad - ? WHERE IdArticulo = ?
-                        `;
-
-                        db.query(
-                          updateInventarioQuery,
-                          [item.cantidad, item.id],
-                          (error) => {
-                            if (error) {
-                              db.rollback(() => {
-                                reject(new Error("Error al actualizar inventario: " + error.message));
-                              });
-                              return;
-                            }
-
-                            // Registrar movimiento de inventario
-                            const insertMovimientoQuery = `
-                              INSERT INTO MovimientosInventario 
-                              (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, 
-                               Motivo, IdReferencia, TipoReferencia, IdEmpleado) 
-                              VALUES (?, 'Salida', ?, 
-                                      (SELECT Cantidad + ? FROM Articulos WHERE IdArticulo = ?), 
-                                      (SELECT Cantidad FROM Articulos WHERE IdArticulo = ?), 
-                                      'Venta', ?, 'Venta', ?)
-                            `;
-
-                            db.query(
-                              insertMovimientoQuery,
-                              [item.id, item.cantidad, item.cantidad, item.id, item.id, idVenta, idEmpleado],
-                              (error) => {
-                                if (error) {
-                                  console.error("Error al registrar movimiento (no crítico):", error);
-                                  // No hacemos rollback por este error, solo log
-                                }
-
-                                detallesInsertados++;
-                                
-                                // Cuando todos los detalles estén procesados
-                                if (detallesInsertados === carrito.length) {
-                                  db.commit((error) => {
-                                    if (error) {
-                                      db.rollback(() => {
-                                        reject(new Error("Error al confirmar venta: " + error.message));
-                                      });
-                                    } else {
-                                      resolve({
-                                        success: true,
-                                        idVenta: idVenta,
-                                        total: total,
-                                        message: "Venta registrada exitosamente"
-                                      });
-                                    }
-                                  });
-                                }
-                              }
-                            );
-                          }
-                        );
-                      }
-                    );
-                  });
-                }
-              );
-            }
-          }
-        );
-      });
-    });
-  });
+  return { success: true, message: 'Producto agregado correctamente.', id: results.insertId };
 });
 
-// ===================
-// LOGICA AGREGAR CANTIDAD A PRODUCTO EXISTENTE
-// ===================
-ipcMain.handle("agregarCantidadProducto", async (event, idArticulo, cantidad) => {
-  return new Promise((resolve, reject) => {
-    console.log("Agregando cantidad al producto:", { idArticulo, cantidad });
+ipcMain.handle('eliminarProducto', async (event, idArticulo, cantidad) => {
+  const idNum = Number(idArticulo);
+  const cantidadNum = Number(cantidad);
 
-    // Validación
-    const idNum = Number(idArticulo);
-    const cantidadNum = Number(cantidad);
+  if (Number.isNaN(idNum) || idNum <= 0) throw new Error('ID de artículo inválido.');
+  if (Number.isNaN(cantidadNum) || cantidadNum <= 0) throw new Error('Cantidad inválida. Debe ser un número mayor a 0.');
 
-    if (!idArticulo || isNaN(idNum) || idNum <= 0) {
-      return reject(new Error("ID de artículo inválido."));
+  const selectResults = await query('SELECT Cantidad, Minimo, Nombre FROM Articulos WHERE IdArticulo = ?', [idNum]);
+  if (!selectResults.length) throw new Error('Artículo no encontrado.');
+
+  const producto = selectResults[0];
+  const cantidadActual = Number(producto.Cantidad);
+  const minimo = Number(producto.Minimo);
+  const nuevaCantidad = cantidadActual - cantidadNum;
+
+  if (nuevaCantidad < 0) {
+    throw new Error('No hay suficiente inventario para eliminar esa cantidad.');
+  }
+
+  const updateResults = await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [nuevaCantidad, idNum]);
+
+  return {
+    message: 'Inventario actualizado correctamente.',
+    filasAfectadas: updateResults.affectedRows,
+    necesitaReorder: nuevaCantidad < minimo,
+    producto: {
+      id: idNum,
+      nombre: producto.Nombre,
+      cantidadAnterior: cantidadActual,
+      cantidadNueva: nuevaCantidad,
+      minimo
     }
-
-    if (!cantidad || isNaN(cantidadNum) || cantidadNum <= 0) {
-      return reject(new Error("Cantidad inválida. Debe ser un número mayor a 0."));
-    }
-
-    // Primero obtener la cantidad actual
-    db.query(
-      "SELECT Cantidad, Nombre FROM Articulos WHERE IdArticulo = ?", 
-      [idNum], 
-      (selectErr, selectResults) => {
-        if (selectErr) {
-          console.error("Error en SELECT:", selectErr);
-          return reject(new Error("Error al consultar el producto: " + selectErr.message));
-        }
-
-        if (selectResults.length === 0) {
-          return reject(new Error("Artículo no encontrado."));
-        }
-
-        const producto = selectResults[0];
-        const cantidadActual = Number(producto.Cantidad);
-        const nuevaCantidad = cantidadActual + cantidadNum;
-
-        // Actualizar la cantidad
-        db.query(
-          "UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?",
-          [nuevaCantidad, idNum],
-          (updateErr, updateResults) => {
-            if (updateErr) {
-              console.error("Error en UPDATE:", updateErr);
-              return reject(new Error("Error al actualizar el producto: " + updateErr.message));
-            }
-
-            console.log(`✅ Cantidad actualizada: ${cantidadActual} → ${nuevaCantidad}`);
-
-            resolve({
-              success: true,
-              message: `Se agregaron ${cantidadNum} unidades al producto "${producto.Nombre}".`,
-              cantidadAnterior: cantidadActual,
-              cantidadNueva: nuevaCantidad,
-              producto: producto.Nombre
-            });
-          }
-        );
-      }
-    );
-  });
+  };
 });
 
-// ===================
-// LOGICA PARA AGREGAR PRODUCTO
-// ===================
-ipcMain.handle("agregarProducto", async (event, productoData) => {
-  return new Promise((resolve, reject) => {
-    console.log("Backend recibió datos de producto:", productoData);
+ipcMain.handle('getReportes', async (event, filters = {}) => {
+  const range = await resolveReportRange(filters);
+  const ventas = await query(
+    `SELECT v.IdVenta, v.FechaVenta, v.IdEmpleado, v.IdCliente, v.Subtotal, v.Iva, v.Total,
+            e.NombreCompleto AS EmpleadoNombre,
+            c.NombreCompleto AS ClienteNombre,
+            COALESCE(vc.Canal, 'SinClasificar') AS Canal
+     FROM Ventas v
+     LEFT JOIN Empleados e ON e.IdEmpleado = v.IdEmpleado
+     LEFT JOIN Empleados c ON c.IdEmpleado = v.IdCliente
+     LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
+     WHERE v.FechaVenta BETWEEN ? AND ?
+     ORDER BY v.FechaVenta DESC`,
+    [range.start, range.end]
+  );
 
-    // Validación de datos requeridos
-    const { nombre, descripcion ,cantidad, minimo ,precioVenta, precioCompra } = productoData;
+  const detalles = await query(
+    `SELECT vd.IdVenta, vd.IdArticulo, vd.Cantidad, vd.PrecioUnitario, vd.Subtotal, a.Nombre AS NombreProducto
+     FROM VentaDetalle vd
+     JOIN Ventas v ON v.IdVenta = vd.IdVenta
+     JOIN Articulos a ON a.IdArticulo = vd.IdArticulo
+     WHERE v.FechaVenta BETWEEN ? AND ?`,
+    [range.start, range.end]
+  );
 
-    if (!nombre || nombre.trim() === '') {
-      return reject(new Error("El nombre del producto es requerido."));
-    }
+  const inventario = await query(
+    `SELECT IdArticulo, Nombre, Descripcion, Cantidad, Minimo, PrecioCompra, PrecioVenta,
+            CASE WHEN Cantidad <= Minimo THEN 1 ELSE 0 END AS StockBajo
+     FROM Articulos
+     ORDER BY Nombre ASC`
+  );
 
-    if (!descripcion || descripcion.trim() === '') {
-      return reject(new Error("La descripción del producto es requerida."));
-    }
+  const ventasPorDiaMap = new Map();
+  const productosMap = new Map();
+  const canalMap = new Map([
+    ['Autocobro', { canal: 'Autocobro', ventas: 0, total: 0 }],
+    ['CajaEmpleado', { canal: 'CajaEmpleado', ventas: 0, total: 0 }],
+    ['SinClasificar', { canal: 'SinClasificar', ventas: 0, total: 0 }]
+  ]);
 
-    if (!cantidad || isNaN(cantidad) || cantidad < 0) {
-      return reject(new Error("La cantidad debe ser un número válido mayor o igual a 0."));
-    }
+  for (const venta of ventas) {
+    const day = formatSqlDate(venta.FechaVenta).slice(0, 10);
+    const dayEntry = ventasPorDiaMap.get(day) || {
+      fecha: day,
+      ventas: 0,
+      total: 0,
+      autocobro: 0,
+      cajaEmpleado: 0
+    };
 
-    if (!minimo || isNaN(minimo) || minimo < 0) {
-      return reject(new Error("El mínimo debe ser un número válido mayor o igual a 0."));
-    }
+    dayEntry.ventas += 1;
+    dayEntry.total += Number(venta.Total || 0);
+    if (venta.Canal === 'Autocobro') dayEntry.autocobro += Number(venta.Total || 0);
+    if (venta.Canal === 'CajaEmpleado') dayEntry.cajaEmpleado += Number(venta.Total || 0);
+    ventasPorDiaMap.set(day, dayEntry);
 
-    if (!precioVenta || isNaN(precioVenta) || precioVenta < 0) {
-      return reject(new Error("El precio de venta debe ser un número válido mayor o igual a 0."));
-    }
+    const channelEntry = canalMap.get(venta.Canal) || { canal: venta.Canal, ventas: 0, total: 0 };
+    channelEntry.ventas += 1;
+    channelEntry.total += Number(venta.Total || 0);
+    canalMap.set(venta.Canal, channelEntry);
+  }
 
-    if (!precioCompra || isNaN(precioCompra) || precioCompra < 0) {
-      return reject(new Error("El precio de compra debe ser un número válido mayor o igual a 0."));
-    }
+  for (const detalle of detalles) {
+    const key = `${detalle.IdArticulo}`;
+    const existing = productosMap.get(key) || {
+      idArticulo: detalle.IdArticulo,
+      producto: detalle.NombreProducto,
+      cantidadVendida: 0,
+      importe: 0
+    };
 
-    // Insertar el producto en la base de datos
-    const query = `
-      INSERT INTO Articulos (Nombre, Descripcion ,Cantidad, Minimo, PrecioVenta, PrecioCompra) 
-      VALUES (?, ? ,?, ?, ?, ?)
-    `;
-    
-    const values = [
-      nombre.trim(),
-      descripcion.trim(),
-      Number(cantidad),
-      Number(minimo),
-      Number(precioVenta),
-      Number(precioCompra)
-    ];
+    existing.cantidadVendida += Number(detalle.Cantidad || 0);
+    existing.importe += Number(detalle.Subtotal || 0);
+    productosMap.set(key, existing);
+  }
 
-    // Ejecutar la consulta con mysql
-    db.query(query, values, (error, results) => {
-      if (error) {
-        console.error("Error al agregar producto:", error);
-        return reject(new Error("Error al agregar producto: " + error.message));
-      }
+  const bolillo = Array.from(productosMap.values()).find((item) => /bolillo/i.test(item.producto));
+  const bolilloPiezas = bolillo?.cantidadVendida || 0;
 
-      console.log("✅ Producto agregado correctamente. ID:", results.insertId);
-
-      resolve({
-        success: true,
-        message: "Producto agregado correctamente.",
-        id: results.insertId
-      });
-    });
-  });
+  return {
+    range,
+    resumen: {
+      ventas: ventas.length,
+      totalIngresos: ventas.reduce((acc, venta) => acc + Number(venta.Total || 0), 0),
+      articulosVendidos: detalles.reduce((acc, detalle) => acc + Number(detalle.Cantidad || 0), 0),
+      productosStockBajo: inventario.filter((item) => Number(item.StockBajo) === 1).length,
+      bolilloPiezas,
+      bolilloKilosEstimados: Number((bolilloPiezas * DEFAULT_BOLILLO_WEIGHT_KG).toFixed(2))
+    },
+    ventas,
+    ventasPorDia: Array.from(ventasPorDiaMap.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+    porCanal: Array.from(canalMap.values()),
+    productosMasVendidos: Array.from(productosMap.values()).sort((a, b) => b.cantidadVendida - a.cantidadVendida),
+    inventario,
+    inventarioStockBajo: inventario.filter((item) => Number(item.StockBajo) === 1)
+  };
 });
 
-// ===================
-// LOGICA PARA ELIMINAR PRODUCTO
-// ===================
-ipcMain.handle("eliminarProducto", async (event, idArticulo, cantidad) => {
-  return new Promise((resolve, reject) => {
-    console.log("Backend recibió:", idArticulo, cantidad);
+ipcMain.handle('registrarCorteTurno', async (event, payload = {}) => {
+  const channel = payload.channel === 'Autocobro' ? 'Autocobro' : 'CajaEmpleado';
+  const idEmpleado = payload.idEmpleado || null;
+  const idCliente = payload.idCliente || null;
+  const gerente = await getManagerByCredentials(payload.gerenteUsuario, payload.gerentePassword);
 
-    // Validación y conversión a números
-    const idNum = Number(idArticulo);
-    const cantidadNum = Number(cantidad);
+  const fechaInicioRaw = await getLastCutRange({ channel, idEmpleado, idCliente });
+  const fechaInicio = formatSqlDate(fechaInicioRaw || new Date());
+  const fechaFin = normalizeDate(new Date(), { endOfDay: false });
 
-    if (!idArticulo || isNaN(idNum) || idNum <= 0) {
-      return reject(new Error("ID de artículo inválido."));
-    }
+  const ventas = await query(
+    `SELECT v.IdVenta, v.FechaVenta, v.Total, COALESCE(vc.Canal, 'SinClasificar') AS Canal
+     FROM Ventas v
+     LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
+     WHERE COALESCE(vc.Canal, 'SinClasificar') = ?
+       AND ((v.IdEmpleado IS NULL AND ? IS NULL) OR v.IdEmpleado = ?)
+       AND ((v.IdCliente IS NULL AND ? IS NULL) OR v.IdCliente = ?)
+       AND v.FechaVenta > ?
+       AND v.FechaVenta <= ?
+     ORDER BY v.FechaVenta ASC`,
+    [channel, idEmpleado, idEmpleado, idCliente, idCliente, fechaInicio, fechaFin]
+  );
 
-    if (!cantidad || isNaN(cantidadNum) || cantidadNum <= 0) {
-      return reject(new Error("Cantidad inválida. Debe ser un número mayor a 0."));
-    }
-    // Consultar el artículo para obtener la cantidad actual y el mínimo
-    db.query(
-      "SELECT Cantidad, Minimo, Nombre FROM Articulos WHERE IdArticulo = ?", 
-      [idNum], 
-      (selectErr, selectResults) => {
-        if (selectErr) {
-          console.error("Error en SELECT:", selectErr);
-          return reject(new Error("Error al consultar artículo: " + selectErr.message));
-        }
+  const totalImporte = ventas.reduce((acc, venta) => acc + Number(venta.Total || 0), 0);
+  const resumen = {
+    canal: channel,
+    fechaInicio,
+    fechaFin,
+    totalVentas: ventas.length,
+    totalImporte: Number(totalImporte.toFixed(2)),
+    ventas
+  };
 
-        if (selectResults.length === 0) {
-          return reject(new Error("Artículo no encontrado."));
-        }
+  const insert = await query(
+    `INSERT INTO CortesTurno
+     (Canal, IdEmpleado, IdCliente, FechaInicio, FechaFin, TotalVentas, TotalImporte, ResumenJSON, AutorizadoPor)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [channel, idEmpleado, idCliente, fechaInicio, fechaFin, ventas.length, resumen.totalImporte, JSON.stringify(resumen), gerente.IdEmpleado]
+  );
 
-        const producto = selectResults[0];
-        const cantidadActual = Number(producto.Cantidad);
-        const minimo = Number(producto.Minimo);
-        const nuevaCantidad = cantidadActual - cantidadNum;
-
-        if (nuevaCantidad < 0) {
-          return reject(new Error("No hay suficiente inventario para eliminar esa cantidad."));
-        }
-
-        db.query(
-          "UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?",
-          [nuevaCantidad, idNum],
-          (updateErr, updateResults) => {
-            if (updateErr) {
-              console.error("Error en UPDATE:", updateErr);
-              return reject(new Error("Error al actualizar el inventario: " + updateErr.message));
-            }
-
-            console.log(`✅ Cantidad actualizada: ${cantidadActual} → ${nuevaCantidad}`);
-            console.log(`✅ Filas afectadas: ${updateResults.affectedRows}`);
-
-            const necesitaReorder = nuevaCantidad < minimo;
-            resolve({ 
-              message: "Inventario actualizado correctamente.",
-              filasAfectadas: updateResults.affectedRows,
-              necesitaReorder: necesitaReorder,
-              producto: {
-                id: idNum,
-                nombre: producto.Nombre,
-                cantidadAnterior: cantidadActual,
-                cantidadNueva: nuevaCantidad,
-                minimo: minimo
-              }
-            });
-          }
-        );
-      }
-    );
-  });
+  return {
+    success: true,
+    idCorte: insert.insertId,
+    autorizadoPor: gerente.NombreCompleto,
+    resumen
+  };
 });
 
-// ========================
-// MANEJO DE CIERRE DE LA APLICACIÓN
-// ========================
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    // Cerrar la conexión a la base de datos al salir
-    if (db && db.end) {
+    if (db?.end) {
       db.end();
     }
     app.quit();

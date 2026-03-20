@@ -506,3 +506,99 @@
   display: flex;
   gap: 15px;
 }  
+
+.dashboard-header-row,
+.report-header-row,
+.client-pos-actions,
+.client-pos-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.dashboard-subtitle,
+.helper-text {
+    color: var(--color-brown);
+    opacity: 0.85;
+}
+
+.update-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    border: 1px solid #f1c87b;
+    background: linear-gradient(135deg, #fff7e8 0%, #ffefcf 100%);
+    box-shadow: var(--shadow-light);
+}
+
+.update-banner p {
+    margin-top: 4px;
+}
+
+.update-banner.pending {
+    border-color: #d98b2b;
+}
+
+.client-pos-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.client-pos-header.card {
+    margin-bottom: 0;
+}
+
+.client-pos-header p {
+    margin-top: 8px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.report-stats-grid {
+    margin-bottom: 16px;
+}
+
+.nested-card {
+    margin-bottom: 0;
+}
+
+.info-highlight-card {
+    background: linear-gradient(135deg, #fff7ef 0%, #fff0dd 100%);
+}
+
+.auth-modal-card {
+    width: min(96vw, 460px);
+}
+
+body .alert.alert-danger {
+    padding: 12px 14px;
+    background: #fdecec;
+    border-radius: 10px;
+    color: #a33a3a;
+}
+
+@media (max-width: 900px) {
+    .dashboard-header-row,
+    .report-header-row,
+    .client-pos-actions,
+    .client-pos-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .update-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
