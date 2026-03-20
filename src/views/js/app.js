@@ -3,6 +3,9 @@ let carrito = [];
 let ventas = [];
 let usuarioAModificar = [];
 const appContainer = document.getElementById('app-container');
+let estadoActualizacionGlobal = null;
+let actualizacionListenerInicializado = false;
+let aplicacionListaParaUso = false;
 const APP_STORAGE_KEYS = {
   tema: 'panaderia-tema',
   ultimaVista: 'panaderia-ultima-vista',
@@ -207,14 +210,32 @@ La sesión actual se cerrará para permitir el acceso del siguiente empleado.`,
   }
 }
 
+function formatearTamanoBytes(bytes = 0) {
+  const valor = Number(bytes || 0);
+  if (!valor) return '0 MB';
+  const unidades = ['B', 'KB', 'MB', 'GB'];
+  let tamaño = valor;
+  let indice = 0;
+  while (tamaño >= 1024 && indice < unidades.length - 1) {
+    tamaño /= 1024;
+    indice += 1;
+  }
+  return `${tamaño.toFixed(indice === 0 ? 0 : 1)} ${unidades[indice]}`;
+}
+
+function aplicacionBloqueadaPorActualizacion(status = estadoActualizacionGlobal) {
+  if (!status) return true;
+  return ['checking', 'available', 'downloading', 'pending_install', 'error'].includes(status.status);
+}
+
 function renderUpdateStatusBanner(status) {
-  if (!status || ['idle', 'development', 'up_to_date'].includes(status.status)) {
+  if (!status || ['idle', 'checking', 'available', 'downloading', 'pending_install', 'development', 'up_to_date'].includes(status.status)) {
     return '';
   }
 
   const version = status.downloadedVersion || status.availableVersion;
   const action = status.status === 'pending'
-    ? `<button id="install-update-btn" class="btn btn-warning btn-sm">Instalar al reiniciar</button>`
+    ? `<button id="install-update-btn" class="btn btn-warning btn-sm">Instalar actualización</button>`
     : '';
 
   return `
@@ -226,6 +247,54 @@ function renderUpdateStatusBanner(status) {
       <div>${action}</div>
     </div>
   `;
+}
+
+function renderPantallaActualizacionObligatoria(status = estadoActualizacionGlobal) {
+  const progreso = Math.max(0, Math.min(100, Number(status?.progressPercent || 0)));
+  const versionObjetivo = status?.availableVersion || status?.downloadedVersion || 'última versión';
+  const detalleDescarga = status?.progressTotal
+    ? `${formatearTamanoBytes(status.progressTransferred)} / ${formatearTamanoBytes(status.progressTotal)}`
+    : 'Esperando respuesta del servidor de releases...';
+  const puedeReintentar = status?.status === 'error';
+
+  appContainer.innerHTML = `
+    <div class="update-required-screen">
+      <div class="update-required-card card">
+        <div class="update-required-icon">${iconHTML('warning')}</div>
+        <h2>Validando actualización obligatoria</h2>
+        <p class="update-required-message">${status?.message || 'Comprobando la última versión del sistema en GitHub Releases...'}</p>
+        <div class="update-meta-grid">
+          <div><strong>Versión actual</strong><span>${status?.version || 'N/D'}</span></div>
+          <div><strong>Versión objetivo</strong><span>${versionObjetivo}</span></div>
+          <div><strong>Estado</strong><span>${status?.status || 'checking'}</span></div>
+          <div><strong>Descarga</strong><span>${detalleDescarga}</span></div>
+        </div>
+        <div class="update-progress-wrapper">
+          <div class="update-progress-bar">
+            <div class="update-progress-bar-fill" style="width:${progreso}%;"></div>
+          </div>
+          <div class="update-progress-text">${progreso.toFixed(1)}%</div>
+        </div>
+        <p class="helper-text update-required-helper">El sistema permanecerá bloqueado hasta comprobar que está actualizado. Si existe una nueva release, se descargará y al finalizar se abrirá el instalador.</p>
+        ${puedeReintentar ? '<button id="retry-update-btn" class="btn btn-primary">Reintentar comprobación</button>' : ''}
+      </div>
+    </div>
+  `;
+
+  const retryBtn = document.getElementById('retry-update-btn');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', async () => {
+      retryBtn.disabled = true;
+      retryBtn.textContent = 'Reintentando...';
+      try {
+        await window.api.retryUpdateCheck();
+      } catch (error) {
+        retryBtn.disabled = false;
+        retryBtn.textContent = 'Reintentar comprobación';
+        await showAlert(error.message || 'No fue posible reintentar la comprobación.', 'error', 'Actualización');
+      }
+    });
+  }
 }
 
 async function obtenerEstadoActualizacion() {
@@ -243,7 +312,7 @@ async function instalarActualizacionPendiente() {
       await showAlert(resultado.message || 'Todavía no hay una actualización descargada.', 'warning', 'Actualización');
       return;
     }
-    await showAlert('La aplicación se cerrará para instalar la actualización descargada.', 'success', 'Instalando actualización');
+    await showAlert('La aplicación cerrará la sesión actual y abrirá el instalador de la nueva versión.', 'success', 'Instalando actualización');
   } catch (error) {
     await showAlert(error.message || 'No fue posible iniciar la instalación de la actualización.', 'error', 'Actualización');
   }
@@ -251,7 +320,7 @@ async function instalarActualizacionPendiente() {
 
 async function notificarActualizacionPendienteUnaVez() {
   const estado = await obtenerEstadoActualizacion();
-  if (!estado || !['available', 'pending'].includes(estado.status)) return;
+  if (!estado || !['available', 'pending', 'pending_install', 'downloading'].includes(estado.status)) return;
 
   const ultimaVersionMostrada = localStorage.getItem(APP_STORAGE_KEYS.actualizacionVista);
   const versionActual = estado.downloadedVersion || estado.availableVersion || estado.version;
@@ -259,6 +328,43 @@ async function notificarActualizacionPendienteUnaVez() {
 
   localStorage.setItem(APP_STORAGE_KEYS.actualizacionVista, versionActual);
   await showAlert(estado.message || 'Hay una actualización pendiente para esta estación.', 'warning', 'Actualización pendiente');
+}
+
+function manejarCambioEstadoActualizacion(estado) {
+  estadoActualizacionGlobal = estado;
+
+  if (aplicacionBloqueadaPorActualizacion(estado)) {
+    aplicacionListaParaUso = false;
+    renderPantallaActualizacionObligatoria(estado);
+    return;
+  }
+
+  if (!aplicacionListaParaUso) {
+    aplicacionListaParaUso = true;
+    if (usuarioActual) {
+      renderDashboard(estado);
+    } else {
+      renderLogin();
+    }
+    return;
+  }
+
+  const updateBtn = document.getElementById('install-update-btn');
+  if (updateBtn) {
+    updateBtn.addEventListener('click', instalarActualizacionPendiente);
+  }
+}
+
+async function inicializarComprobacionActualizacion() {
+  if (!actualizacionListenerInicializado) {
+    window.api.onUpdateStatus((estado) => {
+      manejarCambioEstadoActualizacion(estado);
+    });
+    actualizacionListenerInicializado = true;
+  }
+
+  const estadoInicial = await obtenerEstadoActualizacion();
+  manejarCambioEstadoActualizacion(estadoInicial);
 }
 
 aplicarTemaGuardado();
@@ -2680,4 +2786,4 @@ async function renderPage(page) {
     renderTablaProductos();
   }
 }
-renderLogin();
+inicializarComprobacionActualizacion();

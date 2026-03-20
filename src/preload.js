@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   getReportes: (filters) => ipcRenderer.invoke('getReportes', filters),
   registrarCorteTurno: (payload) => ipcRenderer.invoke('registrarCorteTurno', payload),
   getUpdateStatus: () => ipcRenderer.invoke('getUpdateStatus'),
+  retryUpdateCheck: () => ipcRenderer.invoke('retryUpdateCheck'),
   installPendingUpdate: () => ipcRenderer.invoke('installPendingUpdate'),
   onUpdateStatus: (callback) => {
     const handler = (_, payload) => callback(payload);
