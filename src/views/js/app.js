@@ -194,10 +194,10 @@ async function ejecutarCorteTurno() {
       `Corte registrado correctamente.
 
 Canal: ${resumen.canal}
-Ventas incluidas: ${resumen.totalVentas}
-Importe total: ${formatearMoneda(resumen.totalImporte)}
-Desde: ${formatearFechaHora(resumen.fechaInicio)}
-Hasta: ${formatearFechaHora(resumen.fechaFin)}
+Ventas acumuladas hasta este momento: ${resumen.totalVentas}
+Importe total acumulado: ${formatearMoneda(resumen.totalImporte)}
+Desde el último corte: ${formatearFechaHora(resumen.fechaInicio)}
+Hasta este momento: ${formatearFechaHora(resumen.fechaFin)}
 Autorizó: ${resultado.autorizadoPor}
 
 La sesión actual se cerrará para permitir el acceso del siguiente empleado.`,

@@ -72,6 +72,22 @@ function formatSqlDate(value) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
+function formatLocalSqlDateTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Fecha inválida.');
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 function setUpdateState(nextState) {
   updateState = {
     ...updateState,
@@ -354,7 +370,7 @@ async function getLastCutRange({ channel, idEmpleado = null, idCliente = null })
     [channel, idEmpleado, idEmpleado, idCliente, idCliente]
   );
 
-  return salesRows[0]?.PrimeraVenta || normalizeDate(new Date());
+  return salesRows[0]?.PrimeraVenta || formatLocalSqlDateTime(new Date());
 }
 
 app.whenReady().then(async () => {
@@ -842,8 +858,8 @@ ipcMain.handle('registrarCorteTurno', async (event, payload = {}) => {
   const gerente = await getManagerByCredentials(payload.gerenteUsuario, payload.gerentePassword);
 
   const fechaInicioRaw = await getLastCutRange({ channel, idEmpleado, idCliente });
-  const fechaInicio = formatSqlDate(fechaInicioRaw || new Date());
-  const fechaFin = normalizeDate(new Date(), { endOfDay: false });
+  const fechaInicio = formatLocalSqlDateTime(fechaInicioRaw || new Date());
+  const fechaFin = formatLocalSqlDateTime(new Date());
 
   const ventas = await query(
     `SELECT v.IdVenta, v.FechaVenta, v.Total, COALESCE(vc.Canal, 'SinClasificar') AS Canal
