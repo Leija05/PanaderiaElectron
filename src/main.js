@@ -72,6 +72,22 @@ function formatSqlDate(value) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
+function formatLocalSqlDateTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Fecha inválida.');
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 function setUpdateState(nextState) {
   updateState = {
     ...updateState,
@@ -119,6 +135,63 @@ async function ensureSupportTables() {
     FROM Ventas v
     LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
     WHERE vc.IdVenta IS NULL
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS RecepcionesProveedor (
+      IdRecepcion INT AUTO_INCREMENT PRIMARY KEY,
+      NumeroRecepcion VARCHAR(40) NOT NULL UNIQUE,
+      Folio VARCHAR(40) NOT NULL,
+      IdProveedor INT NOT NULL,
+      IdEmpleado INT NULL,
+      FechaRecepcion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PuedeModificarHasta DATETIME NOT NULL,
+      Total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      Estado ENUM('Recibida', 'Modificada', 'Devuelta') DEFAULT 'Recibida',
+      Observaciones TEXT,
+      FOREIGN KEY (IdProveedor) REFERENCES Proveedores(IdProveedor),
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS RecepcionProveedorDetalle (
+      IdDetalleRecepcion INT AUTO_INCREMENT PRIMARY KEY,
+      IdRecepcion INT NOT NULL,
+      IdArticulo INT NOT NULL,
+      Cantidad INT NOT NULL,
+      CostoUnitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      Subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      FOREIGN KEY (IdRecepcion) REFERENCES RecepcionesProveedor(IdRecepcion) ON DELETE CASCADE,
+      FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS DevolucionesCliente (
+      IdDevolucion INT AUTO_INCREMENT PRIMARY KEY,
+      FolioDevolucion VARCHAR(40) NOT NULL UNIQUE,
+      IdVenta INT NOT NULL,
+      IdEmpleado INT NULL,
+      FechaDevolucion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      TotalReintegrado DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      Motivo TEXT,
+      FOREIGN KEY (IdVenta) REFERENCES Ventas(IdVenta),
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS DevolucionClienteDetalle (
+      IdDetalleDevolucion INT AUTO_INCREMENT PRIMARY KEY,
+      IdDevolucion INT NOT NULL,
+      IdArticulo INT NOT NULL,
+      Cantidad INT NOT NULL,
+      PrecioUnitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      Subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      FOREIGN KEY (IdDevolucion) REFERENCES DevolucionesCliente(IdDevolucion) ON DELETE CASCADE,
+      FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo)
+    )
   `);
 }
 
@@ -354,7 +427,7 @@ async function getLastCutRange({ channel, idEmpleado = null, idCliente = null })
     [channel, idEmpleado, idEmpleado, idCliente, idCliente]
   );
 
-  return salesRows[0]?.PrimeraVenta || normalizeDate(new Date());
+  return salesRows[0]?.PrimeraVenta || formatLocalSqlDateTime(new Date());
 }
 
 app.whenReady().then(async () => {
@@ -737,6 +810,314 @@ ipcMain.handle('eliminarProducto', async (event, idArticulo, cantidad) => {
   };
 });
 
+function generarFolio(prefix) {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const rand = Math.floor(Math.random() * 900 + 100);
+  return `${prefix}-${yyyy}${mm}${dd}-${hh}${min}${ss}-${rand}`;
+}
+
+async function obtenerDetalleRecepcion(idRecepcion) {
+  const headers = await query(
+    `SELECT rp.*, p.Nombre AS NombreProveedor, e.NombreCompleto AS NombreEmpleado
+     FROM RecepcionesProveedor rp
+     JOIN Proveedores p ON p.IdProveedor = rp.IdProveedor
+     LEFT JOIN Empleados e ON e.IdEmpleado = rp.IdEmpleado
+     WHERE rp.IdRecepcion = ?`,
+    [idRecepcion]
+  );
+  if (!headers.length) throw new Error('Recepción no encontrada.');
+
+  const detalles = await query(
+    `SELECT rd.*, a.Nombre AS NombreProducto
+     FROM RecepcionProveedorDetalle rd
+     JOIN Articulos a ON a.IdArticulo = rd.IdArticulo
+     WHERE rd.IdRecepcion = ?`,
+    [idRecepcion]
+  );
+
+  return { ...headers[0], detalles };
+}
+
+ipcMain.handle('getRecepcionesProveedor', async () => query(
+  `SELECT rp.IdRecepcion, rp.NumeroRecepcion, rp.Folio, rp.FechaRecepcion, rp.PuedeModificarHasta,
+          rp.Total, rp.Estado, rp.Observaciones,
+          p.Nombre AS NombreProveedor,
+          e.NombreCompleto AS NombreEmpleado,
+          GROUP_CONCAT(CONCAT(a.Nombre, ' x', rd.Cantidad) ORDER BY a.Nombre SEPARATOR ', ') AS ProductosIngresados
+   FROM RecepcionesProveedor rp
+   JOIN Proveedores p ON p.IdProveedor = rp.IdProveedor
+   LEFT JOIN Empleados e ON e.IdEmpleado = rp.IdEmpleado
+   LEFT JOIN RecepcionProveedorDetalle rd ON rd.IdRecepcion = rp.IdRecepcion
+   LEFT JOIN Articulos a ON a.IdArticulo = rd.IdArticulo
+   GROUP BY rp.IdRecepcion
+   ORDER BY rp.FechaRecepcion DESC`
+));
+
+ipcMain.handle('getRecepcionProveedorDetalle', async (event, idRecepcion) => obtenerDetalleRecepcion(idRecepcion));
+
+ipcMain.handle('registrarRecepcionProveedor', async (event, payload = {}) => {
+  const { idProveedor, idEmpleado = null, observaciones = '', items = [] } = payload;
+  if (!idProveedor) throw new Error('Selecciona un proveedor.');
+  if (!items.length) throw new Error('Agrega al menos un producto a la recepción.');
+
+  await beginTransaction();
+  try {
+    const numeroRecepcion = generarFolio('REC');
+    const folio = generarFolio('FOL');
+    const fechaRecepcion = formatLocalSqlDateTime(new Date());
+    const puedeModificarHasta = formatLocalSqlDateTime(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    const total = items.reduce((acc, item) => acc + (Number(item.costoUnitario) * Number(item.cantidad)), 0);
+
+    const recepcionResult = await query(
+      `INSERT INTO RecepcionesProveedor
+       (NumeroRecepcion, Folio, IdProveedor, IdEmpleado, FechaRecepcion, PuedeModificarHasta, Total, Estado, Observaciones)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'Recibida', ?)`,
+      [numeroRecepcion, folio, idProveedor, idEmpleado, fechaRecepcion, puedeModificarHasta, total, observaciones]
+    );
+
+    const idRecepcion = recepcionResult.insertId;
+
+    for (const item of items) {
+      const articulo = await query('SELECT IdArticulo, Nombre, Cantidad FROM Articulos WHERE IdArticulo = ?', [item.idArticulo]);
+      if (!articulo.length) throw new Error('Uno de los productos ya no existe.');
+
+      const cantidadActual = Number(articulo[0].Cantidad || 0);
+      const cantidadNueva = cantidadActual + Number(item.cantidad);
+      const subtotal = Number(item.costoUnitario) * Number(item.cantidad);
+
+      await query(
+        `INSERT INTO RecepcionProveedorDetalle (IdRecepcion, IdArticulo, Cantidad, CostoUnitario, Subtotal)
+         VALUES (?, ?, ?, ?, ?)`,
+        [idRecepcion, item.idArticulo, item.cantidad, item.costoUnitario, subtotal]
+      );
+
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [cantidadNueva, item.idArticulo]);
+
+      await query(
+        `INSERT INTO MovimientosInventario
+         (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, Motivo, IdReferencia, TipoReferencia, IdEmpleado, Observaciones)
+         VALUES (?, 'Entrada', ?, ?, ?, ?, ?, 'Compra', ?, ?)`,
+        [item.idArticulo, item.cantidad, cantidadActual, cantidadNueva, `Recepción proveedor ${numeroRecepcion}`, idRecepcion, idEmpleado, observaciones || `Ingreso por proveedor ${idProveedor}`]
+      );
+    }
+
+    await commit();
+    return { success: true, idRecepcion, numeroRecepcion, folio, total: Number(total.toFixed(2)) };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+});
+
+ipcMain.handle('modificarRecepcionProveedor', async (event, payload = {}) => {
+  const { idRecepcion, observaciones = '', items = [] } = payload;
+  if (!idRecepcion) throw new Error('Selecciona una recepción.');
+  if (!items.length) throw new Error('Agrega al menos un producto a la recepción.');
+
+  await beginTransaction();
+  try {
+    const recepcion = await obtenerDetalleRecepcion(idRecepcion);
+    if (recepcion.Estado === 'Devuelta') throw new Error('No puedes modificar una recepción ya devuelta.');
+    if (new Date(recepcion.PuedeModificarHasta).getTime() < Date.now()) {
+      throw new Error('Solo puedes modificar la recepción dentro de las primeras 24 horas.');
+    }
+
+    for (const detalle of recepcion.detalles) {
+      const articulo = await query('SELECT Cantidad FROM Articulos WHERE IdArticulo = ?', [detalle.IdArticulo]);
+      const existenciaActual = Number(articulo[0]?.Cantidad || 0);
+      if (existenciaActual < Number(detalle.Cantidad)) {
+        throw new Error(`No es posible modificar la recepción porque el producto ${detalle.NombreProducto} ya tuvo movimiento físico.`);
+      }
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [existenciaActual - Number(detalle.Cantidad), detalle.IdArticulo]);
+    }
+
+    await query('DELETE FROM RecepcionProveedorDetalle WHERE IdRecepcion = ?', [idRecepcion]);
+
+    let total = 0;
+    for (const item of items) {
+      const articulo = await query('SELECT Cantidad FROM Articulos WHERE IdArticulo = ?', [item.idArticulo]);
+      if (!articulo.length) throw new Error('Uno de los productos ya no existe.');
+      const cantidadActual = Number(articulo[0].Cantidad || 0);
+      const cantidadNueva = cantidadActual + Number(item.cantidad);
+      const subtotal = Number(item.costoUnitario) * Number(item.cantidad);
+      total += subtotal;
+
+      await query(
+        `INSERT INTO RecepcionProveedorDetalle (IdRecepcion, IdArticulo, Cantidad, CostoUnitario, Subtotal)
+         VALUES (?, ?, ?, ?, ?)`,
+        [idRecepcion, item.idArticulo, item.cantidad, item.costoUnitario, subtotal]
+      );
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [cantidadNueva, item.idArticulo]);
+    }
+
+    await query(
+      `UPDATE RecepcionesProveedor
+       SET Total = ?, Estado = 'Modificada', Observaciones = ?
+       WHERE IdRecepcion = ?`,
+      [Number(total.toFixed(2)), observaciones || recepcion.Observaciones || '', idRecepcion]
+    );
+
+    await commit();
+    return { success: true, idRecepcion, total: Number(total.toFixed(2)) };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+});
+
+ipcMain.handle('devolverRecepcionProveedor', async (event, payload = {}) => {
+  const { idRecepcion, motivo = 'Devolución al proveedor por error de recepción' } = payload;
+  if (!idRecepcion) throw new Error('Selecciona una recepción.');
+
+  await beginTransaction();
+  try {
+    const recepcion = await obtenerDetalleRecepcion(idRecepcion);
+    if (recepcion.Estado === 'Devuelta') throw new Error('La recepción ya fue devuelta.');
+
+    for (const detalle of recepcion.detalles) {
+      const articulo = await query('SELECT Cantidad FROM Articulos WHERE IdArticulo = ?', [detalle.IdArticulo]);
+      const existenciaActual = Number(articulo[0]?.Cantidad || 0);
+      if (existenciaActual < Number(detalle.Cantidad)) {
+        throw new Error(`No es posible devolver ${detalle.NombreProducto} porque ya hubo cambio físico en inventario.`);
+      }
+      const nuevaCantidad = existenciaActual - Number(detalle.Cantidad);
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [nuevaCantidad, detalle.IdArticulo]);
+      await query(
+        `INSERT INTO MovimientosInventario
+         (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, Motivo, IdReferencia, TipoReferencia, IdEmpleado, Observaciones)
+         VALUES (?, 'Salida', ?, ?, ?, ?, ?, 'Compra', ?, ?)`,
+        [detalle.IdArticulo, detalle.Cantidad, existenciaActual, nuevaCantidad, 'Devolución a proveedor', idRecepcion, recepcion.IdEmpleado, motivo]
+      );
+    }
+
+    await query("UPDATE RecepcionesProveedor SET Estado = 'Devuelta', Observaciones = ? WHERE IdRecepcion = ?", [motivo, idRecepcion]);
+    await commit();
+    return { success: true, idRecepcion };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+});
+
+ipcMain.handle('getAuxiliarMovimientos', async (event, payload = {}) => {
+  const days = Math.max(1, Number(payload.days || 7));
+  const productId = payload.idArticulo ? Number(payload.idArticulo) : null;
+  const desde = formatLocalSqlDateTime(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+  const params = [desde];
+  let filtroArticulo = '';
+  if (productId) {
+    filtroArticulo = ' AND m.IdArticulo = ?';
+    params.push(productId);
+  }
+
+  return query(
+    `SELECT m.IdMovimiento, m.FechaMovimiento, DATE(m.FechaMovimiento) AS Fecha, TIME(m.FechaMovimiento) AS Hora,
+            a.Nombre AS Producto, m.TipoMovimiento, m.Cantidad, m.Motivo, m.TipoReferencia,
+            rp.NumeroRecepcion, rp.Folio, p.Nombre AS Proveedor,
+            v.IdVenta
+     FROM MovimientosInventario m
+     JOIN Articulos a ON a.IdArticulo = m.IdArticulo
+     LEFT JOIN RecepcionesProveedor rp ON m.TipoReferencia = 'Compra' AND rp.IdRecepcion = m.IdReferencia
+     LEFT JOIN Proveedores p ON p.IdProveedor = rp.IdProveedor
+     LEFT JOIN Ventas v ON m.TipoReferencia = 'Venta' AND v.IdVenta = m.IdReferencia
+     WHERE m.FechaMovimiento >= ?${filtroArticulo}
+     ORDER BY m.FechaMovimiento DESC`,
+    params
+  );
+});
+
+ipcMain.handle('getDevolucionesCliente', async () => query(
+  `SELECT dc.IdDevolucion, dc.FolioDevolucion, dc.FechaDevolucion, dc.TotalReintegrado, dc.Motivo,
+          dc.IdVenta, e.NombreCompleto AS Empleado,
+          GROUP_CONCAT(CONCAT(a.Nombre, ' x', dcd.Cantidad) ORDER BY a.Nombre SEPARATOR ', ') AS Productos
+   FROM DevolucionesCliente dc
+   LEFT JOIN Empleados e ON e.IdEmpleado = dc.IdEmpleado
+   LEFT JOIN DevolucionClienteDetalle dcd ON dcd.IdDevolucion = dc.IdDevolucion
+   LEFT JOIN Articulos a ON a.IdArticulo = dcd.IdArticulo
+   GROUP BY dc.IdDevolucion
+   ORDER BY dc.FechaDevolucion DESC`
+));
+
+ipcMain.handle('registrarDevolucionCliente', async (event, payload = {}) => {
+  const { idVenta, idEmpleado = null, motivo = 'Devolución de cliente', items = [] } = payload;
+  if (!idVenta) throw new Error('Selecciona una venta.');
+  if (!items.length) throw new Error('Selecciona al menos un producto para devolución.');
+
+  await beginTransaction();
+  try {
+    const venta = await query('SELECT IdVenta FROM Ventas WHERE IdVenta = ?', [idVenta]);
+    if (!venta.length) throw new Error('La venta seleccionada no existe.');
+
+    const folioDevolucion = generarFolio('DEVCLI');
+    let totalReintegrado = 0;
+
+    const devolucionResult = await query(
+      `INSERT INTO DevolucionesCliente (FolioDevolucion, IdVenta, IdEmpleado, TotalReintegrado, Motivo)
+       VALUES (?, ?, ?, 0, ?)`,
+      [folioDevolucion, idVenta, idEmpleado, motivo]
+    );
+    const idDevolucion = devolucionResult.insertId;
+
+    for (const item of items) {
+      const vendidos = await query(
+        `SELECT vd.Cantidad, vd.PrecioUnitario, a.Nombre
+         FROM VentaDetalle vd
+         JOIN Articulos a ON a.IdArticulo = vd.IdArticulo
+         WHERE vd.IdVenta = ? AND vd.IdArticulo = ?`,
+        [idVenta, item.idArticulo]
+      );
+      if (!vendidos.length) throw new Error('Uno de los productos no pertenece a la venta.');
+
+      const devueltosPrevios = await query(
+        `SELECT COALESCE(SUM(dcd.Cantidad), 0) AS cantidad
+         FROM DevolucionClienteDetalle dcd
+         JOIN DevolucionesCliente dc ON dc.IdDevolucion = dcd.IdDevolucion
+         WHERE dc.IdVenta = ? AND dcd.IdArticulo = ?`,
+        [idVenta, item.idArticulo]
+      );
+
+      const disponibleParaDevolver = Number(vendidos[0].Cantidad) - Number(devueltosPrevios[0].cantidad || 0);
+      if (Number(item.cantidad) <= 0 || Number(item.cantidad) > disponibleParaDevolver) {
+        throw new Error(`La devolución de ${vendidos[0].Nombre} excede lo vendido disponible.`);
+      }
+
+      const precioUnitario = Number(vendidos[0].PrecioUnitario || 0);
+      const subtotal = precioUnitario * Number(item.cantidad);
+      totalReintegrado += subtotal;
+
+      await query(
+        `INSERT INTO DevolucionClienteDetalle (IdDevolucion, IdArticulo, Cantidad, PrecioUnitario, Subtotal)
+         VALUES (?, ?, ?, ?, ?)`,
+        [idDevolucion, item.idArticulo, item.cantidad, precioUnitario, subtotal]
+      );
+
+      const articulo = await query('SELECT Cantidad FROM Articulos WHERE IdArticulo = ?', [item.idArticulo]);
+      const cantidadActual = Number(articulo[0]?.Cantidad || 0);
+      const cantidadNueva = cantidadActual + Number(item.cantidad);
+      await query('UPDATE Articulos SET Cantidad = ? WHERE IdArticulo = ?', [cantidadNueva, item.idArticulo]);
+      await query(
+        `INSERT INTO MovimientosInventario
+         (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, Motivo, IdReferencia, TipoReferencia, IdEmpleado, Observaciones)
+         VALUES (?, 'Entrada', ?, ?, ?, 'Devolución cliente', ?, 'Ajuste', ?, ?)`,
+        [item.idArticulo, item.cantidad, cantidadActual, cantidadNueva, idDevolucion, idEmpleado, motivo]
+      );
+    }
+
+    await query('UPDATE DevolucionesCliente SET TotalReintegrado = ? WHERE IdDevolucion = ?', [Number(totalReintegrado.toFixed(2)), idDevolucion]);
+    await commit();
+    return { success: true, idDevolucion, folioDevolucion, totalReintegrado: Number(totalReintegrado.toFixed(2)) };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+});
+
 ipcMain.handle('getReportes', async (event, filters = {}) => {
   const range = await resolveReportRange(filters);
   const ventas = await query(
@@ -842,8 +1223,8 @@ ipcMain.handle('registrarCorteTurno', async (event, payload = {}) => {
   const gerente = await getManagerByCredentials(payload.gerenteUsuario, payload.gerentePassword);
 
   const fechaInicioRaw = await getLastCutRange({ channel, idEmpleado, idCliente });
-  const fechaInicio = formatSqlDate(fechaInicioRaw || new Date());
-  const fechaFin = normalizeDate(new Date(), { endOfDay: false });
+  const fechaInicio = formatLocalSqlDateTime(fechaInicioRaw || new Date());
+  const fechaFin = formatLocalSqlDateTime(new Date());
 
   const ventas = await query(
     `SELECT v.IdVenta, v.FechaVenta, v.Total, COALESCE(vc.Canal, 'SinClasificar') AS Canal

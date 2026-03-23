@@ -66,6 +66,174 @@ function showModal({ title = 'Mensaje', message = '', type = 'warning', showCanc
 const showAlert = (message, type = 'warning', title = 'Aviso') => showModal({ title, message, type, showCancel: false });
 const showConfirm = (message, title = 'Confirmar') => showModal({ title, message, type: 'warning', showCancel: true, confirmText: 'Confirmar' });
 
+function construirOpcionesProducto(productos, selectedId = '') {
+  return productos.map((producto) => `
+    <option value="${producto.IdArticulo}" ${Number(selectedId) === Number(producto.IdArticulo) ? 'selected' : ''}>
+      ${producto.Nombre}
+    </option>
+  `).join('');
+}
+
+async function solicitarRecepcionProveedor({ proveedores, productos, recepcion = null }) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+  const detallesIniciales = recepcion?.detalles?.length
+    ? recepcion.detalles.map((detalle) => ({
+        idArticulo: detalle.IdArticulo,
+        cantidad: detalle.Cantidad,
+        costoUnitario: detalle.CostoUnitario
+      }))
+    : [{ idArticulo: productos[0]?.IdArticulo || '', cantidad: 1, costoUnitario: productos[0]?.PrecioCompra || 0 }];
+
+  return new Promise((resolve) => {
+    const render = () => {
+      root.innerHTML = `
+        <div class="app-modal-overlay">
+          <div class="app-modal-card" style="width:min(96vw, 760px); max-height:90vh; overflow:auto;">
+            <div class="app-modal-title">${iconHTML('warning', recepcion ? 'Modificar recepción de proveedor' : 'Registrar recepción de proveedor')}</div>
+            <div class="app-modal-body">
+              <div class="form-group">
+                <label>Proveedor</label>
+                <select id="recepcion-proveedor" class="form-control" ${recepcion ? 'disabled' : ''}>
+                  ${proveedores.map((prov) => `<option value="${prov.IdProveedor}" ${Number(recepcion?.IdProveedor || '') === Number(prov.IdProveedor) ? 'selected' : ''}>${prov.Nombre}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Observaciones</label>
+                <textarea id="recepcion-observaciones" class="form-control" rows="3">${recepcion?.Observaciones || ''}</textarea>
+              </div>
+              <div id="recepcion-lineas"></div>
+              <button id="agregar-linea-recepcion" class="btn btn-secondary btn-sm" type="button">Agregar producto</button>
+            </div>
+            <div class="app-modal-actions">
+              <button id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+              <button id="modal-confirm" class="btn btn-primary">Guardar recepción</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const lineasContainer = document.getElementById('recepcion-lineas');
+      lineasContainer.innerHTML = detallesIniciales.map((detalle, index) => `
+        <div class="recepcion-linea-grid" data-index="${index}" style="display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:8px; margin-bottom:10px; align-items:end;">
+          <div>
+            <label>Producto</label>
+            <select class="form-control recepcion-producto">${construirOpcionesProducto(productos, detalle.idArticulo)}</select>
+          </div>
+          <div>
+            <label>Cantidad</label>
+            <input type="number" min="1" class="form-control recepcion-cantidad" value="${detalle.cantidad}">
+          </div>
+          <div>
+            <label>Costo unitario</label>
+            <input type="number" min="0" step="0.01" class="form-control recepcion-costo" value="${detalle.costoUnitario}">
+          </div>
+          <button type="button" class="btn btn-danger btn-sm eliminar-linea-recepcion">Quitar</button>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.eliminar-linea-recepcion').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.closest('[data-index]').dataset.index);
+          detallesIniciales.splice(idx, 1);
+          if (!detallesIniciales.length) {
+            detallesIniciales.push({ idArticulo: productos[0]?.IdArticulo || '', cantidad: 1, costoUnitario: productos[0]?.PrecioCompra || 0 });
+          }
+          render();
+        });
+      });
+
+      document.getElementById('agregar-linea-recepcion').addEventListener('click', () => {
+        detallesIniciales.push({ idArticulo: productos[0]?.IdArticulo || '', cantidad: 1, costoUnitario: productos[0]?.PrecioCompra || 0 });
+        render();
+      });
+
+      document.getElementById('modal-cancel').addEventListener('click', () => {
+        root.innerHTML = '';
+        resolve(null);
+      });
+
+      document.getElementById('modal-confirm').addEventListener('click', () => {
+        const proveedorId = recepcion?.IdProveedor || Number(document.getElementById('recepcion-proveedor').value);
+        const observaciones = document.getElementById('recepcion-observaciones').value.trim();
+        const items = Array.from(document.querySelectorAll('.recepcion-linea-grid')).map((linea) => ({
+          idArticulo: Number(linea.querySelector('.recepcion-producto').value),
+          cantidad: Number(linea.querySelector('.recepcion-cantidad').value),
+          costoUnitario: Number(linea.querySelector('.recepcion-costo').value)
+        })).filter((item) => item.idArticulo && item.cantidad > 0 && item.costoUnitario >= 0);
+
+        root.innerHTML = '';
+        resolve({ idProveedor: proveedorId, observaciones, items });
+      });
+    };
+
+    render();
+  });
+}
+
+async function solicitarDevolucionCliente({ productos = [] }) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+
+  return new Promise((resolve) => {
+    root.innerHTML = `
+      <div class="app-modal-overlay">
+        <div class="app-modal-card" style="width:min(96vw, 700px); max-height:90vh; overflow:auto;">
+          <div class="app-modal-title">${iconHTML('warning', 'Registrar devolución a cliente')}</div>
+          <div class="app-modal-body">
+            <p>Indica las cantidades a devolver. Solo se procesarán cantidades mayores a cero.</p>
+            <div id="devolucion-lineas">
+              ${productos.map((producto, index) => `
+                <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px; margin-bottom:10px; align-items:end;">
+                  <div>
+                    <label>${producto.NombreProducto}</label>
+                    <div class="helper-text">Vendidos: ${producto.Cantidad}</div>
+                  </div>
+                  <div>
+                    <label>Cantidad a devolver</label>
+                    <input type="number" min="0" max="${producto.Cantidad}" value="0" class="form-control devolucion-cantidad" data-index="${index}">
+                  </div>
+                  <div>
+                    <label>Precio unitario</label>
+                    <input type="text" class="form-control" value="${Number(producto.PrecioUnitario || 0).toFixed(2)}" disabled>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="form-group">
+              <label>Motivo</label>
+              <textarea id="devolucion-motivo" class="form-control" rows="3">Devolución de cliente</textarea>
+            </div>
+          </div>
+          <div class="app-modal-actions">
+            <button id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+            <button id="modal-confirm" class="btn btn-primary">Guardar devolución</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modal-cancel').addEventListener('click', () => {
+      root.innerHTML = '';
+      resolve(null);
+    });
+
+    document.getElementById('modal-confirm').addEventListener('click', () => {
+      const items = Array.from(document.querySelectorAll('.devolucion-cantidad')).map((input) => {
+        const producto = productos[Number(input.dataset.index)];
+        return {
+          idArticulo: producto.IdArticulo,
+          cantidad: Number(input.value)
+        };
+      }).filter((item) => item.cantidad > 0);
+      const motivo = document.getElementById('devolucion-motivo').value.trim();
+      root.innerHTML = '';
+      resolve({ items, motivo });
+    });
+  });
+}
+
+
 function esVistaCliente() {
   return usuarioActual?.Rol === 'Cliente';
 }
@@ -194,10 +362,10 @@ async function ejecutarCorteTurno() {
       `Corte registrado correctamente.
 
 Canal: ${resumen.canal}
-Ventas incluidas: ${resumen.totalVentas}
-Importe total: ${formatearMoneda(resumen.totalImporte)}
-Desde: ${formatearFechaHora(resumen.fechaInicio)}
-Hasta: ${formatearFechaHora(resumen.fechaFin)}
+Ventas acumuladas hasta este momento: ${resumen.totalVentas}
+Importe total acumulado: ${formatearMoneda(resumen.totalImporte)}
+Desde el último corte: ${formatearFechaHora(resumen.fechaInicio)}
+Hasta este momento: ${formatearFechaHora(resumen.fechaFin)}
 Autorizó: ${resultado.autorizadoPor}
 
 La sesión actual se cerrará para permitir el acceso del siguiente empleado.`,
@@ -1524,21 +1692,21 @@ async function renderPage(page) {
 
   // =============== PROVEEDORES ==================
   if (page === 'proveedores') {
-    const proveedores = await window.api.getProveedores();
+    const [proveedores, productos, recepciones] = await Promise.all([
+      window.api.getProveedores(),
+      window.api.getProductos(),
+      window.api.getRecepcionesProveedor()
+    ]);
 
-    let rows = proveedores.map((e, index) => {
-      // Determinar si el empleado está activo o desactivado
+    let proveedorRows = proveedores.map((e) => {
       const estaActivo = e.Activo !== undefined ? e.Activo : true;
       const claseFila = estaActivo ? '' : 'empleado-desactivado';
       const indicadorEstado = estaActivo ? iconHTML('success') : iconHTML('error');
 
       return `
-        <tr data-index="${index}" data-activo="${estaActivo}" class="${claseFila}">
+        <tr class="${claseFila}">
           <td>${e.IdProveedor || 'N/A'}</td>
-          <td>
-            ${indicadorEstado} ${e.Nombre || 'No especificado'}
-            ${!estaActivo ? '<br><small style="color:#e74c3c;">(Desactivado)</small>' : ''}
-          </td>
+          <td>${indicadorEstado} ${e.Nombre || 'No especificado'}</td>
           <td>${e.Direccion || 'No especificado'}</td>
           <td>${e.Telefono || 'No especificado'}</td>
           <td>${e.Correo || 'No especificado'}</td>
@@ -1547,53 +1715,141 @@ async function renderPage(page) {
       `;
     }).join('');
 
+    let recepcionRows = recepciones.map((recepcion, index) => `
+      <tr data-index="${index}">
+        <td>${recepcion.NumeroRecepcion}</td>
+        <td>${recepcion.Folio}</td>
+        <td>${formatearMoneda(recepcion.Total)}</td>
+        <td>${recepcion.NombreProveedor}</td>
+        <td>${recepcion.ProductosIngresados || 'Sin detalle'}</td>
+        <td>${formatearFechaHora(recepcion.FechaRecepcion)}</td>
+        <td>${recepcion.Estado}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7">No hay recepciones registradas.</td></tr>';
+
     content.innerHTML = `
-        <div class="card">
-          <h2>Gestión de Proveedores</h2>
-          <div style="margin-bottom:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
-            <strong>Leyenda:</strong> 
-            <span style="color:#27ae60;">${iconHTML('success')} Proveedor activo</span> | 
-            <span style="color:#e74c3c;">${iconHTML('error')} Proveedor desactivado</span>
+      <div class="card">
+        <h2>Gestión de Proveedores</h2>
+        <div style="margin-bottom:15px; padding:10px; background:#f8f9fa; border-radius:5px;">
+          <strong>Leyenda:</strong>
+          <span style="color:#27ae60;">${iconHTML('success')} Proveedor activo</span> |
+          <span style="color:#e74c3c;">${iconHTML('error')} Proveedor desactivado</span>
+        </div>
+        <table class="table" id="tablaProveedores">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Dirección</th>
+              <th>Teléfono</th>
+              <th>Correo</th>
+              <th>Contacto</th>
+            </tr>
+          </thead>
+          <tbody>${proveedorRows}</tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="report-header-row">
+          <div>
+            <h2>Recepciones de proveedor</h2>
+            <p>Consulta número de recepción, folio, total, proveedor, productos ingresados y cantidades. Las recepciones pueden modificarse dentro de 24 horas o devolverse si no hubo cambio físico.</p>
           </div>
-          <table class="table" id="tablaProveedores">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Direccion</th>
-                <th>Telefono</th>
-                <th>Correo</th>
-                <th>Contacto</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
         </div>
+        <table class="table" id="tablaRecepcionesProveedor">
+          <thead>
+            <tr>
+              <th>Núm. recepción</th>
+              <th>Folio</th>
+              <th>Total</th>
+              <th>Proveedor</th>
+              <th>Productos ingresados</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>${recepcionRows}</tbody>
+        </table>
+      </div>
 
-        <div class="botones-accion">
-          <button id="registrarProveedor" class="btn btn-success">
-            <i class="fas fa-user-plus"></i> Agregar Proveedor
-          </button>
-        </div>
-      `;
+      <div class="botones-accion">
+        <button id="registrarProveedor" class="btn btn-success"><i class="fas fa-user-plus"></i> Agregar Proveedor</button>
+        <button id="registrarRecepcionProveedor" class="btn btn-primary"><i class="fas fa-truck-loading"></i> Registrar recepción</button>
+        <button id="modificarRecepcionProveedor" class="btn btn-warning"><i class="fas fa-pen"></i> Modificar recepción</button>
+        <button id="devolverRecepcionProveedor" class="btn btn-danger"><i class="fas fa-undo"></i> Devolución a proveedor</button>
+      </div>
+    `;
 
-    const tabla = document.getElementById('tablaProveedores');
-    const confirmacionModal = document.getElementById('confirmacionUsuario');
-    const tituloModal = document.getElementById('tituloModal');
-    const mensajeModal = document.getElementById('mensajeModal');
-    const btnAceptar = document.getElementById('aceptarAccionUsuario');
+    let recepcionSeleccionada = null;
+    const filasRecepcion = document.querySelectorAll('#tablaRecepcionesProveedor tbody tr[data-index]');
+    filasRecepcion.forEach((fila) => {
+      fila.addEventListener('click', () => {
+        filasRecepcion.forEach((row) => row.classList.remove('fila-seleccionada'));
+        fila.classList.add('fila-seleccionada');
+        recepcionSeleccionada = recepciones[Number(fila.dataset.index)];
+      });
+    });
 
-    let modoActual = null;
-
-    // ===================== REGISTRAR USUARIO =====================================
     document.getElementById('registrarProveedor').addEventListener('click', () => {
       showAddProveedor();
     });
 
-  };
+    document.getElementById('registrarRecepcionProveedor').addEventListener('click', async () => {
+      const payload = await solicitarRecepcionProveedor({ proveedores, productos });
+      if (!payload) return;
+      try {
+        const res = await window.api.registrarRecepcionProveedor({
+          ...payload,
+          idEmpleado: usuarioActual.IdEmpleado || usuarioActual.idEmpleado || null
+        });
+        await showAlert(`Recepción ${res.numeroRecepcion} guardada correctamente.`, 'success', 'Recepción registrada');
+        renderPage('proveedores');
+      } catch (error) {
+        await showAlert(error.message, 'error', 'Recepción rechazada');
+      }
+    });
+
+    document.getElementById('modificarRecepcionProveedor').addEventListener('click', async () => {
+      if (!recepcionSeleccionada) {
+        await showAlert('Selecciona una recepción para modificarla.', 'warning', 'Recepción requerida');
+        return;
+      }
+      try {
+        const detalle = await window.api.getRecepcionProveedorDetalle(recepcionSeleccionada.IdRecepcion);
+        const payload = await solicitarRecepcionProveedor({ proveedores, productos, recepcion: detalle });
+        if (!payload) return;
+        await window.api.modificarRecepcionProveedor({
+          idRecepcion: recepcionSeleccionada.IdRecepcion,
+          ...payload
+        });
+        await showAlert('Recepción modificada correctamente.', 'success', 'Recepción actualizada');
+        renderPage('proveedores');
+      } catch (error) {
+        await showAlert(error.message, 'error', 'No fue posible modificar');
+      }
+    });
+
+    document.getElementById('devolverRecepcionProveedor').addEventListener('click', async () => {
+      if (!recepcionSeleccionada) {
+        await showAlert('Selecciona una recepción para devolverla.', 'warning', 'Recepción requerida');
+        return;
+      }
+      if (!await showConfirm('Se devolverá la recepción seleccionada al proveedor. La operación solo funciona si no hubo cambio físico de inventario. ¿Continuar?', 'Confirmar devolución')) return;
+      try {
+        await window.api.devolverRecepcionProveedor({ idRecepcion: recepcionSeleccionada.IdRecepcion });
+        await showAlert('Recepción devuelta al proveedor correctamente.', 'success', 'Devolución registrada');
+        renderPage('proveedores');
+      } catch (error) {
+        await showAlert(error.message, 'error', 'No fue posible devolver');
+      }
+    });
+  }
+
   // =============== REPORTES ==================
   if (page === 'reportes') {
     const fechaHoy = new Date().toISOString().slice(0, 10);
+    const productosInventario = await window.api.getProductos();
 
     content.innerHTML = `
       <div class="card">
@@ -1613,6 +1869,15 @@ async function renderPage(page) {
           <input type="date" id="reportReferenceDate" class="form-control" value="${fechaHoy}" style="max-width:190px;">
           <input type="date" id="reportStartDate" class="form-control" value="${fechaHoy}" style="max-width:190px; display:none;">
           <input type="date" id="reportEndDate" class="form-control" value="${fechaHoy}" style="max-width:190px; display:none;">
+          <select id="auxiliarDays" class="form-control" style="max-width:180px;">
+            <option value="7">Auxiliar 7 días</option>
+            <option value="15">Auxiliar 15 días</option>
+            <option value="30">Auxiliar 30 días</option>
+          </select>
+          <select id="auxiliarProducto" class="form-control" style="max-width:240px;">
+            <option value="">Todos los productos</option>
+            ${productosInventario.map((producto) => `<option value="${producto.IdArticulo}">${producto.Nombre}</option>`).join('')}
+          </select>
           <button id="aplicarReporte" class="btn btn-primary">Actualizar reporte</button>
         </div>
         <div id="reportes-content">
@@ -1625,6 +1890,8 @@ async function renderPage(page) {
     const reportReferenceDate = document.getElementById('reportReferenceDate');
     const reportStartDate = document.getElementById('reportStartDate');
     const reportEndDate = document.getElementById('reportEndDate');
+    const auxiliarDays = document.getElementById('auxiliarDays');
+    const auxiliarProducto = document.getElementById('auxiliarProducto');
     const exportarReporteCsv = document.getElementById('exportarReporteCsv');
     const reportesContent = document.getElementById('reportes-content');
 
@@ -1644,7 +1911,14 @@ async function renderPage(page) {
           startDate: reportStartDate.value,
           endDate: reportEndDate.value
         };
-        const reporte = await window.api.getReportes(filtros);
+        const [reporte, auxiliar, devoluciones] = await Promise.all([
+          window.api.getReportes(filtros),
+          window.api.getAuxiliarMovimientos({
+            days: Number(auxiliarDays.value || 7),
+            idArticulo: auxiliarProducto.value ? Number(auxiliarProducto.value) : null
+          }),
+          window.api.getDevolucionesCliente()
+        ]);
         exportarReporteCsv.dataset.reporte = JSON.stringify(reporte.ventas || []);
 
         const resumen = reporte.resumen;
@@ -1693,6 +1967,29 @@ async function renderPage(page) {
             <td>${formatearMoneda(item.PrecioVenta)}</td>
           </tr>
         `).join('') || '<tr><td colspan="6">Sin inventario</td></tr>';
+
+        const auxiliarRows = (auxiliar || []).map((item) => `
+          <tr>
+            <td>${formatearFechaHora(item.FechaMovimiento)}</td>
+            <td>${item.Producto}</td>
+            <td>${item.TipoMovimiento}</td>
+            <td>${item.Cantidad}</td>
+            <td>${item.Motivo || 'Sin motivo'}</td>
+            <td>${item.NumeroRecepcion || item.IdVenta || item.Folio || 'N/A'}</td>
+            <td>${item.Proveedor || item.TipoReferencia || 'N/A'}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="7">Sin movimientos en el rango seleccionado.</td></tr>';
+
+        const devolucionRows = (devoluciones || []).map((item) => `
+          <tr>
+            <td>${item.FolioDevolucion}</td>
+            <td>${item.IdVenta}</td>
+            <td>${formatearFechaHora(item.FechaDevolucion)}</td>
+            <td>${formatearMoneda(item.TotalReintegrado)}</td>
+            <td>${item.Productos || 'Sin detalle'}</td>
+            <td>${item.Motivo || 'Sin motivo'}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">No hay devoluciones registradas.</td></tr>';
 
         reportesContent.innerHTML = `
           <div class="stats-grid report-stats-grid">
@@ -1762,6 +2059,27 @@ async function renderPage(page) {
               <tbody>${inventario}</tbody>
             </table>
           </div>
+
+          <div class="card nested-card">
+            <h3>Auxiliar de movimientos</h3>
+            <p class="helper-text">Consulta entradas y salidas de inventario, incluyendo compras, ventas y ajustes del periodo reciente.</p>
+            <table class="table">
+              <thead>
+                <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Referencia</th><th>Origen</th></tr>
+              </thead>
+              <tbody>${auxiliarRows}</tbody>
+            </table>
+          </div>
+
+          <div class="card nested-card">
+            <h3>Devoluciones de clientes</h3>
+            <table class="table">
+              <thead>
+                <tr><th>Folio</th><th>Venta</th><th>Fecha</th><th>Total reintegrado</th><th>Productos</th><th>Motivo</th></tr>
+              </thead>
+              <tbody>${devolucionRows}</tbody>
+            </table>
+          </div>
         `;
       } catch (error) {
         reportesContent.innerHTML = `<div class="alert alert-danger">No fue posible generar el reporte: ${error.message}</div>`;
@@ -1773,6 +2091,8 @@ async function renderPage(page) {
       cargarReporte();
     });
     document.getElementById('aplicarReporte').addEventListener('click', cargarReporte);
+    auxiliarDays.addEventListener('change', cargarReporte);
+    auxiliarProducto.addEventListener('change', cargarReporte);
     exportarReporteCsv.addEventListener('click', () => {
       const ventasPeriodo = JSON.parse(exportarReporteCsv.dataset.reporte || '[]');
       const csv = crearCSV(ventasPeriodo.map((venta) => ({
@@ -1794,7 +2114,10 @@ async function renderPage(page) {
   let seleccionVenta = new Set();
 
   if (page === 'registroVenta') {
-    const ventas = await window.api.getVentas();
+    const [ventas, devoluciones] = await Promise.all([
+      window.api.getVentas(),
+      window.api.getDevolucionesCliente()
+    ]);
     seleccionVenta = new Set();
 
     let rows = ventas.map((v, index) => `
@@ -1834,6 +2157,37 @@ async function renderPage(page) {
         <button id="verDetallesVenta" class="btn btn-primary" style="margin-top:15px;">
           <i class="fas fa-info-circle icon"></i> Ver Detalles de Venta
         </button>
+        <button id="registrarDevolucionVenta" class="btn btn-warning" style="margin-top:15px;">
+          <i class="fas fa-undo icon"></i> Registrar Devolución
+        </button>
+    </div>
+
+    <div class="card">
+      <h2>Historial de devoluciones</h2>
+      <table class="table" id="tablaDevolucionesCliente">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>ID Venta</th>
+            <th>Fecha</th>
+            <th>Total reintegrado</th>
+            <th>Productos</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${devoluciones.map((item) => `
+            <tr>
+              <td>${item.FolioDevolucion}</td>
+              <td>${item.IdVenta}</td>
+              <td>${formatearFechaHora(item.FechaDevolucion)}</td>
+              <td>${formatearMoneda(item.TotalReintegrado)}</td>
+              <td>${item.Productos || 'Sin detalle'}</td>
+              <td>${item.Motivo || 'Sin motivo'}</td>
+            </tr>
+          `).join('') || '<tr><td colspan="6">No hay devoluciones registradas.</td></tr>'}
+        </tbody>
+      </table>
     </div>
 
     <!-- Modal para detalles de venta -->
@@ -1943,6 +2297,37 @@ async function renderPage(page) {
   `;
 
       document.getElementById('modalDetallesVenta').style.display = 'flex';
+    });
+
+    document.getElementById('registrarDevolucionVenta').addEventListener('click', async () => {
+      if (seleccionVenta.size !== 1) {
+        await showAlert('Selecciona una sola venta para registrar la devolución.', 'warning', 'Acción requerida');
+        return;
+      }
+
+      const index = Array.from(seleccionVenta)[0];
+      const venta = ventas[index];
+
+      try {
+        const detallesVenta = await window.api.getDetallesVenta(venta.IdVenta);
+        const payload = await solicitarDevolucionCliente({ productos: detallesVenta?.Productos || [] });
+        if (!payload || !payload.items.length) {
+          await showAlert('Debes indicar al menos un producto con cantidad mayor a cero.', 'warning', 'Devolución incompleta');
+          return;
+        }
+
+        const resultado = await window.api.registrarDevolucionCliente({
+          idVenta: venta.IdVenta,
+          idEmpleado: usuarioActual.IdEmpleado || usuarioActual.idEmpleado || null,
+          motivo: payload.motivo,
+          items: payload.items
+        });
+
+        await showAlert(`Devolución ${resultado.folioDevolucion} registrada correctamente por ${formatearMoneda(resultado.totalReintegrado)}.`, 'success', 'Devolución registrada');
+        renderPage('registroVenta');
+      } catch (error) {
+        await showAlert(error.message, 'error', 'No fue posible registrar la devolución');
+      }
     });
 
 

@@ -1,7 +1,7 @@
 {
   "name": "dulcehorno",
   "productName": "DulceHorno",
-  "version": "1.0.5",
+  "version": "1.0.8",
   "description": "Punto de Venta Panaderia",
   "main": "src/main.js",
   "scripts": {
@@ -27,13 +27,6 @@
         "repo": "PanaderiaElectron"
       }
     ],
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico"
-    },
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
@@ -52,7 +45,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Leija05/PanaderiaElectron"
+    "url": "git+https://github.com/Leija05/PanaderiaElectron.git"
   },
   "keywords": [],
   "author": "",
