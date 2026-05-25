@@ -26,12 +26,16 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
   ensureModalRoot();
   const root = document.getElementById('global-modal-root');
   const fecha = new Date().toLocaleString('es-MX');
+  const subtotal = Number(total) / 1.16;
+  const iva = Number(total) - subtotal;
+  const folio = String(idVenta).padStart(6, '0');
+  const totalPiezas = carritoItems.reduce((acc, item) => acc + Number(item.cantidad || 0), 0);
   const items = carritoItems.map((item) => `
     <tr>
       <td>${item.nombre}</td>
-      <td>${item.cantidad}</td>
-      <td>${formatearMoneda(item.precio)}</td>
-      <td>${formatearMoneda(item.cantidad * item.precio)}</td>
+      <td class="ticket-col-center">${item.cantidad}</td>
+      <td class="ticket-col-right">${formatearMoneda(item.precio)}</td>
+      <td class="ticket-col-right">${formatearMoneda(item.cantidad * item.precio)}</td>
     </tr>
   `).join('');
   root.innerHTML = `
@@ -44,20 +48,25 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
             <p>${esModoCompraCliente ? 'Ticket de compra' : 'Ticket de venta'}</p>
           </div>
           <div class="ticket-meta">
-            <p><strong>Folio:</strong> ${idVenta}</p>
+            <p><strong>Folio:</strong> #${folio}</p>
             <p><strong>Fecha:</strong> ${fecha}</p>
             <p><strong>Canal:</strong> ${canal}</p>
+            <p><strong>Artículos:</strong> ${totalPiezas}</p>
           </div>
           <table class="table ticket-table">
             <thead><tr><th>Producto</th><th>Cant.</th><th>P. Unit.</th><th>Importe</th></tr></thead>
             <tbody>${items}</tbody>
           </table>
-          <div class="ticket-total">TOTAL: ${formatearMoneda(total)}</div>
+          <div class="ticket-summary">
+            <div><span>Subtotal</span><strong>${formatearMoneda(subtotal)}</strong></div>
+            <div><span>IVA (16%)</span><strong>${formatearMoneda(iva)}</strong></div>
+            <div class="ticket-total"><span>TOTAL</span><strong>${formatearMoneda(total)}</strong></div>
+          </div>
           <p class="ticket-footer">¡Gracias por tu compra! Vuelve pronto.</p>
         </div>
         <div class="app-modal-actions">
           <button id="ticket-close" class="btn btn-secondary">Cerrar</button>
-          <button id="ticket-print" class="btn btn-primary">Imprimir</button>
+          <button id="ticket-print" class="btn btn-primary">Imprimir ticket</button>
         </div>
       </div>
     </div>`;
@@ -795,6 +804,7 @@ function renderDashboard(updateStatus = null) {
   }
 
   let navbar = '';
+  let tabIndexLinks = '';
 
   if (usuarioActual.Rol === 'Gerente') {
     navbar = `
@@ -804,16 +814,30 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link" data-page="registroVenta">Registro Ventas</a>
       <a href="#" class="nav-link" data-page="reportes">Reportes</a>
       <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
+    tabIndexLinks = `
+      <button class="tab-index-link" data-page="personal">Personal</button>
+      <button class="tab-index-link" data-page="proveedores">Proveedores</button>
+      <button class="tab-index-link" data-page="inventario">Inventario</button>
+      <button class="tab-index-link" data-page="registroVenta">Ventas</button>
+      <button class="tab-index-link" data-page="reportes">Reportes</button>`;
   } else if (usuarioActual.Rol === 'Empleado') {
-    navbar = `
-      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
+    navbar = `<a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
+    tabIndexLinks = `<button class="tab-index-link" data-page="ventas">Punto de venta</button>`;
   } else {
     navbar = `<a href="#" class="nav-link" data-page="compras">Comprar</a>`;
+    tabIndexLinks = `<button class="tab-index-link" data-page="compras">Comprar</button>`;
   }
 
   appContainer.innerHTML = `
-    <div class="dashboard-container">
-      <div class="sidebar">
+    <div class="dashboard-container" id="dashboard-shell">
+      <div class="tab-index-bar card">
+        <div class="tab-index-header">
+          <strong>Índice rápido</strong>
+          <button id="toggle-tab-index" class="btn btn-secondary btn-sm">Ocultar índice</button>
+        </div>
+        <div class="tab-index-links">${tabIndexLinks}</div>
+      </div>
+      <div class="sidebar" id="sidebar-menu">
         <h3>Menú</h3>
         <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')} Tema Oscuro</button>
         ${navbar}
@@ -865,6 +889,26 @@ function renderDashboard(updateStatus = null) {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       cerrarSesionActual();
+    });
+  }
+
+
+  document.querySelectorAll('.tab-index-link').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const selectedPage = btn.getAttribute('data-page');
+      guardarUltimaVista(selectedPage);
+      renderPage(selectedPage);
+    });
+  });
+
+  const toggleTabIndexBtn = document.getElementById('toggle-tab-index');
+  const dashboardShell = document.getElementById('dashboard-shell');
+  if (toggleTabIndexBtn && dashboardShell) {
+    toggleTabIndexBtn.addEventListener('click', () => {
+      dashboardShell.classList.toggle('tab-index-hidden');
+      toggleTabIndexBtn.textContent = dashboardShell.classList.contains('tab-index-hidden')
+        ? 'Mostrar índice'
+        : 'Ocultar índice';
     });
   }
 
@@ -2850,7 +2894,7 @@ async function renderPage(page) {
     content.innerHTML = `
     <div class="ventas-container">
       <div class="productos card">
-        <h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2>
+        <div class="section-header"><h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2><p class="helper-text">Busca rápido por nombre, ordena por stock o precio y agrega al carrito en un clic.</p></div>
         <div class="filter-toolbar">
           <input type="text" id="filtroProductos" class="form-control" placeholder="Buscar producto...">
           <select id="ordenProductos" class="form-control" style="max-width:220px;">
@@ -2874,7 +2918,7 @@ async function renderPage(page) {
       </div>
 
       <div class="carrito card">
-        <h2>Carrito de Ventas</h2>
+        <div class="section-header"><h2>Carrito de Ventas</h2><p class="helper-text">Ajusta cantidades con + / -, valida existencia y confirma cuando estés listo.</p></div>
         <div id="alertaStock" style="display:none; padding:10px; margin-bottom:15px; background:#ffeaa7; border-radius:5px; border-left:4px solid #fdcb6e;">
           <i class="fas fa-exclamation-triangle"></i>
           <span id="mensajeAlerta"></span>
