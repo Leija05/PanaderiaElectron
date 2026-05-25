@@ -804,6 +804,7 @@ function renderDashboard(updateStatus = null) {
   }
 
   let navbar = '';
+  let tabIndexLinks = '';
 
   if (usuarioActual.Rol === 'Gerente') {
     navbar = `
@@ -813,16 +814,30 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link" data-page="registroVenta">Registro Ventas</a>
       <a href="#" class="nav-link" data-page="reportes">Reportes</a>
       <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
+    tabIndexLinks = `
+      <button class="tab-index-link" data-page="personal">Personal</button>
+      <button class="tab-index-link" data-page="proveedores">Proveedores</button>
+      <button class="tab-index-link" data-page="inventario">Inventario</button>
+      <button class="tab-index-link" data-page="registroVenta">Ventas</button>
+      <button class="tab-index-link" data-page="reportes">Reportes</button>`;
   } else if (usuarioActual.Rol === 'Empleado') {
-    navbar = `
-      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
+    navbar = `<a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
+    tabIndexLinks = `<button class="tab-index-link" data-page="ventas">Punto de venta</button>`;
   } else {
     navbar = `<a href="#" class="nav-link" data-page="compras">Comprar</a>`;
+    tabIndexLinks = `<button class="tab-index-link" data-page="compras">Comprar</button>`;
   }
 
   appContainer.innerHTML = `
-    <div class="dashboard-container">
-      <div class="sidebar">
+    <div class="dashboard-container" id="dashboard-shell">
+      <div class="tab-index-bar card">
+        <div class="tab-index-header">
+          <strong>Índice rápido</strong>
+          <button id="toggle-tab-index" class="btn btn-secondary btn-sm">Ocultar índice</button>
+        </div>
+        <div class="tab-index-links">${tabIndexLinks}</div>
+      </div>
+      <div class="sidebar" id="sidebar-menu">
         <h3>Menú</h3>
         <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')} Tema Oscuro</button>
         ${navbar}
@@ -874,6 +889,26 @@ function renderDashboard(updateStatus = null) {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       cerrarSesionActual();
+    });
+  }
+
+
+  document.querySelectorAll('.tab-index-link').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const selectedPage = btn.getAttribute('data-page');
+      guardarUltimaVista(selectedPage);
+      renderPage(selectedPage);
+    });
+  });
+
+  const toggleTabIndexBtn = document.getElementById('toggle-tab-index');
+  const dashboardShell = document.getElementById('dashboard-shell');
+  if (toggleTabIndexBtn && dashboardShell) {
+    toggleTabIndexBtn.addEventListener('click', () => {
+      dashboardShell.classList.toggle('tab-index-hidden');
+      toggleTabIndexBtn.textContent = dashboardShell.classList.contains('tab-index-hidden')
+        ? 'Mostrar índice'
+        : 'Ocultar índice';
     });
   }
 
