@@ -798,29 +798,38 @@ function renderDashboard(updateStatus = null) {
 
   if (usuarioActual.Rol === 'Gerente') {
     navbar = `
-      <a href="#" class="nav-link" data-page="personal">Gestión de Personal</a>
-      <a href="#" class="nav-link" data-page="proveedores">Gestión de Proveedores</a>
-      <a href="#" class="nav-link" data-page="inventario">Inventario</a>
-      <a href="#" class="nav-link" data-page="registroVenta">Registro Ventas</a>
-      <a href="#" class="nav-link" data-page="reportes">Reportes</a>
-      <a href="#" class="nav-link" id="logout-btn" style="color:red;">Cerrar Sesión</a>`;
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="personal"><i class="fas fa-users" aria-hidden="true"></i><span>Personal</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="proveedores"><i class="fas fa-truck" aria-hidden="true"></i><span>Proveedores</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="inventario"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span>Inventario</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="registroVenta"><i class="fas fa-cash-register" aria-hidden="true"></i><span>Registro ventas</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="reportes"><i class="fas fa-chart-line" aria-hidden="true"></i><span>Reportes</span></a>
+      <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else if (usuarioActual.Rol === 'Empleado') {
     navbar = `
-      <a href="#" class="nav-link" data-page="ventas">Punto de Venta</a>`;
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="ventas"><i class="fas fa-store" aria-hidden="true"></i><span>Punto de venta</span></a>`;
   } else {
-    navbar = `<a href="#" class="nav-link" data-page="compras">Comprar</a>`;
+    navbar = `<a href="#" class="nav-link" role="tab" aria-selected="false" data-page="compras"><i class="fas fa-basket-shopping" aria-hidden="true"></i><span>Comprar</span></a>`;
   }
 
   appContainer.innerHTML = `
     <div class="dashboard-container">
-      <div class="sidebar">
-        <h3>Menú</h3>
+      <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" aria-label="Mostrar u ocultar menú" aria-expanded="true" aria-controls="app-sidebar">
+        <i class="fas fa-bars" aria-hidden="true"></i><span>Menú</span>
+      </button>
+      <aside id="app-sidebar" class="sidebar" aria-label="Navegación principal">
+        <div class="sidebar-header">
+          <h3>Categorías</h3>
+          <button id="sidebar-hide-btn" class="sidebar-mini-btn" aria-label="Ocultar menú">
+            <i class="fas fa-angle-left" aria-hidden="true"></i>
+          </button>
+        </div>
         <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')} Tema Oscuro</button>
-        ${navbar}
-      </div>
-      <div class="main-content">
+        <nav class="sidebar-nav" role="tablist">${navbar}</nav>
+      </aside>
+      <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
+      <main class="main-content">
         ${renderUpdateStatusBanner(updateStatus)}
-        <div class="card">
+        <div class="main-panel card">
           <div class="dashboard-header-row">
             <div>
               <h2>Bienvenido, ${usuarioActual.NombreUsuario} (${usuarioActual.Rol})</h2>
@@ -828,9 +837,9 @@ function renderDashboard(updateStatus = null) {
             </div>
             ${usuarioActual.Rol === 'Empleado' ? `<button id="shift-cut-btn" class="btn btn-warning">${iconHTML('warning')} Corte de turno</button>` : ''}
           </div>
-          <div id="content-area"></div>
+          <section id="content-area" class="content-panel" tabindex="-1"></section>
         </div>
-      </div>
+      </main>
     </div>
   `;
 
@@ -841,6 +850,42 @@ function renderDashboard(updateStatus = null) {
       guardarUltimaVista(selectedPage);
       renderPage(selectedPage);
     });
+  });
+
+  const dashboard = document.querySelector('.dashboard-container');
+  const sidebar = document.getElementById('app-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const toggleSidebar = () => {
+    dashboard.classList.toggle('sidebar-collapsed');
+    const isExpanded = !dashboard.classList.contains('sidebar-collapsed');
+    document.getElementById('sidebar-toggle-btn').setAttribute('aria-expanded', String(isExpanded));
+  };
+  const openSidebarMobile = () => {
+    dashboard.classList.add('sidebar-open');
+    overlay.hidden = false;
+  };
+  const closeSidebarMobile = () => {
+    dashboard.classList.remove('sidebar-open');
+    overlay.hidden = true;
+  };
+
+  document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 960px)').matches) {
+      openSidebarMobile();
+    } else {
+      toggleSidebar();
+    }
+  });
+  document.getElementById('sidebar-hide-btn').addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 960px)').matches) {
+      closeSidebarMobile();
+    } else {
+      toggleSidebar();
+    }
+  });
+  overlay.addEventListener('click', closeSidebarMobile);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeSidebarMobile();
   });
 
   const themeBtn = document.getElementById('theme-toggle-btn');
@@ -1349,6 +1394,11 @@ function showUpdateForm(usuarioAModificar) {
 async function renderPage(page) {
   guardarUltimaVista(page);
   const content = document.getElementById('content-area');
+  document.querySelectorAll('.nav-link[data-page]').forEach((link) => {
+    const active = link.dataset.page === page;
+    link.classList.toggle('active', active);
+    link.setAttribute('aria-selected', String(active));
+  });
   if (page === 'personal') {
     const empleados = await window.api.getEmpleados();
     let seleccionadosPersonal = new Set();
