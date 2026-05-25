@@ -741,3 +741,85 @@ body .alert.alert-danger {
   margin-top: 8px;
   color: #7a5a3b;
 }
+
+.ventas-container {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.section-header h2 {
+  margin-bottom: 6px;
+}
+
+.productos .table tbody tr:hover,
+#tablaCarrito tbody tr:hover {
+  background: #fff6e8;
+}
+
+#tablaCarrito td {
+  vertical-align: middle;
+}
+
+.cantidad-input {
+  border: 1px solid #dec5a8;
+  border-radius: 8px;
+  padding: 6px;
+  background: #fffdf9;
+}
+
+.carritoFooter {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #d7b792;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.totales {
+  background: #fff6ea;
+  border: 1px solid #efd6bb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ticket-col-center { text-align: center; }
+.ticket-col-right { text-align: right; }
+
+.ticket-summary {
+  margin-top: 12px;
+  border-top: 1px dashed #c8a57a;
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.ticket-summary > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #6b4c2f;
+}
+
+.ticket-total {
+  border-top: 1px solid #d8b88d;
+  padding-top: 8px;
+  font-size: 1.15rem;
+}
+
+.ticket-total strong {
+  font-size: 1.35rem;
+  color: var(--color-brown);
+}
+
+@media (max-width: 1100px) {
+  .ventas-container { grid-template-columns: 1fr; }
+}

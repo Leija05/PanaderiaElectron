@@ -26,12 +26,16 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
   ensureModalRoot();
   const root = document.getElementById('global-modal-root');
   const fecha = new Date().toLocaleString('es-MX');
+  const subtotal = Number(total) / 1.16;
+  const iva = Number(total) - subtotal;
+  const folio = String(idVenta).padStart(6, '0');
+  const totalPiezas = carritoItems.reduce((acc, item) => acc + Number(item.cantidad || 0), 0);
   const items = carritoItems.map((item) => `
     <tr>
       <td>${item.nombre}</td>
-      <td>${item.cantidad}</td>
-      <td>${formatearMoneda(item.precio)}</td>
-      <td>${formatearMoneda(item.cantidad * item.precio)}</td>
+      <td class="ticket-col-center">${item.cantidad}</td>
+      <td class="ticket-col-right">${formatearMoneda(item.precio)}</td>
+      <td class="ticket-col-right">${formatearMoneda(item.cantidad * item.precio)}</td>
     </tr>
   `).join('');
   root.innerHTML = `
@@ -44,20 +48,25 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
             <p>${esModoCompraCliente ? 'Ticket de compra' : 'Ticket de venta'}</p>
           </div>
           <div class="ticket-meta">
-            <p><strong>Folio:</strong> ${idVenta}</p>
+            <p><strong>Folio:</strong> #${folio}</p>
             <p><strong>Fecha:</strong> ${fecha}</p>
             <p><strong>Canal:</strong> ${canal}</p>
+            <p><strong>Artículos:</strong> ${totalPiezas}</p>
           </div>
           <table class="table ticket-table">
             <thead><tr><th>Producto</th><th>Cant.</th><th>P. Unit.</th><th>Importe</th></tr></thead>
             <tbody>${items}</tbody>
           </table>
-          <div class="ticket-total">TOTAL: ${formatearMoneda(total)}</div>
+          <div class="ticket-summary">
+            <div><span>Subtotal</span><strong>${formatearMoneda(subtotal)}</strong></div>
+            <div><span>IVA (16%)</span><strong>${formatearMoneda(iva)}</strong></div>
+            <div class="ticket-total"><span>TOTAL</span><strong>${formatearMoneda(total)}</strong></div>
+          </div>
           <p class="ticket-footer">¡Gracias por tu compra! Vuelve pronto.</p>
         </div>
         <div class="app-modal-actions">
           <button id="ticket-close" class="btn btn-secondary">Cerrar</button>
-          <button id="ticket-print" class="btn btn-primary">Imprimir</button>
+          <button id="ticket-print" class="btn btn-primary">Imprimir ticket</button>
         </div>
       </div>
     </div>`;
@@ -2850,7 +2859,7 @@ async function renderPage(page) {
     content.innerHTML = `
     <div class="ventas-container">
       <div class="productos card">
-        <h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2>
+        <div class="section-header"><h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2><p class="helper-text">Busca rápido por nombre, ordena por stock o precio y agrega al carrito en un clic.</p></div>
         <div class="filter-toolbar">
           <input type="text" id="filtroProductos" class="form-control" placeholder="Buscar producto...">
           <select id="ordenProductos" class="form-control" style="max-width:220px;">
@@ -2874,7 +2883,7 @@ async function renderPage(page) {
       </div>
 
       <div class="carrito card">
-        <h2>Carrito de Ventas</h2>
+        <div class="section-header"><h2>Carrito de Ventas</h2><p class="helper-text">Ajusta cantidades con + / -, valida existencia y confirma cuando estés listo.</p></div>
         <div id="alertaStock" style="display:none; padding:10px; margin-bottom:15px; background:#ffeaa7; border-radius:5px; border-left:4px solid #fdcb6e;">
           <i class="fas fa-exclamation-triangle"></i>
           <span id="mensajeAlerta"></span>
