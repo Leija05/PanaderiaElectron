@@ -179,6 +179,26 @@
   background: white;
 }
 
+.table:not(.ticket-table) {
+  display: block;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+}
+
+.table:not(.ticket-table) thead,
+.table:not(.ticket-table) tbody,
+.table:not(.ticket-table) tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.table:not(.ticket-table) thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .table th {
   background: #f8f9fa;
   padding: 12px;
