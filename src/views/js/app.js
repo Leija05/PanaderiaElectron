@@ -321,7 +321,9 @@ function alternarTema() {
 
   const temaBtn = document.getElementById('theme-toggle-btn');
   if (temaBtn) {
-    temaBtn.innerHTML = esOscuro ? `${iconHTML('sun')} Tema Claro` : `${iconHTML('moon')} Tema Oscuro`;
+    temaBtn.innerHTML = esOscuro
+      ? `${iconHTML('sun')}<span class="theme-toggle-label">Cambiar tema</span>`
+      : `${iconHTML('moon')}<span class="theme-toggle-label">Cambiar tema</span>`;
   }
 }
 
@@ -823,7 +825,7 @@ function renderDashboard(updateStatus = null) {
             <i class="fas fa-angle-left" aria-hidden="true"></i>
           </button>
         </div>
-        <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')} Tema Oscuro</button>
+        <button id="theme-toggle-btn" class="btn btn-secondary theme-toggle-btn">${iconHTML('moon')}<span class="theme-toggle-label">Cambiar tema</span></button>
         <nav class="sidebar-nav" role="tablist">${navbar}</nav>
       </aside>
       <div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
@@ -891,8 +893,8 @@ function renderDashboard(updateStatus = null) {
   const themeBtn = document.getElementById('theme-toggle-btn');
   if (themeBtn) {
     themeBtn.innerHTML = document.body.classList.contains('dark-theme')
-      ? `${iconHTML('sun')} Tema Claro`
-      : `${iconHTML('moon')} Tema Oscuro`;
+      ? `${iconHTML('sun')}<span class="theme-toggle-label">Cambiar tema</span>`
+      : `${iconHTML('moon')}<span class="theme-toggle-label">Cambiar tema</span>`;
     themeBtn.addEventListener('click', alternarTema);
   }
 
@@ -3180,7 +3182,7 @@ async function renderPage(page) {
               </button>
             </div>
           </td>
-          <td>$${item.precio.toFixed(2)}</td>
+          <td><span class="precio-unitario-tag">$${item.precio.toFixed(2)}</span></td>
           <td>$${subtotalItem.toFixed(2)}</td>
           <td>
             <button class="btn btn-sm btn-danger eliminar-btn" data-index="${index}">

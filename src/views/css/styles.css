@@ -781,7 +781,7 @@ body .alert.alert-danger {
 .sidebar-toggle-btn { position: fixed; left: 12px; top: 12px; z-index: 50; border:none; border-radius:10px; padding:10px 12px; background: linear-gradient(135deg,var(--color-primary),var(--color-brown)); color:#fff; display:none; align-items:center; gap:8px; font-weight:600; box-shadow: var(--shadow-medium); cursor:pointer; }
 .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 35; }
 .dashboard-container.sidebar-collapsed .sidebar h3,
-.dashboard-container.sidebar-collapsed .sidebar .theme-toggle-btn span,
+.dashboard-container.sidebar-collapsed .sidebar .theme-toggle-btn .theme-toggle-label,
 .dashboard-container.sidebar-collapsed .sidebar .nav-link span { display:none; }
 .dashboard-container.sidebar-collapsed .sidebar .theme-toggle-btn,
 .dashboard-container.sidebar-collapsed .sidebar .nav-link { justify-content:center; padding-inline: 10px; }
@@ -859,6 +859,17 @@ body .alert.alert-danger {
   border: 1px solid #d9c2a8;
   border-radius: 8px;
   padding: 6px;
+}
+
+.carrito-panel td .precio-unitario-tag {
+  display: inline-block;
+  min-width: 92px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.carrito-panel .cantidad-input {
+  width: 54px;
 }
 
 @media (max-width: 1200px) {
