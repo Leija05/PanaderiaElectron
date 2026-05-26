@@ -195,6 +195,114 @@ async function ensureSupportTables() {
   `);
 }
 
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomItem(list) {
+  return list[randomInt(0, list.length - 1)];
+}
+
+async function seedRandomDataIfEmpty() {
+  const [{ totalArticulos }] = await query('SELECT COUNT(*) AS totalArticulos FROM Articulos');
+  const [{ totalEmpleados }] = await query("SELECT COUNT(*) AS totalEmpleados FROM Empleados WHERE Rol IN ('Empleado','Gerente')");
+  const [{ totalVentas }] = await query('SELECT COUNT(*) AS totalVentas FROM Ventas');
+
+  if (Number(totalArticulos) > 0 && Number(totalEmpleados) > 0 && Number(totalVentas) > 0) {
+    return { seeded: false };
+  }
+
+  await beginTransaction();
+  try {
+    const usuarios = [
+      ['gerente_demo', 'demo123', 'Gerente', 'Gerente General', 'Matutino', 18000, 'Gerente Demo'],
+      ['empleado_demo_1', 'demo123', 'Empleado', 'Cajero', 'Matutino', 9000, 'Cajero Demo 1'],
+      ['empleado_demo_2', 'demo123', 'Empleado', 'Vendedor', 'Vespertino', 8500, 'Vendedor Demo 2'],
+      ['cliente_demo_1', 'demo123', 'Cliente', 'Cliente', 'Any', 0, 'Cliente Demo 1'],
+      ['cliente_demo_2', 'demo123', 'Cliente', 'Cliente', 'Any', 0, 'Cliente Demo 2']
+    ];
+    for (const u of usuarios) {
+      await query(
+        `INSERT IGNORE INTO Empleados (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        u
+      );
+    }
+
+    const categorias = await query('SELECT IdCategoria FROM Categorias');
+    const articulos = await query('SELECT IdArticulo, PrecioVenta FROM Articulos');
+    const empleados = await query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Empleado' LIMIT 5");
+    const clientes = await query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Cliente' LIMIT 5");
+
+    if (!categorias.length) {
+      await query("INSERT INTO Categorias (Nombre, Descripcion) VALUES ('Panadería', 'Productos base')");
+    }
+
+    if (!articulos.length) {
+      const categoriasNuevas = await query('SELECT IdCategoria FROM Categorias');
+      const idCategoria = categoriasNuevas[0].IdCategoria;
+      const productosBase = [
+        ['Pan integral', 'Pan integral artesanal', idCategoria, randomInt(20, 70), 10, 16, 8],
+        ['Croissant', 'Croissant de mantequilla', idCategoria, randomInt(20, 70), 10, 20, 11],
+        ['Muffin chocolate', 'Muffin de chocolate', idCategoria, randomInt(20, 70), 10, 22, 12]
+      ];
+      for (const p of productosBase) {
+        await query(
+          `INSERT INTO Articulos (Nombre, Descripcion, IdCategoria, Cantidad, Minimo, PrecioVenta, PrecioCompra)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          p
+        );
+      }
+    }
+
+    const articulosFinal = await query('SELECT IdArticulo, PrecioVenta, Cantidad, Nombre FROM Articulos');
+    const empleadosFinal = await query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Empleado'");
+    const clientesFinal = await query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Cliente'");
+
+    if (!Number(totalVentas)) {
+      const cantidadVentas = randomInt(8, 16);
+      for (let i = 0; i < cantidadVentas; i++) {
+        const idEmpleado = randomItem(empleadosFinal).IdEmpleado;
+        const idCliente = randomItem(clientesFinal).IdEmpleado;
+        const lineas = randomInt(1, 3);
+        const usados = new Set();
+        let subtotal = 0;
+        const detalle = [];
+        for (let j = 0; j < lineas; j++) {
+          const candidato = randomItem(articulosFinal);
+          if (usados.has(candidato.IdArticulo)) continue;
+          usados.add(candidato.IdArticulo);
+          const cantidad = randomInt(1, 4);
+          const precio = Number(candidato.PrecioVenta || 0);
+          const sub = cantidad * precio;
+          subtotal += sub;
+          detalle.push({ idArticulo: candidato.IdArticulo, cantidad, precio, sub });
+        }
+        if (!detalle.length) continue;
+        const iva = Number((subtotal * 0.16).toFixed(2));
+        const total = Number((subtotal + iva).toFixed(2));
+        const venta = await query(
+          `INSERT INTO Ventas (IdEmpleado, IdCliente, Subtotal, Iva, Total, TipoVenta, Estado)
+           VALUES (?, ?, ?, ?, ?, 'Mostrador', 'Completada')`,
+          [idEmpleado, idCliente, subtotal, iva, total]
+        );
+        for (const d of detalle) {
+          await query(
+            'INSERT INTO VentaDetalle (IdVenta, IdArticulo, Cantidad, PrecioUnitario, Subtotal) VALUES (?, ?, ?, ?, ?)',
+            [venta.insertId, d.idArticulo, d.cantidad, d.precio, d.sub]
+          );
+        }
+      }
+    }
+
+    await commit();
+    return { seeded: true };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+}
+
 function configureAutoUpdates() {
   log.transports.file.level = 'info';
   autoUpdater.logger = log;
@@ -432,6 +540,7 @@ async function getLastCutRange({ channel, idEmpleado = null, idCliente = null })
 
 app.whenReady().then(async () => {
   await ensureSupportTables();
+  await seedRandomDataIfEmpty();
   createWindow();
   configureAutoUpdates();
   checkForAppUpdates();
