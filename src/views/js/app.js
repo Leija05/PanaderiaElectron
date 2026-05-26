@@ -59,7 +59,7 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
           <button id="ticket-close" class="btn btn-secondary">Cerrar</button>
           <button id="ticket-print" class="btn btn-primary">Imprimir</button>
         </div>
-      </div>
+      </section>
     </div>`;
   document.getElementById('ticket-close').addEventListener('click', () => { root.innerHTML=''; });
   document.getElementById('ticket-print').addEventListener('click', () => window.print());
@@ -2295,7 +2295,7 @@ async function renderPage(page) {
         <div style="margin-top:15px; text-align:right;">
           <button id="cerrarDetallesVenta" class="btn btn-secondary">Cerrar</button>
         </div>
-      </div>
+      </section>
     </div>
   `;
 
@@ -2898,8 +2898,8 @@ async function renderPage(page) {
   `).join('');
 
     content.innerHTML = `
-    <div class="ventas-container">
-      <div class="productos card">
+    <div class="pos-layout">
+      <section class="pos-panel productos-panel card">
         <h2>${esModoCompraCliente ? 'Catálogo de Productos' : 'Productos Disponibles'}</h2>
         <div class="filter-toolbar">
           <input type="text" id="filtroProductos" class="form-control" placeholder="Buscar producto...">
@@ -2921,10 +2921,10 @@ async function renderPage(page) {
           </thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
+      </section>
 
-      <div class="carrito card">
-        <h2>Carrito de Ventas</h2>
+      <section class="pos-panel carrito-panel card">
+        <h2>${esModoCompraCliente ? 'Tu compra' : 'Carrito de ventas'}</h2>
         <div id="alertaStock" style="display:none; padding:10px; margin-bottom:15px; background:#ffeaa7; border-radius:5px; border-left:4px solid #fdcb6e;">
           <i class="fas fa-exclamation-triangle"></i>
           <span id="mensajeAlerta"></span>
@@ -2941,13 +2941,13 @@ async function renderPage(page) {
           </thead>
           <tbody id="carritoLista"></tbody>
         </table>
-        <div class="carritoFooter">
-          <div class="totales">
+        <div class="carrito-footer">
+          <div class="totales pos-totales">
             <div>Subtotal: $<span id="subtotal">0.00</span></div>
             <div>IVA (16%): $<span id="iva">0.00</span></div>
             <h3>Total: $<span id="total">0.00</span></h3>
           </div>
-          <div class="acciones">
+          <div class="acciones pos-acciones">
             <button id="btnPagar" class="btn btn-success">
               <i class="fas fa-cash-register"></i> ${esModoCompraCliente ? 'Confirmar compra' : 'Confirmar Venta'}
             </button>
@@ -2959,7 +2959,7 @@ async function renderPage(page) {
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   `;
 

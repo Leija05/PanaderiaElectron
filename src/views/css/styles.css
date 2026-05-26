@@ -794,3 +794,80 @@ body .alert.alert-danger {
   .main-content { padding: 68px 12px 12px; }
   .main-panel { min-height: calc(100vh - 80px); }
 }
+
+/* Punto de venta (empleado + cliente) */
+.pos-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: calc(100vh - 210px);
+}
+
+.pos-panel {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pos-panel h2 { margin-bottom: 12px; }
+
+.pos-panel .filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 220px;
+  gap: 10px;
+}
+
+.pos-panel .table:not(.ticket-table) {
+  max-height: min(38vh, 360px);
+}
+
+.carrito-panel .table:not(.ticket-table) {
+  max-height: min(33vh, 300px);
+}
+
+.carrito-footer {
+  margin-top: 12px;
+  border-top: 1px solid #eadfce;
+  padding-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.pos-totales {
+  background: #fff8ef;
+  border: 1px solid #eadfce;
+  border-radius: 10px;
+  padding: 12px;
+  line-height: 1.8;
+}
+
+.pos-acciones {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-content: start;
+}
+
+.pos-acciones .btn { width: 100%; }
+
+.cantidad-input {
+  width: 64px;
+  max-width: 100%;
+  border: 1px solid #d9c2a8;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+@media (max-width: 1200px) {
+  .pos-layout { grid-template-columns: 1fr; min-height: auto; }
+  .carrito-footer { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .pos-panel .filter-toolbar { grid-template-columns: 1fr; }
+  .pos-panel .table th,
+  .pos-panel .table td { padding: 9px; font-size: 0.9rem; }
+}
