@@ -827,6 +827,16 @@ body .alert.alert-danger {
   max-height: min(33vh, 300px);
 }
 
+.carrito-panel #tablaCarrito th:nth-child(2),
+.carrito-panel #tablaCarrito td:nth-child(2) {
+  min-width: 170px;
+}
+
+.carrito-panel #tablaCarrito th:nth-child(3),
+.carrito-panel #tablaCarrito td:nth-child(3) {
+  min-width: 120px;
+}
+
 .carrito-footer {
   margin-top: 12px;
   border-top: 1px solid #eadfce;
@@ -859,6 +869,13 @@ body .alert.alert-danger {
   border: 1px solid #d9c2a8;
   border-radius: 8px;
   padding: 6px;
+}
+
+.cantidad-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 .carrito-panel td .precio-unitario-tag {
