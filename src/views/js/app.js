@@ -59,7 +59,7 @@ function mostrarTicketVenta({ idVenta, canal, total, carritoItems, esModoCompraC
           <button id="ticket-close" class="btn btn-secondary">Cerrar</button>
           <button id="ticket-print" class="btn btn-primary">Imprimir</button>
         </div>
-      </section>
+      </div>
     </div>`;
   document.getElementById('ticket-close').addEventListener('click', () => { root.innerHTML=''; });
   document.getElementById('ticket-print').addEventListener('click', () => window.print());
@@ -2879,6 +2879,7 @@ async function renderPage(page) {
     const productos = await window.api.getProductos();
     let carrito = [];
     const esModoCompraCliente = page === 'compras';
+    let procesandoPago = false;
 
     // Crear tabla de productos con botón "Agregar"
     let rows = productos.map(p => `
@@ -3070,10 +3071,16 @@ async function renderPage(page) {
 
     // Pagar / Registrar venta
     document.getElementById('btnPagar').addEventListener('click', async () => {
+      if (procesandoPago) return;
       if (carrito.length === 0) {
         mostrarAlerta('El carrito está vacío');
         return;
       }
+      procesandoPago = true;
+      const btnPagar = document.getElementById('btnPagar');
+      const textoOriginalBoton = btnPagar.innerHTML;
+      btnPagar.disabled = true;
+      btnPagar.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${esModoCompraCliente ? 'Procesando compra...' : 'Procesando venta...'}`;
 
       let hayProblemas = false;
       for (const item of carrito) {
@@ -3091,7 +3098,12 @@ async function renderPage(page) {
         }
       }
 
-      if (hayProblemas) return;
+      if (hayProblemas) {
+        procesandoPago = false;
+        btnPagar.disabled = false;
+        btnPagar.innerHTML = textoOriginalBoton;
+        return;
+      }
 
       const datosVenta = {
         idEmpleado: esModoCompraCliente ? null : (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null),
@@ -3129,6 +3141,10 @@ async function renderPage(page) {
         }
       } catch (error) {
         mostrarAlerta(`Error al registrar la venta: ${error.message}`);
+      } finally {
+        procesandoPago = false;
+        btnPagar.disabled = false;
+        btnPagar.innerHTML = textoOriginalBoton;
       }
     });
 
@@ -3171,12 +3187,12 @@ async function renderPage(page) {
         <tr ${estadoStock}>
           <td>${item.nombre}</td>
           <td>
-            <div style="display:flex; align-items:center; gap:5px;">
+            <div class="cantidad-control">
               <button class="btn btn-sm btn-outline-secondary btn-restar" data-index="${index}">
                 <i class="fas fa-minus"></i>
               </button>
               <input type="number" min="1" value="${item.cantidad}" 
-                     class="cantidad-input" data-index="${index}" style="width:60px; text-align:center;">
+                     class="cantidad-input" data-index="${index}">
               <button class="btn btn-sm btn-outline-secondary btn-sumar" data-index="${index}">
                 <i class="fas fa-plus"></i>
               </button>
