@@ -291,14 +291,16 @@ function guardarUltimaVista(page) {
 function obtenerUltimaVistaPorRol() {
   if (esVistaCliente()) return 'compras';
 
-  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : 'personal';
+  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : usuarioActual?.Rol === 'Programador' ? 'programador-password' : 'personal';
   const guardada = localStorage.getItem(APP_STORAGE_KEYS.ultimaVista);
 
   if (!guardada) return fallback;
 
   const paginasPermitidas = usuarioActual?.Rol === 'Empleado'
     ? ['ventas']
-    : ['personal', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
+    : usuarioActual?.Rol === 'Programador'
+      ? ['programador-password', 'programador-gerentes', 'programador-usuarios']
+      : ['personal', 'clientes', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
 
   return paginasPermitidas.includes(guardada) ? guardada : fallback;
 }
@@ -801,6 +803,7 @@ function renderDashboard(updateStatus = null) {
   if (usuarioActual.Rol === 'Gerente') {
     navbar = `
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="personal"><i class="fas fa-users" aria-hidden="true"></i><span>Personal</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="clientes"><i class="fas fa-address-book" aria-hidden="true"></i><span>Clientes</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="proveedores"><i class="fas fa-truck" aria-hidden="true"></i><span>Proveedores</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="inventario"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span>Inventario</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="registroVenta"><i class="fas fa-cash-register" aria-hidden="true"></i><span>Registro ventas</span></a>
@@ -808,7 +811,14 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else if (usuarioActual.Rol === 'Empleado') {
     navbar = `
-      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="ventas"><i class="fas fa-store" aria-hidden="true"></i><span>Punto de venta</span></a>`;
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="ventas"><i class="fas fa-store" aria-hidden="true"></i><span>Punto de venta</span></a>
+      <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
+  } else if (usuarioActual.Rol === 'Programador') {
+    navbar = `
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-password"><i class="fas fa-key" aria-hidden="true"></i><span>Cambiar contraseñas</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-gerentes"><i class="fas fa-user-tie" aria-hidden="true"></i><span>Agregar gerentes</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-usuarios"><i class="fas fa-users-gear" aria-hidden="true"></i><span>Modificar usuarios</span></a>
+      <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else {
     navbar = `<a href="#" class="nav-link" role="tab" aria-selected="false" data-page="compras"><i class="fas fa-basket-shopping" aria-hidden="true"></i><span>Comprar</span></a>`;
   }
@@ -1099,17 +1109,149 @@ function showRegistrationProductForm() {
   document.getElementById('nombreProducto').focus();
 }
 
+
+function opcionesGenero(valor = '') {
+  const opciones = ['', 'Femenino', 'Masculino', 'No binario', 'Prefiero no decir', 'Otro'];
+  return opciones.map((opcion) => `<option value="${opcion}" ${valor === opcion ? 'selected' : ''}>${opcion || 'Seleccionar género'}</option>`).join('');
+}
+
+function crearCamposNombre(prefix, valores = {}, requerido = true) {
+  const req = requerido ? 'required' : '';
+  return `
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label for="${prefix}-nombre">Nombre(s):</label>
+        <input type="text" id="${prefix}-nombre" class="form-control" value="${valores.Nombre || valores.nombre || ''}" ${req}>
+      </div>
+      <div class="form-group">
+        <label for="${prefix}-apellido-paterno">Apellido paterno:</label>
+        <input type="text" id="${prefix}-apellido-paterno" class="form-control" value="${valores.ApellidoPaterno || valores.apellidoPaterno || ''}">
+      </div>
+      <div class="form-group">
+        <label for="${prefix}-apellido-materno">Apellido materno:</label>
+        <input type="text" id="${prefix}-apellido-materno" class="form-control" value="${valores.ApellidoMaterno || valores.apellidoMaterno || ''}">
+      </div>
+    </div>`;
+}
+
+function crearCamposDireccion(prefix, valores = {}) {
+  return `
+    <div class="form-grid-3">
+      <div class="form-group"><label for="${prefix}-calle">Calle:</label><input type="text" id="${prefix}-calle" class="form-control" value="${valores.Calle || valores.calle || ''}"></div>
+      <div class="form-group"><label for="${prefix}-numero-ext">Número exterior:</label><input type="text" id="${prefix}-numero-ext" class="form-control" value="${valores.NumeroExterior || valores.numeroExterior || ''}"></div>
+      <div class="form-group"><label for="${prefix}-numero-int">Número interior:</label><input type="text" id="${prefix}-numero-int" class="form-control" value="${valores.NumeroInterior || valores.numeroInterior || ''}"></div>
+      <div class="form-group"><label for="${prefix}-colonia">Colonia:</label><input type="text" id="${prefix}-colonia" class="form-control" value="${valores.Colonia || valores.colonia || ''}"></div>
+      <div class="form-group"><label for="${prefix}-ciudad">Ciudad:</label><input type="text" id="${prefix}-ciudad" class="form-control" value="${valores.Ciudad || valores.ciudad || ''}"></div>
+      <div class="form-group"><label for="${prefix}-estado">Estado:</label><input type="text" id="${prefix}-estado" class="form-control" value="${valores.Estado || valores.estado || ''}"></div>
+      <div class="form-group"><label for="${prefix}-cp">Código postal:</label><input type="text" id="${prefix}-cp" class="form-control" value="${valores.CodigoPostal || valores.codigoPostal || ''}"></div>
+      <div class="form-group"><label for="${prefix}-pais">País:</label><input type="text" id="${prefix}-pais" class="form-control" value="${valores.Pais || valores.pais || 'México'}"></div>
+    </div>`;
+}
+
+function leerDatosNombre(prefix) {
+  return {
+    nombre: document.getElementById(`${prefix}-nombre`)?.value.trim() || '',
+    apellidoPaterno: document.getElementById(`${prefix}-apellido-paterno`)?.value.trim() || '',
+    apellidoMaterno: document.getElementById(`${prefix}-apellido-materno`)?.value.trim() || ''
+  };
+}
+
+function leerDatosDireccion(prefix) {
+  return {
+    calle: document.getElementById(`${prefix}-calle`)?.value.trim() || '',
+    numeroExterior: document.getElementById(`${prefix}-numero-ext`)?.value.trim() || '',
+    numeroInterior: document.getElementById(`${prefix}-numero-int`)?.value.trim() || '',
+    colonia: document.getElementById(`${prefix}-colonia`)?.value.trim() || '',
+    ciudad: document.getElementById(`${prefix}-ciudad`)?.value.trim() || '',
+    estado: document.getElementById(`${prefix}-estado`)?.value.trim() || '',
+    codigoPostal: document.getElementById(`${prefix}-cp`)?.value.trim() || '',
+    pais: document.getElementById(`${prefix}-pais`)?.value.trim() || 'México'
+  };
+}
+
+function nombreCompletoDesdeDatos(datos) {
+  return [datos.nombre, datos.apellidoPaterno, datos.apellidoMaterno].filter(Boolean).join(' ');
+}
+
+async function solicitarDatosClienteVenta({ requerido }) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+  return new Promise((resolve) => {
+    root.innerHTML = `
+      <div class="app-modal-overlay">
+        <div class="app-modal-card" style="width:min(96vw, 720px); max-height:90vh; overflow:auto;">
+          <div class="app-modal-title">${iconHTML('success', requerido ? 'Datos del cliente para autocobro' : 'Datos opcionales del cliente')}</div>
+          <div class="app-modal-body">
+            <p>${requerido ? 'Para pagar en autocobro se debe registrar nombre completo y género.' : 'Puedes registrar al cliente en caja de empleado, pero no es obligatorio.'}</p>
+            ${crearCamposNombre('venta-cliente', {}, requerido)}
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="venta-cliente-genero">Género:</label>
+                <select id="venta-cliente-genero" class="form-control" ${requerido ? 'required' : ''}>${opcionesGenero('')}</select>
+              </div>
+              <div class="form-group">
+                <label for="venta-cliente-fecha">Fecha de nacimiento:</label>
+                <input type="date" id="venta-cliente-fecha" class="form-control">
+              </div>
+            </div>
+          </div>
+          <div class="app-modal-actions">
+            <button id="modal-skip" class="btn btn-secondary" ${requerido ? 'style="display:none;"' : ''}>Continuar sin cliente</button>
+            <button id="modal-cancel" class="btn btn-danger">Cancelar pago</button>
+            <button id="modal-confirm" class="btn btn-primary">Continuar</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('modal-skip')?.addEventListener('click', () => { root.innerHTML = ''; resolve(null); });
+    document.getElementById('modal-cancel').addEventListener('click', () => { root.innerHTML = ''; resolve(false); });
+    document.getElementById('modal-confirm').addEventListener('click', async () => {
+      const datos = leerDatosNombre('venta-cliente');
+      datos.genero = document.getElementById('venta-cliente-genero').value;
+      datos.fechaNacimiento = document.getElementById('venta-cliente-fecha').value || null;
+      const tieneNombre = Boolean(nombreCompletoDesdeDatos(datos));
+      if (requerido && (!datos.nombre || !datos.apellidoPaterno || !datos.apellidoMaterno || !datos.genero)) {
+        await showAlert('Nombre(s), apellido paterno, apellido materno y género son obligatorios para autocobro.', 'warning', 'Datos del cliente');
+        return;
+      }
+      if (!requerido && !tieneNombre && !datos.genero) {
+        root.innerHTML = '';
+        resolve(null);
+        return;
+      }
+      if (!datos.nombre || !datos.genero) {
+        await showAlert('Si capturas cliente, escribe al menos nombre(s) y género.', 'warning', 'Datos del cliente');
+        return;
+      }
+      root.innerHTML = '';
+      resolve(datos);
+    });
+  });
+}
+
 // =============== REGISTRO USUARIO ==================
 function showRegistrationForm() {
   usuarioActual.rol = 'Gerente'
+  const opcionesRolRegistro = usuarioActual.Rol === 'Gerente'
+    ? '<option value="Empleado">Empleado</option>'
+    : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
   appContainer.innerHTML = `
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Registrar Nuevo Usuario</h2>
         <form id="register-form">
-            <div class="form-group">
-                <label for="reg-name">Nombre Completo:</label>
-                <input type="text" id="reg-name" class="form-control" required>
+            ${crearCamposNombre('reg')}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="reg-genero">Género:</label>
+                    <select id="reg-genero" class="form-control" required>${opcionesGenero('')}</select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-fecha-nacimiento">Fecha de nacimiento:</label>
+                    <input type="date" id="reg-fecha-nacimiento" class="form-control">
+                </div>
             </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('reg')}
             <div class="form-group">
                 <label for="reg-username">Nombre de Usuario:</label>
                 <input type="text" id="reg-username" class="form-control" required>
@@ -1125,9 +1267,7 @@ function showRegistrationForm() {
             <div class="form-group">
                 <label for="reg-role">Rol:</label>
                 <select id="reg-role" class="form-control">
-                    <option value="Cliente">Cliente</option>
-                    <option value="Empleado">Empleado</option>
-                    <option value="Gerente">Gerente</option>
+                    ${opcionesRolRegistro}
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1179,7 +1319,8 @@ function showRegistrationForm() {
 
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('reg-name').value;
+    const nombres = leerDatosNombre('reg');
+    const name = nombreCompletoDesdeDatos(nombres);
     const username = document.getElementById('reg-username').value;
     const password = document.getElementById('reg-password').value;
     const confirm = document.getElementById('reg-confirm-password').value;
@@ -1198,13 +1339,18 @@ function showRegistrationForm() {
     }
 
     const userData = {
+      ...nombres,
+      ...leerDatosDireccion('reg'),
       name,
       username,
       password,
+      genero: document.getElementById('reg-genero').value,
+      fechaNacimiento: document.getElementById('reg-fecha-nacimiento').value || null,
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
-      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0
+      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0,
+      usuarioEjecutaRol: usuarioActual.Rol
     };
 
     await window.api.registrarUsuario(userData);
@@ -1228,10 +1374,8 @@ function showAddProveedor() {
                 <label for="reg-name">Nombre:</label>
                 <input type="text" id="reg-name" class="form-control" required>
             </div>
-            <div class="form-group">
-                <label for="reg-address">Direccion:</label>
-                <input type="text" id="reg-address" class="form-control" required>
-            </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('prov')}
             <div class="form-group" id="puesto-group">
                 <label for="reg-telefono">Telefono:</label>
                 <input type="number" id="reg-telefono" class="form-control" required>
@@ -1240,10 +1384,8 @@ function showAddProveedor() {
                 <label for="reg-mail">Correo:</label>
                 <input type="enail" id="reg-mail" class="form-control" required>
             </div>
-            <div class="form-group" id="puesto-group">
-                <label for="reg-contacto">Persona de Contacto:</label>
-                <input type="text" id="reg-contacto" class="form-control">
-            </div>
+            <h3>Contacto separado</h3>
+            ${crearCamposNombre('prov-contacto', {}, false)}
             <button type="submit" class="btn btn-primary">Registrar</button>
             <button type="button" id="cancel-btn" class="btn btn-secondary">Cancelar</button>
         </form>
@@ -1253,18 +1395,21 @@ function showAddProveedor() {
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
-    const direccion = document.getElementById('reg-address').value;
     const telefono = document.getElementById('reg-telefono').value;
     const mail = document.getElementById('reg-mail').value;
-    const contacto = document.getElementById('reg-contacto').value;
+    const contactoDatos = leerDatosNombre('prov-contacto');
+    const contacto = nombreCompletoDesdeDatos(contactoDatos);
 
 
     const userData = {
       name,
-      direccion,
+      ...leerDatosDireccion('prov'),
       telefono,
       mail,
-      contacto
+      contacto,
+      contactoNombre: contactoDatos.nombre,
+      contactoApellidoPaterno: contactoDatos.apellidoPaterno,
+      contactoApellidoMaterno: contactoDatos.apellidoMaterno
     };
 
     await window.api.registrarProveedor(userData);
@@ -1280,14 +1425,28 @@ function showAddProveedor() {
 // =============== FORMULARIO PARA MODIFICAR USUARIO ==================
 function showUpdateForm(usuarioAModificar) {
   usuarioActual.rol = 'Gerente'
+  const opcionesRolEdicion = usuarioActual.Rol === 'Gerente'
+    ? '<option value="Empleado">Empleado</option>'
+    : usuarioActual.Rol === 'Programador'
+      ? '<option value="Empleado">Empleado</option><option value="Gerente">Gerente</option>'
+      : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
   appContainer.innerHTML = `
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Modificar Usuario</h2>
         <form id="register-form">
-            <div class="form-group">
-                <label for="reg-name">Nombre Completo:</label>
-                <input type="text" id="reg-name" class="form-control" required>
+            ${crearCamposNombre('reg', usuarioAModificar.__raw || {})}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="reg-genero">Género:</label>
+                    <select id="reg-genero" class="form-control" required>${opcionesGenero(usuarioAModificar.__raw?.Genero || '')}</select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-fecha-nacimiento">Fecha de nacimiento:</label>
+                    <input type="date" id="reg-fecha-nacimiento" class="form-control" value="${usuarioAModificar.__raw?.FechaNacimiento ? String(usuarioAModificar.__raw.FechaNacimiento).slice(0,10) : ''}">
+                </div>
             </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('reg', usuarioAModificar.__raw || {})}
             <div class="form-group">
                 <label for="reg-username">Nombre de Usuario:</label>
                 <input type="text" id="reg-username" class="form-control" required>
@@ -1295,9 +1454,7 @@ function showUpdateForm(usuarioAModificar) {
             <div class="form-group">
                 <label for="reg-role">Rol:</label>
                 <select id="reg-role" class="form-control">
-                    <option value="Cliente">Cliente</option>
-                    <option value="Empleado">Empleado</option>
-                    <option value="Gerente">Gerente</option>
+                    ${opcionesRolEdicion}
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1324,7 +1481,6 @@ function showUpdateForm(usuarioAModificar) {
     </div>
   `;
   //Agregar valores
-  document.getElementById('reg-name').value = usuarioAModificar[2]
   document.getElementById('reg-username').value = usuarioAModificar[1]
   document.getElementById('reg-role').value = usuarioAModificar[3]
   document.getElementById('reg-puesto').value = usuarioAModificar[4]
@@ -1356,7 +1512,8 @@ function showUpdateForm(usuarioAModificar) {
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = usuarioAModificar[0];
-    const name = document.getElementById('reg-name').value;
+    const nombres = leerDatosNombre('reg');
+    const name = nombreCompletoDesdeDatos(nombres);
     const username = document.getElementById('reg-username').value;
     const rol = document.getElementById('reg-role').value;
     const puesto = document.getElementById('reg-puesto').value;
@@ -1369,12 +1526,17 @@ function showUpdateForm(usuarioAModificar) {
 
     const userData = {
       id,
+      ...nombres,
+      ...leerDatosDireccion('reg'),
       name,
       username,
+      genero: document.getElementById('reg-genero').value,
+      fechaNacimiento: document.getElementById('reg-fecha-nacimiento').value || null,
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
-      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0
+      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0,
+      usuarioEjecutaRol: usuarioActual.Rol
     };
     
     try {
@@ -1394,6 +1556,9 @@ function showUpdateForm(usuarioAModificar) {
 }
 // =============== PÁGINAS ==================
 async function renderPage(page) {
+  if (page === 'programador' && usuarioActual?.Rol === 'Programador') {
+    page = 'programador-password';
+  }
   guardarUltimaVista(page);
   const content = document.getElementById('content-area');
   document.querySelectorAll('.nav-link[data-page]').forEach((link) => {
@@ -1418,7 +1583,12 @@ async function renderPage(page) {
             ${indicadorEstado} ${e.NombreUsuario || 'No especificado'}
             ${!estaActivo ? '<br><small style="color:#e74c3c;">(Desactivado)</small>' : ''}
           </td>
-          <td>${e.NombreCompleto || 'No especificado'}</td>
+          <td>${e.Nombre || 'No especificado'}</td>
+          <td>${e.ApellidoPaterno || 'No especificado'}</td>
+          <td>${e.ApellidoMaterno || 'No especificado'}</td>
+          <td>${e.Genero || 'No especificado'}</td>
+          <td>${e.FechaNacimiento ? String(e.FechaNacimiento).slice(0, 10) : 'No especificada'}</td>
+          <td>${[e.Calle, e.NumeroExterior, e.Colonia, e.Ciudad].filter(Boolean).join(', ') || e.Direccion || 'No especificada'}</td>
           <td>${e.Puesto || 'No especificado'}</td>
           <td>${e.Rol || 'No especificado'}</td>
           <td>${e.Turno || 'No especificado'}</td>
@@ -1444,7 +1614,12 @@ async function renderPage(page) {
               <tr>
                 <th>ID</th>
                 <th>Usuario</th>
-                <th>Nombre Completo</th>
+                <th>Nombre(s)</th>
+                <th>Apellido paterno</th>
+                <th>Apellido materno</th>
+                <th>Género</th>
+                <th>Fecha nacimiento</th>
+                <th>Dirección</th>
                 <th>Puesto</th>
                 <th>Rol</th>
                 <th>Turno</th>
@@ -1601,6 +1776,11 @@ async function renderPage(page) {
       const empleado = empleados[index];
       const estaActivo = empleado.Activo !== undefined ? empleado.Activo : true;
 
+      if (usuarioActual.Rol === 'Gerente' && modoActual === 'modificar' && empleado.Rol !== 'Empleado') {
+        showAlert('El Gerente solo puede modificar empleados. Los gerentes se agregan desde Programador.', 'warning', 'Selección no válida');
+        return;
+      }
+
       // Validar según el modo
       if (enModoDesactivar && !estaActivo) {
         showAlert('Este empleado ya está desactivado. Solo puedes seleccionar empleados activos.', 'warning', 'Selección no válida');
@@ -1621,13 +1801,16 @@ async function renderPage(page) {
             if(seleccionadosPersonal.size==0){
               seleccionadosPersonal.add(index)
               fila.classList.add('fila-seleccionada')
-              usuarioAModificar[0] = tabla.rows[fila.rowIndex].cells[0].textContent;
-              usuarioAModificar[1] = tabla.rows[fila.rowIndex].cells[1].textContent; 
-              usuarioAModificar[2] = tabla.rows[fila.rowIndex].cells[2].textContent;
-              usuarioAModificar[3] = tabla.rows[fila.rowIndex].cells[3].textContent;
-              usuarioAModificar[4] = tabla.rows[fila.rowIndex].cells[4].textContent;
-              usuarioAModificar[5] = tabla.rows[fila.rowIndex].cells[5].textContent;
-              usuarioAModificar[6] = tabla.rows[fila.rowIndex].cells[6].textContent;
+              usuarioAModificar = [
+                empleado.IdEmpleado,
+                empleado.NombreUsuario,
+                empleado.NombreCompleto,
+                empleado.Rol,
+                empleado.Puesto,
+                empleado.Turno,
+                empleado.Salario
+              ];
+              usuarioAModificar.__raw = empleado;
             }
           }
       }else{
@@ -1787,6 +1970,339 @@ async function renderPage(page) {
     });
   };
 
+
+  // =============== CLIENTES ==================
+  if (page === 'clientes') {
+    const clientes = await window.api.getClientes();
+    const rows = clientes.map((c) => `
+      <tr>
+        <td>${c.IdCliente}</td>
+        <td>${c.Nombre || 'No especificado'}</td>
+        <td>${c.ApellidoPaterno || 'No especificado'}</td>
+        <td>${c.ApellidoMaterno || 'No especificado'}</td>
+        <td>${c.Genero || 'No especificado'}</td>
+        <td>${c.FechaNacimiento ? String(c.FechaNacimiento).slice(0, 10) : 'No especificada'}</td>
+        <td>${c.Ventas || 'Sin ventas'}</td>
+        <td>${c.ProductosComprados || 'Sin productos comprados'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="8">No hay clientes registrados.</td></tr>';
+
+    content.innerHTML = `
+      <div class="card">
+        <h2>Tabla de Clientes</h2>
+        <p>Los clientes guardan nombre(s), apellido paterno, apellido materno, género, fecha de nacimiento y las ventas con sus productos comprados.</p>
+        <table class="table" id="tablaClientes">
+          <thead>
+            <tr>
+              <th>ID cliente</th>
+              <th>Nombre(s)</th>
+              <th>Apellido paterno</th>
+              <th>Apellido materno</th>
+              <th>Género</th>
+              <th>Fecha nacimiento</th>
+              <th>ID venta(s)</th>
+              <th>Productos comprados</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // =============== PROGRAMADOR ==================
+  if (['programador-password', 'programador-gerentes', 'programador-usuarios'].includes(page)) {
+    const empleados = page === 'programador-usuarios' ? await window.api.getEmpleados() : [];
+    const usuariosEditables = empleados.filter((empleado) => ['Empleado', 'Gerente'].includes(empleado.Rol));
+    const totalGerentes = usuariosEditables.filter((empleado) => empleado.Rol === 'Gerente').length;
+    const totalEmpleados = usuariosEditables.filter((empleado) => empleado.Rol === 'Empleado').length;
+
+    const renderProgramadorHero = (titulo, descripcion, icono) => `
+      <div class="programador-hero">
+        <div class="programador-hero-icon"><i class="fas ${icono}"></i></div>
+        <div>
+          <p class="programador-eyebrow">Panel exclusivo</p>
+          <h2>${titulo}</h2>
+          <p>${descripcion}</p>
+        </div>
+      </div>`;
+
+    if (page === 'programador-password') {
+      content.innerHTML = `
+        ${renderProgramadorHero('Cambiar contraseñas', 'Revalida las credenciales del programador y ejecuta el stored procedure para actualizar contraseñas de usuarios registrados.', 'fa-key')}
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-database"></i> Stored procedure de seguridad</h3>
+              <p>Ejecuta <code>sp_programador_cambiar_password</code> sin exponer esta acción a otros roles.</p>
+            </div>
+            <span class="programador-badge">Programador</span>
+          </div>
+          <form id="programador-password-form" class="programador-form">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="prog-usuario">Usuario programador:</label>
+                <input type="text" id="prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+              </div>
+              <div class="form-group">
+                <label for="prog-password">Contraseña programador:</label>
+                <input type="password" id="prog-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="target-usuario">Usuario registrado a modificar:</label>
+                <input type="text" id="target-usuario" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="target-password">Nueva contraseña:</label>
+                <input type="password" id="target-password" class="form-control" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary programador-submit"><i class="fas fa-key"></i> Cambiar contraseña con stored procedure</button>
+          </form>
+        </div>`;
+
+      document.getElementById('programador-password-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const result = await window.api.programadorCambiarPassword({
+            usernameProgramador: document.getElementById('prog-usuario').value.trim(),
+            passwordProgramador: document.getElementById('prog-password').value,
+            usuarioObjetivo: document.getElementById('target-usuario').value.trim(),
+            passwordNuevo: document.getElementById('target-password').value
+          });
+          await showAlert(result.message, 'success', 'Stored procedure ejecutado');
+          document.getElementById('prog-password').value = '';
+          document.getElementById('target-password').value = '';
+        } catch (error) {
+          await showAlert(error.message, 'error', 'Error del stored procedure');
+        }
+      });
+    }
+
+    if (page === 'programador-gerentes') {
+      content.innerHTML = `
+        ${renderProgramadorHero('Agregar Gerentes', 'Crea gerentes desde una categoría separada, confirmando usuario y contraseña del programador antes del alta.', 'fa-user-tie')}
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-user-plus"></i> Alta de gerente</h3>
+              <p>No se captura nombre completo: se guardan nombre(s), apellido paterno y apellido materno por separado.</p>
+            </div>
+            <span class="programador-badge">Solo gerentes</span>
+          </div>
+          <form id="programador-gerente-form" class="programador-form">
+            <div class="programador-section-title"><i class="fas fa-shield-halved"></i> Confirmación del programador</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-prog-usuario">Usuario programador:</label>
+                <input type="text" id="mgr-prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-prog-password">Contraseña programador:</label>
+                <input type="password" id="mgr-prog-password" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-id-card"></i> Datos separados del gerente</div>
+            ${crearCamposNombre('mgr', {}, true)}
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-genero">Género:</label>
+                <select id="mgr-genero" class="form-control" required>${opcionesGenero('')}</select>
+              </div>
+              <div class="form-group">
+                <label for="mgr-fecha-nacimiento">Fecha de nacimiento:</label>
+                <input type="date" id="mgr-fecha-nacimiento" class="form-control">
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-user-lock"></i> Cuenta y puesto</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-username">Usuario del gerente:</label>
+                <input type="text" id="mgr-username" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-password">Contraseña del gerente:</label>
+                <input type="password" id="mgr-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-confirm-password">Confirmar contraseña:</label>
+                <input type="password" id="mgr-confirm-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-puesto">Puesto:</label>
+                <input type="text" id="mgr-puesto" class="form-control" value="Gerente" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-turno">Turno:</label>
+                <select id="mgr-turno" class="form-control">
+                  <option value="Any">Any</option>
+                  <option value="Matutino">Matutino</option>
+                  <option value="Vespertino">Vespertino</option>
+                  <option value="Nocturno">Nocturno</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mgr-salario">Salario:</label>
+                <input type="number" id="mgr-salario" class="form-control" step="0.01" min="0" value="0">
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-location-dot"></i> Dirección separada</div>
+            ${crearCamposDireccion('mgr')}
+            <button type="submit" class="btn btn-success programador-submit"><i class="fas fa-user-plus"></i> Agregar gerente con stored procedure</button>
+          </form>
+        </div>`;
+
+      document.getElementById('programador-gerente-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nombres = leerDatosNombre('mgr');
+        const password = document.getElementById('mgr-password').value;
+        const confirm = document.getElementById('mgr-confirm-password').value;
+
+        if (password !== confirm) {
+          await showAlert('Las contraseñas del gerente no coinciden.', 'warning', 'Validación');
+          return;
+        }
+
+        if (!nombres.nombre || !nombres.apellidoPaterno) {
+          await showAlert('Captura al menos nombre(s) y apellido paterno del gerente.', 'warning', 'Validación');
+          return;
+        }
+
+        try {
+          const result = await window.api.programadorAgregarGerente({
+            usernameProgramador: document.getElementById('mgr-prog-usuario').value.trim(),
+            passwordProgramador: document.getElementById('mgr-prog-password').value,
+            username: document.getElementById('mgr-username').value.trim(),
+            password,
+            ...nombres,
+            genero: document.getElementById('mgr-genero').value,
+            fechaNacimiento: document.getElementById('mgr-fecha-nacimiento').value || null,
+            puesto: document.getElementById('mgr-puesto').value.trim(),
+            turno: document.getElementById('mgr-turno').value,
+            salario: parseFloat(document.getElementById('mgr-salario').value) || 0,
+            ...leerDatosDireccion('mgr')
+          });
+          await showAlert(result.message, 'success', 'Gerente agregado');
+          renderPage('programador-gerentes');
+        } catch (error) {
+          await showAlert(error.message, 'error', 'Error al agregar gerente');
+        }
+      });
+    }
+
+    if (page === 'programador-usuarios') {
+      const rows = usuariosEditables.map((empleado, index) => {
+        const estaActivo = empleado.Activo !== undefined ? empleado.Activo : true;
+        const claseFila = estaActivo ? '' : 'empleado-desactivado';
+        const indicadorEstado = estaActivo ? iconHTML('success') : iconHTML('error');
+        const direccion = [empleado.Calle, empleado.NumeroExterior, empleado.Colonia, empleado.Ciudad].filter(Boolean).join(', ') || empleado.Direccion || 'No especificada';
+        return `
+          <tr data-index="${index}" class="${claseFila}">
+            <td>${empleado.IdEmpleado || 'N/A'}</td>
+            <td>${indicadorEstado} ${empleado.NombreUsuario || 'No especificado'}</td>
+            <td><span class="programador-role-pill ${empleado.Rol === 'Gerente' ? 'is-manager' : ''}">${empleado.Rol}</span></td>
+            <td>${empleado.Nombre || 'No especificado'}</td>
+            <td>${empleado.ApellidoPaterno || 'No especificado'}</td>
+            <td>${empleado.ApellidoMaterno || 'No especificado'}</td>
+            <td>${empleado.Genero || 'No especificado'}</td>
+            <td>${direccion}</td>
+            <td>${empleado.Puesto || 'No especificado'}</td>
+            <td>${empleado.Turno || 'No especificado'}</td>
+            <td>$${empleado.Salario ? parseFloat(empleado.Salario).toFixed(2) : '0.00'}</td>
+          </tr>`;
+      }).join('') || '<tr><td colspan="11">No hay empleados o gerentes registrados.</td></tr>';
+
+      content.innerHTML = `
+        ${renderProgramadorHero('Modificar usuarios', 'El programador puede modificar usuarios con rol Gerente o Empleado desde una categoría propia del sidebar.', 'fa-users-gear')}
+        <div class="programador-stats-grid">
+          <div class="programador-stat-card"><span>${usuariosEditables.length}</span><small>Usuarios editables</small></div>
+          <div class="programador-stat-card"><span>${totalGerentes}</span><small>Gerentes</small></div>
+          <div class="programador-stat-card"><span>${totalEmpleados}</span><small>Empleados</small></div>
+        </div>
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-pen-to-square"></i> Selecciona un usuario</h3>
+              <p>Filtra la lista, selecciona un gerente o empleado y usa el botón para modificar sus datos separados.</p>
+            </div>
+            <button id="programador-modificar-usuario" class="btn btn-primary" disabled><i class="fas fa-pen"></i> Modificar seleccionado</button>
+          </div>
+          <div class="filter-toolbar">
+            <input type="text" id="filtroProgramadorUsuarios" class="form-control" placeholder="Buscar por usuario, nombre, rol, puesto o turno...">
+            <span id="resumenProgramadorUsuarios" class="filter-summary"></span>
+          </div>
+          <table class="table programador-users-table" id="tablaProgramadorUsuarios">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Nombre(s)</th>
+                <th>Apellido paterno</th>
+                <th>Apellido materno</th>
+                <th>Género</th>
+                <th>Dirección</th>
+                <th>Puesto</th>
+                <th>Turno</th>
+                <th>Salario</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+
+      const tabla = document.getElementById('tablaProgramadorUsuarios');
+      const filtro = document.getElementById('filtroProgramadorUsuarios');
+      const resumen = document.getElementById('resumenProgramadorUsuarios');
+      const botonModificar = document.getElementById('programador-modificar-usuario');
+      let seleccionado = null;
+
+      function actualizarResumen() {
+        const visibles = Array.from(tabla.querySelectorAll('tbody tr')).filter((fila) => fila.style.display !== 'none').length;
+        resumen.textContent = `${visibles} de ${usuariosEditables.length} usuarios visibles`;
+      }
+
+      filtro.addEventListener('input', (event) => {
+        const texto = event.target.value.trim().toLowerCase();
+        tabla.querySelectorAll('tbody tr').forEach((fila) => {
+          fila.style.display = fila.textContent.toLowerCase().includes(texto) ? '' : 'none';
+        });
+        actualizarResumen();
+      });
+
+      tabla.addEventListener('click', (event) => {
+        const fila = event.target.closest('tr[data-index]');
+        if (!fila) return;
+        tabla.querySelectorAll('.fila-seleccionada').forEach((row) => row.classList.remove('fila-seleccionada'));
+        fila.classList.add('fila-seleccionada');
+        seleccionado = usuariosEditables[Number(fila.dataset.index)];
+        botonModificar.disabled = false;
+      });
+
+      botonModificar.addEventListener('click', async () => {
+        if (!seleccionado) {
+          await showAlert('Selecciona un gerente o empleado para modificar.', 'warning', 'Modificar usuario');
+          return;
+        }
+        const usuarioAModificar = [
+          seleccionado.IdEmpleado,
+          seleccionado.NombreUsuario,
+          seleccionado.NombreCompleto,
+          seleccionado.Rol,
+          seleccionado.Puesto,
+          seleccionado.Turno,
+          seleccionado.Salario
+        ];
+        usuarioAModificar.__raw = seleccionado;
+        showUpdateForm(usuarioAModificar);
+      });
+
+      actualizarResumen();
+    }
+  }
+
   // =============== PROVEEDORES ==================
   if (page === 'proveedores') {
     const [proveedores, productos, recepciones] = await Promise.all([
@@ -1803,11 +2319,13 @@ async function renderPage(page) {
       return `
         <tr class="${claseFila}">
           <td>${e.IdProveedor || 'N/A'}</td>
-          <td>${indicadorEstado} ${e.Nombre || 'No especificado'}</td>
-          <td>${e.Direccion || 'No especificado'}</td>
+          <td>${indicadorEstado} ${e.NombreEmpresa || e.Nombre || 'No especificado'}</td>
+          <td>${[e.Calle, e.NumeroExterior, e.Colonia, e.Ciudad, e.Estado].filter(Boolean).join(', ') || e.Direccion || 'No especificado'}</td>
           <td>${e.Telefono || 'No especificado'}</td>
           <td>${e.Correo || 'No especificado'}</td>
-          <td>${e.Contacto || 'No especificado'}</td>
+          <td>${e.ContactoNombre || 'No especificado'}</td>
+          <td>${e.ContactoApellidoPaterno || 'No especificado'}</td>
+          <td>${e.ContactoApellidoMaterno || 'No especificado'}</td>
         </tr>
       `;
     }).join('');
@@ -1840,7 +2358,9 @@ async function renderPage(page) {
               <th>Dirección</th>
               <th>Teléfono</th>
               <th>Correo</th>
-              <th>Contacto</th>
+              <th>Contacto nombre</th>
+              <th>Contacto ap. paterno</th>
+              <th>Contacto ap. materno</th>
             </tr>
           </thead>
           <tbody>${proveedorRows}</tbody>
@@ -2966,7 +3486,7 @@ async function renderPage(page) {
     </div>
   `;
 
-    const tablaProductosBody = document.querySelector('.productos .table tbody');
+    const tablaProductosBody = document.querySelector('.productos-panel .table tbody');
     const filtroProductos = document.getElementById('filtroProductos');
     const ordenProductos = document.getElementById('ordenProductos');
 
@@ -3076,6 +3596,12 @@ async function renderPage(page) {
         mostrarAlerta('El carrito está vacío');
         return;
       }
+
+      const datosClienteVenta = await solicitarDatosClienteVenta({ requerido: esModoCompraCliente });
+      if (datosClienteVenta === false) {
+        return;
+      }
+
       procesandoPago = true;
       const btnPagar = document.getElementById('btnPagar');
       const textoOriginalBoton = btnPagar.innerHTML;
@@ -3107,7 +3633,8 @@ async function renderPage(page) {
 
       const datosVenta = {
         idEmpleado: esModoCompraCliente ? null : (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null),
-        idCliente: esModoCompraCliente ? (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null) : null,
+        idCliente: null,
+        datosCliente: datosClienteVenta || null,
         canal: esModoCompraCliente ? 'Autocobro' : 'CajaEmpleado',
         carrito: carrito.map(item => ({
           id: item.id,
