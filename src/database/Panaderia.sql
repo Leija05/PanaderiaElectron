@@ -11,21 +11,48 @@ CREATE TABLE Categorias (
 );
 
 -- =======================
--- Tabla de Empleados (ahora también incluye clientes)
+-- Tabla de Empleados
 -- =======================
 CREATE TABLE Empleados (
     IdEmpleado INT AUTO_INCREMENT PRIMARY KEY,
     NombreUsuario VARCHAR(50) NOT NULL UNIQUE,
     Password VARCHAR(100) NOT NULL,
-    Rol ENUM('Cliente', 'Empleado', 'Gerente') NOT NULL,
+    Rol ENUM('Cliente', 'Empleado', 'Gerente', 'Programador') NOT NULL,
     Puesto VARCHAR(50),
     Turno ENUM('Matutino', 'Vespertino', 'Nocturno', 'Any') DEFAULT 'Any',
     Salario DECIMAL(10,2) DEFAULT 0.00,
-    -- Campos adicionales para información personal
-    NombreCompleto VARCHAR(100),
+    NombreCompleto VARCHAR(180),
+    Nombre VARCHAR(60),
+    ApellidoPaterno VARCHAR(60),
+    ApellidoMaterno VARCHAR(60),
+    Genero ENUM('Femenino','Masculino','No binario','Prefiero no decir','Otro'),
+    FechaNacimiento DATE,
     Telefono VARCHAR(20),
     Email VARCHAR(100),
     Direccion VARCHAR(150),
+    Calle VARCHAR(100),
+    NumeroExterior VARCHAR(20),
+    NumeroInterior VARCHAR(20),
+    Colonia VARCHAR(80),
+    Ciudad VARCHAR(80),
+    Estado VARCHAR(80),
+    CodigoPostal VARCHAR(15),
+    Pais VARCHAR(80) DEFAULT 'México',
+    FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Activo BOOLEAN DEFAULT TRUE
+);
+
+-- =======================
+-- Tabla de Clientes
+-- =======================
+CREATE TABLE Clientes (
+    IdCliente INT AUTO_INCREMENT PRIMARY KEY,
+    Nombre VARCHAR(60) NOT NULL,
+    ApellidoPaterno VARCHAR(60),
+    ApellidoMaterno VARCHAR(60),
+    Genero ENUM('Femenino','Masculino','No binario','Prefiero no decir','Otro') NOT NULL,
+    FechaNacimiento DATE,
+    NombreCompleto VARCHAR(180),
     FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
     Activo BOOLEAN DEFAULT TRUE
 );
@@ -53,10 +80,22 @@ CREATE TABLE Articulos (
 CREATE TABLE Proveedores (
     IdProveedor INT AUTO_INCREMENT PRIMARY KEY,
     Nombre VARCHAR(100) NOT NULL,
+    NombreEmpresa VARCHAR(100),
     Direccion VARCHAR(150),
+    Calle VARCHAR(100),
+    NumeroExterior VARCHAR(20),
+    NumeroInterior VARCHAR(20),
+    Colonia VARCHAR(80),
+    Ciudad VARCHAR(80),
+    Estado VARCHAR(80),
+    CodigoPostal VARCHAR(15),
+    Pais VARCHAR(80) DEFAULT 'México',
     Telefono VARCHAR(20),
     Correo VARCHAR(100),
     Contacto VARCHAR(100),
+    ContactoNombre VARCHAR(60),
+    ContactoApellidoPaterno VARCHAR(60),
+    ContactoApellidoMaterno VARCHAR(60),
     RUC VARCHAR(20),
     Activo BOOLEAN DEFAULT TRUE
 );
@@ -99,7 +138,7 @@ CREATE TABLE CompraDetalle (
 CREATE TABLE Ventas (
     IdVenta INT AUTO_INCREMENT PRIMARY KEY,
     IdEmpleado INT, -- Empleado que realiza la venta
-    IdCliente INT, -- Cliente (referencia a Empleados donde Rol = 'Cliente')
+    IdCliente INT, -- Cliente registrado en tabla Clientes
     FechaVenta DATETIME DEFAULT CURRENT_TIMESTAMP,
     Subtotal DECIMAL(10,2),
     Iva DECIMAL(10,2) DEFAULT 0.00,
@@ -107,7 +146,7 @@ CREATE TABLE Ventas (
     TipoVenta ENUM('Mostrador', 'Delivery') DEFAULT 'Mostrador',
     Estado ENUM('Pendiente', 'Completada', 'Cancelada') DEFAULT 'Completada',
     FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado),
-    FOREIGN KEY (IdCliente) REFERENCES Empleados(IdEmpleado)
+    FOREIGN KEY (IdCliente) REFERENCES Clientes(IdCliente)
 );
 
 -- =======================
@@ -174,17 +213,24 @@ INSERT INTO Categorias (Nombre, Descripcion) VALUES
 ('Galletas', 'Galletas y biscochos'),
 ('Bebidas', 'Bebidas y refrescos');
 
--- Insertar empleados y clientes
-INSERT INTO Empleados (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto) VALUES
-('admin', 'admin123', 'Gerente', 'Gerente General', 'Vespertino', 15000.00, 'Administrador Principal'),
-('empleado1', 'empleado123', 'Empleado', 'Vendedor', 'Matutino', 8000.00, 'Juan Pérez Hernández'),
-('cliente1', 'cliente123', 'Cliente', 'Usuario', 'Any', 0.00, 'María García López');
+-- Insertar empleados y programador
+INSERT INTO Empleados
+(NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento) VALUES
+('admin', 'admin123', 'Gerente', 'Gerente General', 'Vespertino', 15000.00, 'Administrador Principal', 'Administrador', 'Principal', NULL, 'Prefiero no decir', NULL),
+('empleado1', 'empleado123', 'Empleado', 'Vendedor', 'Matutino', 8000.00, 'Juan Pérez Hernández', 'Juan', 'Pérez', 'Hernández', 'Masculino', '1995-05-10'),
+('cliente1', 'cliente123', 'Cliente', 'Usuario', 'Any', 0.00, 'María García López', 'María', 'García', 'López', 'Femenino', '1998-08-20'),
+('programador', 'programador123', 'Programador', 'Programador del sistema', 'Any', 0.00, 'Programador Sistema', 'Programador', 'Sistema', NULL, 'Prefiero no decir', NULL);
+
+-- Insertar clientes
+INSERT INTO Clientes (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto) VALUES
+(3, 'María', 'García', 'López', 'Femenino', '1998-08-20', 'María García López');
 
 -- Insertar proveedores
-INSERT INTO Proveedores (Nombre, Direccion, Telefono, Correo, Contacto) VALUES
-('Harinas del Norte', 'Av. Central 123, Ciudad', '555-5678', 'contacto@harinasnorte.com', 'Roberto Mendoza'),
-('Azúcar Real', 'Calle Dulce 45, Ciudad', '555-8765', 'ventas@azucarreal.com', 'Laura Sánchez'),
-('Lácteos Frescos', 'Blvd. Industrial 789, Ciudad', '555-4321', 'pedidos@lacteosfrescos.com', 'Carlos Ruiz');
+INSERT INTO Proveedores
+(Nombre, NombreEmpresa, Direccion, Calle, NumeroExterior, Colonia, Ciudad, Telefono, Correo, Contacto, ContactoNombre, ContactoApellidoPaterno) VALUES
+('Harinas del Norte', 'Harinas del Norte', 'Av. Central 123, Ciudad', 'Av. Central', '123', 'Centro', 'Ciudad', '555-5678', 'contacto@harinasnorte.com', 'Roberto Mendoza', 'Roberto', 'Mendoza'),
+('Azúcar Real', 'Azúcar Real', 'Calle Dulce 45, Ciudad', 'Calle Dulce', '45', 'Centro', 'Ciudad', '555-8765', 'ventas@azucarreal.com', 'Laura Sánchez', 'Laura', 'Sánchez'),
+('Lácteos Frescos', 'Lácteos Frescos', 'Blvd. Industrial 789, Ciudad', 'Blvd. Industrial', '789', 'Industrial', 'Ciudad', '555-4321', 'pedidos@lacteosfrescos.com', 'Carlos Ruiz', 'Carlos', 'Ruiz');
 
 -- Insertar artículos
 INSERT INTO Articulos (Nombre, Descripcion, IdCategoria, Cantidad, Minimo, PrecioVenta, PrecioCompra) VALUES
@@ -210,3 +256,37 @@ INSERT INTO VentaDetalle (IdVenta, IdArticulo, Cantidad, PrecioUnitario, Subtota
 INSERT INTO Envios (IdVenta, IdEmpleadoRepartidor, DireccionEntrega, CostoEnvio, Estado) VALUES
 (1, 2, 'Av. Reforma 123, Col. Centro', 25.00, 'Entregado'),
 (2, 2, 'Calle 5 de Mayo 88, Col. Norte', 20.00, 'En ruta');
+
+-- ===========================
+-- Stored procedure exclusivo del rol Programador
+-- ===========================
+DROP PROCEDURE IF EXISTS sp_programador_cambiar_password;
+DELIMITER //
+CREATE PROCEDURE sp_programador_cambiar_password(
+    IN p_id_programador INT,
+    IN p_usuario_objetivo VARCHAR(50),
+    IN p_password_nuevo VARCHAR(100)
+)
+BEGIN
+    DECLARE v_es_programador INT DEFAULT 0;
+
+    SELECT COUNT(*) INTO v_es_programador
+    FROM Empleados
+    WHERE IdEmpleado = p_id_programador
+      AND Rol = 'Programador'
+      AND Activo = TRUE;
+
+    IF v_es_programador = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo un programador activo puede ejecutar este procedimiento.';
+    END IF;
+
+    UPDATE Empleados
+    SET Password = p_password_nuevo
+    WHERE NombreUsuario = p_usuario_objetivo
+      AND Activo = TRUE;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se encontró un usuario activo con ese nombre.';
+    END IF;
+END //
+DELIMITER ;

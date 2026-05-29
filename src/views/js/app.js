@@ -291,14 +291,16 @@ function guardarUltimaVista(page) {
 function obtenerUltimaVistaPorRol() {
   if (esVistaCliente()) return 'compras';
 
-  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : 'personal';
+  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : usuarioActual?.Rol === 'Programador' ? 'programador' : 'personal';
   const guardada = localStorage.getItem(APP_STORAGE_KEYS.ultimaVista);
 
   if (!guardada) return fallback;
 
   const paginasPermitidas = usuarioActual?.Rol === 'Empleado'
     ? ['ventas']
-    : ['personal', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
+    : usuarioActual?.Rol === 'Programador'
+      ? ['programador']
+      : ['personal', 'clientes', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
 
   return paginasPermitidas.includes(guardada) ? guardada : fallback;
 }
@@ -801,6 +803,7 @@ function renderDashboard(updateStatus = null) {
   if (usuarioActual.Rol === 'Gerente') {
     navbar = `
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="personal"><i class="fas fa-users" aria-hidden="true"></i><span>Personal</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="clientes"><i class="fas fa-address-book" aria-hidden="true"></i><span>Clientes</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="proveedores"><i class="fas fa-truck" aria-hidden="true"></i><span>Proveedores</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="inventario"><i class="fas fa-boxes-stacked" aria-hidden="true"></i><span>Inventario</span></a>
       <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="registroVenta"><i class="fas fa-cash-register" aria-hidden="true"></i><span>Registro ventas</span></a>
@@ -808,7 +811,12 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else if (usuarioActual.Rol === 'Empleado') {
     navbar = `
-      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="ventas"><i class="fas fa-store" aria-hidden="true"></i><span>Punto de venta</span></a>`;
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="ventas"><i class="fas fa-store" aria-hidden="true"></i><span>Punto de venta</span></a>
+      <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
+  } else if (usuarioActual.Rol === 'Programador') {
+    navbar = `
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador"><i class="fas fa-code" aria-hidden="true"></i><span>Programador</span></a>
+      <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else {
     navbar = `<a href="#" class="nav-link" role="tab" aria-selected="false" data-page="compras"><i class="fas fa-basket-shopping" aria-hidden="true"></i><span>Comprar</span></a>`;
   }
@@ -1099,6 +1107,126 @@ function showRegistrationProductForm() {
   document.getElementById('nombreProducto').focus();
 }
 
+
+function opcionesGenero(valor = '') {
+  const opciones = ['', 'Femenino', 'Masculino', 'No binario', 'Prefiero no decir', 'Otro'];
+  return opciones.map((opcion) => `<option value="${opcion}" ${valor === opcion ? 'selected' : ''}>${opcion || 'Seleccionar género'}</option>`).join('');
+}
+
+function crearCamposNombre(prefix, valores = {}, requerido = true) {
+  const req = requerido ? 'required' : '';
+  return `
+    <div class="form-grid-3">
+      <div class="form-group">
+        <label for="${prefix}-nombre">Nombre(s):</label>
+        <input type="text" id="${prefix}-nombre" class="form-control" value="${valores.Nombre || valores.nombre || ''}" ${req}>
+      </div>
+      <div class="form-group">
+        <label for="${prefix}-apellido-paterno">Apellido paterno:</label>
+        <input type="text" id="${prefix}-apellido-paterno" class="form-control" value="${valores.ApellidoPaterno || valores.apellidoPaterno || ''}">
+      </div>
+      <div class="form-group">
+        <label for="${prefix}-apellido-materno">Apellido materno:</label>
+        <input type="text" id="${prefix}-apellido-materno" class="form-control" value="${valores.ApellidoMaterno || valores.apellidoMaterno || ''}">
+      </div>
+    </div>`;
+}
+
+function crearCamposDireccion(prefix, valores = {}) {
+  return `
+    <div class="form-grid-3">
+      <div class="form-group"><label for="${prefix}-calle">Calle:</label><input type="text" id="${prefix}-calle" class="form-control" value="${valores.Calle || valores.calle || ''}"></div>
+      <div class="form-group"><label for="${prefix}-numero-ext">Número exterior:</label><input type="text" id="${prefix}-numero-ext" class="form-control" value="${valores.NumeroExterior || valores.numeroExterior || ''}"></div>
+      <div class="form-group"><label for="${prefix}-numero-int">Número interior:</label><input type="text" id="${prefix}-numero-int" class="form-control" value="${valores.NumeroInterior || valores.numeroInterior || ''}"></div>
+      <div class="form-group"><label for="${prefix}-colonia">Colonia:</label><input type="text" id="${prefix}-colonia" class="form-control" value="${valores.Colonia || valores.colonia || ''}"></div>
+      <div class="form-group"><label for="${prefix}-ciudad">Ciudad:</label><input type="text" id="${prefix}-ciudad" class="form-control" value="${valores.Ciudad || valores.ciudad || ''}"></div>
+      <div class="form-group"><label for="${prefix}-estado">Estado:</label><input type="text" id="${prefix}-estado" class="form-control" value="${valores.Estado || valores.estado || ''}"></div>
+      <div class="form-group"><label for="${prefix}-cp">Código postal:</label><input type="text" id="${prefix}-cp" class="form-control" value="${valores.CodigoPostal || valores.codigoPostal || ''}"></div>
+      <div class="form-group"><label for="${prefix}-pais">País:</label><input type="text" id="${prefix}-pais" class="form-control" value="${valores.Pais || valores.pais || 'México'}"></div>
+    </div>`;
+}
+
+function leerDatosNombre(prefix) {
+  return {
+    nombre: document.getElementById(`${prefix}-nombre`)?.value.trim() || '',
+    apellidoPaterno: document.getElementById(`${prefix}-apellido-paterno`)?.value.trim() || '',
+    apellidoMaterno: document.getElementById(`${prefix}-apellido-materno`)?.value.trim() || ''
+  };
+}
+
+function leerDatosDireccion(prefix) {
+  return {
+    calle: document.getElementById(`${prefix}-calle`)?.value.trim() || '',
+    numeroExterior: document.getElementById(`${prefix}-numero-ext`)?.value.trim() || '',
+    numeroInterior: document.getElementById(`${prefix}-numero-int`)?.value.trim() || '',
+    colonia: document.getElementById(`${prefix}-colonia`)?.value.trim() || '',
+    ciudad: document.getElementById(`${prefix}-ciudad`)?.value.trim() || '',
+    estado: document.getElementById(`${prefix}-estado`)?.value.trim() || '',
+    codigoPostal: document.getElementById(`${prefix}-cp`)?.value.trim() || '',
+    pais: document.getElementById(`${prefix}-pais`)?.value.trim() || 'México'
+  };
+}
+
+function nombreCompletoDesdeDatos(datos) {
+  return [datos.nombre, datos.apellidoPaterno, datos.apellidoMaterno].filter(Boolean).join(' ');
+}
+
+async function solicitarDatosClienteVenta({ requerido }) {
+  ensureModalRoot();
+  const root = document.getElementById('global-modal-root');
+  return new Promise((resolve) => {
+    root.innerHTML = `
+      <div class="app-modal-overlay">
+        <div class="app-modal-card" style="width:min(96vw, 720px); max-height:90vh; overflow:auto;">
+          <div class="app-modal-title">${iconHTML('success', requerido ? 'Datos del cliente para autocobro' : 'Datos opcionales del cliente')}</div>
+          <div class="app-modal-body">
+            <p>${requerido ? 'Para pagar en autocobro se debe registrar nombre completo y género.' : 'Puedes registrar al cliente en caja de empleado, pero no es obligatorio.'}</p>
+            ${crearCamposNombre('venta-cliente', {}, requerido)}
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="venta-cliente-genero">Género:</label>
+                <select id="venta-cliente-genero" class="form-control" ${requerido ? 'required' : ''}>${opcionesGenero('')}</select>
+              </div>
+              <div class="form-group">
+                <label for="venta-cliente-fecha">Fecha de nacimiento:</label>
+                <input type="date" id="venta-cliente-fecha" class="form-control">
+              </div>
+            </div>
+          </div>
+          <div class="app-modal-actions">
+            <button id="modal-skip" class="btn btn-secondary" ${requerido ? 'style="display:none;"' : ''}>Continuar sin cliente</button>
+            <button id="modal-cancel" class="btn btn-danger">Cancelar pago</button>
+            <button id="modal-confirm" class="btn btn-primary">Continuar</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('modal-skip')?.addEventListener('click', () => { root.innerHTML = ''; resolve(null); });
+    document.getElementById('modal-cancel').addEventListener('click', () => { root.innerHTML = ''; resolve(false); });
+    document.getElementById('modal-confirm').addEventListener('click', async () => {
+      const datos = leerDatosNombre('venta-cliente');
+      datos.genero = document.getElementById('venta-cliente-genero').value;
+      datos.fechaNacimiento = document.getElementById('venta-cliente-fecha').value || null;
+      const tieneNombre = Boolean(nombreCompletoDesdeDatos(datos));
+      if (requerido && (!datos.nombre || !datos.apellidoPaterno || !datos.apellidoMaterno || !datos.genero)) {
+        await showAlert('Nombre(s), apellido paterno, apellido materno y género son obligatorios para autocobro.', 'warning', 'Datos del cliente');
+        return;
+      }
+      if (!requerido && !tieneNombre && !datos.genero) {
+        root.innerHTML = '';
+        resolve(null);
+        return;
+      }
+      if (!datos.nombre || !datos.genero) {
+        await showAlert('Si capturas cliente, escribe al menos nombre(s) y género.', 'warning', 'Datos del cliente');
+        return;
+      }
+      root.innerHTML = '';
+      resolve(datos);
+    });
+  });
+}
+
 // =============== REGISTRO USUARIO ==================
 function showRegistrationForm() {
   usuarioActual.rol = 'Gerente'
@@ -1106,10 +1234,19 @@ function showRegistrationForm() {
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Registrar Nuevo Usuario</h2>
         <form id="register-form">
-            <div class="form-group">
-                <label for="reg-name">Nombre Completo:</label>
-                <input type="text" id="reg-name" class="form-control" required>
+            ${crearCamposNombre('reg')}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="reg-genero">Género:</label>
+                    <select id="reg-genero" class="form-control" required>${opcionesGenero('')}</select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-fecha-nacimiento">Fecha de nacimiento:</label>
+                    <input type="date" id="reg-fecha-nacimiento" class="form-control">
+                </div>
             </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('reg')}
             <div class="form-group">
                 <label for="reg-username">Nombre de Usuario:</label>
                 <input type="text" id="reg-username" class="form-control" required>
@@ -1128,6 +1265,7 @@ function showRegistrationForm() {
                     <option value="Cliente">Cliente</option>
                     <option value="Empleado">Empleado</option>
                     <option value="Gerente">Gerente</option>
+                    <option value="Programador">Programador</option>
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1179,7 +1317,8 @@ function showRegistrationForm() {
 
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const name = document.getElementById('reg-name').value;
+    const nombres = leerDatosNombre('reg');
+    const name = nombreCompletoDesdeDatos(nombres);
     const username = document.getElementById('reg-username').value;
     const password = document.getElementById('reg-password').value;
     const confirm = document.getElementById('reg-confirm-password').value;
@@ -1198,9 +1337,13 @@ function showRegistrationForm() {
     }
 
     const userData = {
+      ...nombres,
+      ...leerDatosDireccion('reg'),
       name,
       username,
       password,
+      genero: document.getElementById('reg-genero').value,
+      fechaNacimiento: document.getElementById('reg-fecha-nacimiento').value || null,
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
@@ -1228,10 +1371,8 @@ function showAddProveedor() {
                 <label for="reg-name">Nombre:</label>
                 <input type="text" id="reg-name" class="form-control" required>
             </div>
-            <div class="form-group">
-                <label for="reg-address">Direccion:</label>
-                <input type="text" id="reg-address" class="form-control" required>
-            </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('prov')}
             <div class="form-group" id="puesto-group">
                 <label for="reg-telefono">Telefono:</label>
                 <input type="number" id="reg-telefono" class="form-control" required>
@@ -1240,10 +1381,8 @@ function showAddProveedor() {
                 <label for="reg-mail">Correo:</label>
                 <input type="enail" id="reg-mail" class="form-control" required>
             </div>
-            <div class="form-group" id="puesto-group">
-                <label for="reg-contacto">Persona de Contacto:</label>
-                <input type="text" id="reg-contacto" class="form-control">
-            </div>
+            <h3>Contacto separado</h3>
+            ${crearCamposNombre('prov-contacto', {}, false)}
             <button type="submit" class="btn btn-primary">Registrar</button>
             <button type="button" id="cancel-btn" class="btn btn-secondary">Cancelar</button>
         </form>
@@ -1253,18 +1392,21 @@ function showAddProveedor() {
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('reg-name').value;
-    const direccion = document.getElementById('reg-address').value;
     const telefono = document.getElementById('reg-telefono').value;
     const mail = document.getElementById('reg-mail').value;
-    const contacto = document.getElementById('reg-contacto').value;
+    const contactoDatos = leerDatosNombre('prov-contacto');
+    const contacto = nombreCompletoDesdeDatos(contactoDatos);
 
 
     const userData = {
       name,
-      direccion,
+      ...leerDatosDireccion('prov'),
       telefono,
       mail,
-      contacto
+      contacto,
+      contactoNombre: contactoDatos.nombre,
+      contactoApellidoPaterno: contactoDatos.apellidoPaterno,
+      contactoApellidoMaterno: contactoDatos.apellidoMaterno
     };
 
     await window.api.registrarProveedor(userData);
@@ -1284,10 +1426,19 @@ function showUpdateForm(usuarioAModificar) {
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Modificar Usuario</h2>
         <form id="register-form">
-            <div class="form-group">
-                <label for="reg-name">Nombre Completo:</label>
-                <input type="text" id="reg-name" class="form-control" required>
+            ${crearCamposNombre('reg', usuarioAModificar.__raw || {})}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="reg-genero">Género:</label>
+                    <select id="reg-genero" class="form-control" required>${opcionesGenero(usuarioAModificar.__raw?.Genero || '')}</select>
+                </div>
+                <div class="form-group">
+                    <label for="reg-fecha-nacimiento">Fecha de nacimiento:</label>
+                    <input type="date" id="reg-fecha-nacimiento" class="form-control" value="${usuarioAModificar.__raw?.FechaNacimiento ? String(usuarioAModificar.__raw.FechaNacimiento).slice(0,10) : ''}">
+                </div>
             </div>
+            <h3>Dirección separada</h3>
+            ${crearCamposDireccion('reg', usuarioAModificar.__raw || {})}
             <div class="form-group">
                 <label for="reg-username">Nombre de Usuario:</label>
                 <input type="text" id="reg-username" class="form-control" required>
@@ -1298,6 +1449,7 @@ function showUpdateForm(usuarioAModificar) {
                     <option value="Cliente">Cliente</option>
                     <option value="Empleado">Empleado</option>
                     <option value="Gerente">Gerente</option>
+                    <option value="Programador">Programador</option>
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1324,7 +1476,6 @@ function showUpdateForm(usuarioAModificar) {
     </div>
   `;
   //Agregar valores
-  document.getElementById('reg-name').value = usuarioAModificar[2]
   document.getElementById('reg-username').value = usuarioAModificar[1]
   document.getElementById('reg-role').value = usuarioAModificar[3]
   document.getElementById('reg-puesto').value = usuarioAModificar[4]
@@ -1356,7 +1507,8 @@ function showUpdateForm(usuarioAModificar) {
   document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = usuarioAModificar[0];
-    const name = document.getElementById('reg-name').value;
+    const nombres = leerDatosNombre('reg');
+    const name = nombreCompletoDesdeDatos(nombres);
     const username = document.getElementById('reg-username').value;
     const rol = document.getElementById('reg-role').value;
     const puesto = document.getElementById('reg-puesto').value;
@@ -1369,8 +1521,12 @@ function showUpdateForm(usuarioAModificar) {
 
     const userData = {
       id,
+      ...nombres,
+      ...leerDatosDireccion('reg'),
       name,
       username,
+      genero: document.getElementById('reg-genero').value,
+      fechaNacimiento: document.getElementById('reg-fecha-nacimiento').value || null,
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
@@ -1418,7 +1574,12 @@ async function renderPage(page) {
             ${indicadorEstado} ${e.NombreUsuario || 'No especificado'}
             ${!estaActivo ? '<br><small style="color:#e74c3c;">(Desactivado)</small>' : ''}
           </td>
-          <td>${e.NombreCompleto || 'No especificado'}</td>
+          <td>${e.Nombre || 'No especificado'}</td>
+          <td>${e.ApellidoPaterno || 'No especificado'}</td>
+          <td>${e.ApellidoMaterno || 'No especificado'}</td>
+          <td>${e.Genero || 'No especificado'}</td>
+          <td>${e.FechaNacimiento ? String(e.FechaNacimiento).slice(0, 10) : 'No especificada'}</td>
+          <td>${[e.Calle, e.NumeroExterior, e.Colonia, e.Ciudad].filter(Boolean).join(', ') || e.Direccion || 'No especificada'}</td>
           <td>${e.Puesto || 'No especificado'}</td>
           <td>${e.Rol || 'No especificado'}</td>
           <td>${e.Turno || 'No especificado'}</td>
@@ -1444,7 +1605,12 @@ async function renderPage(page) {
               <tr>
                 <th>ID</th>
                 <th>Usuario</th>
-                <th>Nombre Completo</th>
+                <th>Nombre(s)</th>
+                <th>Apellido paterno</th>
+                <th>Apellido materno</th>
+                <th>Género</th>
+                <th>Fecha nacimiento</th>
+                <th>Dirección</th>
                 <th>Puesto</th>
                 <th>Rol</th>
                 <th>Turno</th>
@@ -1621,13 +1787,16 @@ async function renderPage(page) {
             if(seleccionadosPersonal.size==0){
               seleccionadosPersonal.add(index)
               fila.classList.add('fila-seleccionada')
-              usuarioAModificar[0] = tabla.rows[fila.rowIndex].cells[0].textContent;
-              usuarioAModificar[1] = tabla.rows[fila.rowIndex].cells[1].textContent; 
-              usuarioAModificar[2] = tabla.rows[fila.rowIndex].cells[2].textContent;
-              usuarioAModificar[3] = tabla.rows[fila.rowIndex].cells[3].textContent;
-              usuarioAModificar[4] = tabla.rows[fila.rowIndex].cells[4].textContent;
-              usuarioAModificar[5] = tabla.rows[fila.rowIndex].cells[5].textContent;
-              usuarioAModificar[6] = tabla.rows[fila.rowIndex].cells[6].textContent;
+              usuarioAModificar = [
+                empleado.IdEmpleado,
+                empleado.NombreUsuario,
+                empleado.NombreCompleto,
+                empleado.Rol,
+                empleado.Puesto,
+                empleado.Turno,
+                empleado.Salario
+              ];
+              usuarioAModificar.__raw = empleado;
             }
           }
       }else{
@@ -1787,6 +1956,92 @@ async function renderPage(page) {
     });
   };
 
+
+  // =============== CLIENTES ==================
+  if (page === 'clientes') {
+    const clientes = await window.api.getClientes();
+    const rows = clientes.map((c) => `
+      <tr>
+        <td>${c.IdCliente}</td>
+        <td>${c.Nombre || 'No especificado'}</td>
+        <td>${c.ApellidoPaterno || 'No especificado'}</td>
+        <td>${c.ApellidoMaterno || 'No especificado'}</td>
+        <td>${c.Genero || 'No especificado'}</td>
+        <td>${c.FechaNacimiento ? String(c.FechaNacimiento).slice(0, 10) : 'No especificada'}</td>
+        <td>${c.Ventas || 'Sin ventas'}</td>
+        <td>${c.ProductosComprados || 'Sin productos comprados'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="8">No hay clientes registrados.</td></tr>';
+
+    content.innerHTML = `
+      <div class="card">
+        <h2>Tabla de Clientes</h2>
+        <p>Los clientes guardan nombre(s), apellido paterno, apellido materno, género, fecha de nacimiento y las ventas con sus productos comprados.</p>
+        <table class="table" id="tablaClientes">
+          <thead>
+            <tr>
+              <th>ID cliente</th>
+              <th>Nombre(s)</th>
+              <th>Apellido paterno</th>
+              <th>Apellido materno</th>
+              <th>Género</th>
+              <th>Fecha nacimiento</th>
+              <th>ID venta(s)</th>
+              <th>Productos comprados</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // =============== PROGRAMADOR ==================
+  if (page === 'programador') {
+    content.innerHTML = `
+      <div class="card">
+        <h2>Herramientas exclusivas del Programador</h2>
+        <p>Esta acción vuelve a validar el inicio de sesión del programador y ejecuta el stored procedure <code>sp_programador_cambiar_password</code>.</p>
+        <form id="programador-password-form" class="register-container">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="prog-usuario">Usuario programador:</label>
+              <input type="text" id="prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="prog-password">Contraseña programador:</label>
+              <input type="password" id="prog-password" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="target-usuario">Usuario registrado a modificar:</label>
+              <input type="text" id="target-usuario" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="target-password">Nueva contraseña:</label>
+              <input type="password" id="target-password" class="form-control" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Cambiar contraseña con stored procedure</button>
+        </form>
+      </div>`;
+
+    document.getElementById('programador-password-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const result = await window.api.programadorCambiarPassword({
+          usernameProgramador: document.getElementById('prog-usuario').value.trim(),
+          passwordProgramador: document.getElementById('prog-password').value,
+          usuarioObjetivo: document.getElementById('target-usuario').value.trim(),
+          passwordNuevo: document.getElementById('target-password').value
+        });
+        await showAlert(result.message, 'success', 'Stored procedure ejecutado');
+        document.getElementById('prog-password').value = '';
+        document.getElementById('target-password').value = '';
+      } catch (error) {
+        await showAlert(error.message, 'error', 'Error del stored procedure');
+      }
+    });
+  }
+
   // =============== PROVEEDORES ==================
   if (page === 'proveedores') {
     const [proveedores, productos, recepciones] = await Promise.all([
@@ -1803,11 +2058,13 @@ async function renderPage(page) {
       return `
         <tr class="${claseFila}">
           <td>${e.IdProveedor || 'N/A'}</td>
-          <td>${indicadorEstado} ${e.Nombre || 'No especificado'}</td>
-          <td>${e.Direccion || 'No especificado'}</td>
+          <td>${indicadorEstado} ${e.NombreEmpresa || e.Nombre || 'No especificado'}</td>
+          <td>${[e.Calle, e.NumeroExterior, e.Colonia, e.Ciudad, e.Estado].filter(Boolean).join(', ') || e.Direccion || 'No especificado'}</td>
           <td>${e.Telefono || 'No especificado'}</td>
           <td>${e.Correo || 'No especificado'}</td>
-          <td>${e.Contacto || 'No especificado'}</td>
+          <td>${e.ContactoNombre || 'No especificado'}</td>
+          <td>${e.ContactoApellidoPaterno || 'No especificado'}</td>
+          <td>${e.ContactoApellidoMaterno || 'No especificado'}</td>
         </tr>
       `;
     }).join('');
@@ -1840,7 +2097,9 @@ async function renderPage(page) {
               <th>Dirección</th>
               <th>Teléfono</th>
               <th>Correo</th>
-              <th>Contacto</th>
+              <th>Contacto nombre</th>
+              <th>Contacto ap. paterno</th>
+              <th>Contacto ap. materno</th>
             </tr>
           </thead>
           <tbody>${proveedorRows}</tbody>
@@ -2966,7 +3225,7 @@ async function renderPage(page) {
     </div>
   `;
 
-    const tablaProductosBody = document.querySelector('.productos .table tbody');
+    const tablaProductosBody = document.querySelector('.productos-panel .table tbody');
     const filtroProductos = document.getElementById('filtroProductos');
     const ordenProductos = document.getElementById('ordenProductos');
 
@@ -3076,6 +3335,12 @@ async function renderPage(page) {
         mostrarAlerta('El carrito está vacío');
         return;
       }
+
+      const datosClienteVenta = await solicitarDatosClienteVenta({ requerido: esModoCompraCliente });
+      if (datosClienteVenta === false) {
+        return;
+      }
+
       procesandoPago = true;
       const btnPagar = document.getElementById('btnPagar');
       const textoOriginalBoton = btnPagar.innerHTML;
@@ -3107,7 +3372,8 @@ async function renderPage(page) {
 
       const datosVenta = {
         idEmpleado: esModoCompraCliente ? null : (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null),
-        idCliente: esModoCompraCliente ? (usuarioActual.idEmpleado || usuarioActual.IdEmpleado || null) : null,
+        idCliente: null,
+        datosCliente: datosClienteVenta || null,
         canal: esModoCompraCliente ? 'Autocobro' : 'CajaEmpleado',
         carrito: carrito.map(item => ({
           id: item.id,

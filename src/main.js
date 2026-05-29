@@ -32,6 +32,136 @@ function query(sql, params = []) {
   });
 }
 
+
+async function tableExists(tableName) {
+  const rows = await query(
+    `SELECT COUNT(*) AS total
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+    [tableName]
+  );
+  return Number(rows[0]?.total || 0) > 0;
+}
+
+async function columnExists(tableName, columnName) {
+  const rows = await query(
+    `SELECT COUNT(*) AS total
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [tableName, columnName]
+  );
+  return Number(rows[0]?.total || 0) > 0;
+}
+
+async function ensureColumn(tableName, columnName, definition) {
+  if (!await columnExists(tableName, columnName)) {
+    await query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
+async function ensureEmpleadosRolProgramador() {
+  const columns = await query(
+    `SELECT COLUMN_TYPE
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Empleados' AND COLUMN_NAME = 'Rol'`
+  );
+  const type = columns[0]?.COLUMN_TYPE || '';
+  if (!type.includes("'Programador'")) {
+    await query(
+      `ALTER TABLE Empleados
+       MODIFY Rol ENUM('Cliente', 'Empleado', 'Gerente', 'Programador') NOT NULL`
+    );
+  }
+}
+
+async function ensureSecurityProcedure() {
+  await query('DROP PROCEDURE IF EXISTS sp_programador_cambiar_password');
+  await query(`
+    CREATE PROCEDURE sp_programador_cambiar_password(
+      IN p_id_programador INT,
+      IN p_usuario_objetivo VARCHAR(50),
+      IN p_password_nuevo VARCHAR(100)
+    )
+    BEGIN
+      DECLARE v_es_programador INT DEFAULT 0;
+      SELECT COUNT(*) INTO v_es_programador
+      FROM Empleados
+      WHERE IdEmpleado = p_id_programador
+        AND Rol = 'Programador'
+        AND Activo = TRUE;
+
+      IF v_es_programador = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Solo un programador activo puede ejecutar este procedimiento.';
+      END IF;
+
+      UPDATE Empleados
+      SET Password = p_password_nuevo
+      WHERE NombreUsuario = p_usuario_objetivo
+        AND Activo = TRUE;
+
+      IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No se encontró un usuario activo con ese nombre.';
+      END IF;
+    END
+  `);
+}
+
+function splitFullName(fullName = '') {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  return {
+    nombre: parts.slice(0, Math.max(1, parts.length - 2)).join(' ') || parts[0] || '',
+    apellidoPaterno: parts.length > 1 ? parts[parts.length - 2] : '',
+    apellidoMaterno: parts.length > 2 ? parts[parts.length - 1] : ''
+  };
+}
+
+function buildFullName(data = {}) {
+  return [data.nombre, data.apellidoPaterno, data.apellidoMaterno]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+async function registrarClienteVenta(datosCliente = {}) {
+  const nombreCompleto = buildFullName(datosCliente);
+  if (!nombreCompleto) return null;
+
+  const usernameBase = `cliente_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const empleadoResult = await query(
+    `INSERT INTO Empleados
+     (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento)
+     VALUES (?, ?, 'Cliente', 'Cliente', 'Any', 0.00, ?, ?, ?, ?, ?, ?)`,
+    [
+      usernameBase,
+      Math.random().toString(36).slice(2, 12),
+      nombreCompleto,
+      datosCliente.nombre || null,
+      datosCliente.apellidoPaterno || null,
+      datosCliente.apellidoMaterno || null,
+      datosCliente.genero || null,
+      datosCliente.fechaNacimiento || null
+    ]
+  );
+
+  const idCliente = empleadoResult.insertId;
+  await query(
+    `INSERT INTO Clientes
+     (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      idCliente,
+      datosCliente.nombre || null,
+      datosCliente.apellidoPaterno || null,
+      datosCliente.apellidoMaterno || null,
+      datosCliente.genero || null,
+      datosCliente.fechaNacimiento || null,
+      nombreCompleto
+    ]
+  );
+
+  return idCliente;
+}
+
 function beginTransaction() {
   return new Promise((resolve, reject) => db.beginTransaction((error) => error ? reject(error) : resolve()));
 }
@@ -100,6 +230,79 @@ function setUpdateState(nextState) {
 }
 
 async function ensureSupportTables() {
+  await ensureEmpleadosRolProgramador();
+
+  await ensureColumn('Empleados', 'Nombre', 'VARCHAR(60) NULL AFTER NombreCompleto');
+  await ensureColumn('Empleados', 'ApellidoPaterno', 'VARCHAR(60) NULL AFTER Nombre');
+  await ensureColumn('Empleados', 'ApellidoMaterno', 'VARCHAR(60) NULL AFTER ApellidoPaterno');
+  await ensureColumn('Empleados', 'Genero', "ENUM('Femenino','Masculino','No binario','Prefiero no decir','Otro') NULL AFTER ApellidoMaterno");
+  await ensureColumn('Empleados', 'FechaNacimiento', 'DATE NULL AFTER Genero');
+  await ensureColumn('Empleados', 'Calle', 'VARCHAR(100) NULL AFTER Direccion');
+  await ensureColumn('Empleados', 'NumeroExterior', 'VARCHAR(20) NULL AFTER Calle');
+  await ensureColumn('Empleados', 'NumeroInterior', 'VARCHAR(20) NULL AFTER NumeroExterior');
+  await ensureColumn('Empleados', 'Colonia', 'VARCHAR(80) NULL AFTER NumeroInterior');
+  await ensureColumn('Empleados', 'Ciudad', 'VARCHAR(80) NULL AFTER Colonia');
+  await ensureColumn('Empleados', 'Estado', 'VARCHAR(80) NULL AFTER Ciudad');
+  await ensureColumn('Empleados', 'CodigoPostal', 'VARCHAR(15) NULL AFTER Estado');
+  await ensureColumn('Empleados', 'Pais', "VARCHAR(80) DEFAULT 'México' AFTER CodigoPostal");
+
+  await query(`
+    UPDATE Empleados
+    SET Nombre = COALESCE(NULLIF(Nombre, ''), TRIM(SUBSTRING_INDEX(NombreCompleto, ' ', 1))),
+        ApellidoMaterno = COALESCE(NULLIF(ApellidoMaterno, ''), NULLIF(TRIM(SUBSTRING_INDEX(NombreCompleto, ' ', -1)), NombreCompleto))
+    WHERE NombreCompleto IS NOT NULL
+      AND (Nombre IS NULL OR Nombre = '')
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Clientes (
+      IdCliente INT AUTO_INCREMENT PRIMARY KEY,
+      Nombre VARCHAR(60) NOT NULL,
+      ApellidoPaterno VARCHAR(60),
+      ApellidoMaterno VARCHAR(60),
+      Genero ENUM('Femenino','Masculino','No binario','Prefiero no decir','Otro') NOT NULL,
+      FechaNacimiento DATE NULL,
+      NombreCompleto VARCHAR(180),
+      FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+      Activo BOOLEAN DEFAULT TRUE
+    )
+  `);
+
+  await ensureColumn('Proveedores', 'NombreEmpresa', 'VARCHAR(100) NULL AFTER Nombre');
+  await ensureColumn('Proveedores', 'ContactoNombre', 'VARCHAR(60) NULL AFTER Contacto');
+  await ensureColumn('Proveedores', 'ContactoApellidoPaterno', 'VARCHAR(60) NULL AFTER ContactoNombre');
+  await ensureColumn('Proveedores', 'ContactoApellidoMaterno', 'VARCHAR(60) NULL AFTER ContactoApellidoPaterno');
+  await ensureColumn('Proveedores', 'Calle', 'VARCHAR(100) NULL AFTER Direccion');
+  await ensureColumn('Proveedores', 'NumeroExterior', 'VARCHAR(20) NULL AFTER Calle');
+  await ensureColumn('Proveedores', 'NumeroInterior', 'VARCHAR(20) NULL AFTER NumeroExterior');
+  await ensureColumn('Proveedores', 'Colonia', 'VARCHAR(80) NULL AFTER NumeroInterior');
+  await ensureColumn('Proveedores', 'Ciudad', 'VARCHAR(80) NULL AFTER Colonia');
+  await ensureColumn('Proveedores', 'Estado', 'VARCHAR(80) NULL AFTER Ciudad');
+  await ensureColumn('Proveedores', 'CodigoPostal', 'VARCHAR(15) NULL AFTER Estado');
+  await ensureColumn('Proveedores', 'Pais', "VARCHAR(80) DEFAULT 'México' AFTER CodigoPostal");
+
+  await query(`
+    INSERT IGNORE INTO Empleados
+    (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, Genero)
+    VALUES ('programador', 'programador123', 'Programador', 'Programador del sistema', 'Any', 0.00,
+            'Programador Sistema', 'Programador', 'Sistema', 'Prefiero no decir')
+  `);
+
+  await ensureSecurityProcedure();
+  await query(`
+    INSERT IGNORE INTO Clientes (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto, Activo)
+    SELECT IdEmpleado,
+           COALESCE(NULLIF(Nombre, ''), TRIM(SUBSTRING_INDEX(NombreCompleto, ' ', 1)), NombreUsuario),
+           NULLIF(ApellidoPaterno, ''),
+           NULLIF(ApellidoMaterno, ''),
+           COALESCE(Genero, 'Prefiero no decir'),
+           FechaNacimiento,
+           COALESCE(NombreCompleto, NombreUsuario),
+           Activo
+    FROM Empleados
+    WHERE Rol = 'Cliente'
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS VentasCanal (
       IdVenta INT PRIMARY KEY,
@@ -228,6 +431,20 @@ async function seedRandomDataIfEmpty() {
         u
       );
     }
+
+    await query(`
+      INSERT IGNORE INTO Clientes (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto, Activo)
+      SELECT IdEmpleado,
+             COALESCE(NULLIF(Nombre, ''), TRIM(SUBSTRING_INDEX(NombreCompleto, ' ', 1)), NombreUsuario),
+             NULLIF(ApellidoPaterno, ''),
+             NULLIF(ApellidoMaterno, ''),
+             COALESCE(Genero, 'Prefiero no decir'),
+             FechaNacimiento,
+             COALESCE(NombreCompleto, NombreUsuario),
+             Activo
+      FROM Empleados
+      WHERE Rol = 'Cliente'
+    `);
 
     const categorias = await query('SELECT IdCategoria FROM Categorias');
     const articulos = await query('SELECT IdArticulo, PrecioVenta FROM Articulos');
@@ -622,10 +839,12 @@ ipcMain.handle('login', async (event, username, password) => {
 });
 
 ipcMain.handle('registrarUsuario', async (event, data) => {
+  const nombreCompleto = data.name || buildFullName(data);
   const results = await query(
     `INSERT INTO Empleados
-    (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento,
+     Calle, NumeroExterior, NumeroInterior, Colonia, Ciudad, Estado, CodigoPostal, Pais)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.username,
       data.password,
@@ -633,26 +852,117 @@ ipcMain.handle('registrarUsuario', async (event, data) => {
       data.puesto || null,
       data.turno || null,
       data.salario ?? null,
-      data.name || null
+      nombreCompleto || null,
+      data.nombre || null,
+      data.apellidoPaterno || null,
+      data.apellidoMaterno || null,
+      data.genero || null,
+      data.fechaNacimiento || null,
+      data.calle || null,
+      data.numeroExterior || null,
+      data.numeroInterior || null,
+      data.colonia || null,
+      data.ciudad || null,
+      data.estado || null,
+      data.codigoPostal || null,
+      data.pais || 'México'
+    ]
+  );
+
+  if (data.rol === 'Cliente') {
+    await query(
+      `INSERT IGNORE INTO Clientes
+       (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [results.insertId, data.nombre || nombreCompleto || data.username, data.apellidoPaterno || null, data.apellidoMaterno || null, data.genero || 'Prefiero no decir', data.fechaNacimiento || null, nombreCompleto || data.username]
+    );
+  }
+
+  return { id: results.insertId };
+});
+
+ipcMain.handle('registrarProveedor', async (event, data) => {
+  const contactoCompleto = [data.contactoNombre, data.contactoApellidoPaterno, data.contactoApellidoMaterno]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ') || data.contacto || null;
+  const direccionCompleta = [data.calle, data.numeroExterior, data.numeroInterior, data.colonia, data.ciudad, data.estado, data.codigoPostal, data.pais]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(', ') || data.direccion || null;
+
+  const results = await query(
+    `INSERT INTO Proveedores
+     (Nombre, NombreEmpresa, Direccion, Calle, NumeroExterior, NumeroInterior, Colonia, Ciudad, Estado, CodigoPostal, Pais,
+      Telefono, Correo, Contacto, ContactoNombre, ContactoApellidoPaterno, ContactoApellidoMaterno, RUC)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.name,
+      data.name,
+      direccionCompleta,
+      data.calle || null,
+      data.numeroExterior || null,
+      data.numeroInterior || null,
+      data.colonia || null,
+      data.ciudad || null,
+      data.estado || null,
+      data.codigoPostal || null,
+      data.pais || 'México',
+      data.telefono,
+      data.mail,
+      contactoCompleto,
+      data.contactoNombre || null,
+      data.contactoApellidoPaterno || null,
+      data.contactoApellidoMaterno || null,
+      null
     ]
   );
   return { id: results.insertId };
 });
 
-ipcMain.handle('registrarProveedor', async (event, data) => {
-  const results = await query(
-    'INSERT INTO Proveedores (Nombre, Direccion, Telefono, Correo, Contacto, RUC) VALUES (?, ?, ?, ?, ?, ?)',
-    [data.name, data.direccion, data.telefono, data.mail, data.contacto, null]
+ipcMain.handle('modificarUsuario', async (event, data) => {
+  const nombreCompleto = data.name || buildFullName(data);
+  const result = await query(
+    `UPDATE Empleados
+     SET NombreUsuario = ?, Rol = ?, Puesto = ?, Turno = ?, Salario = ?, NombreCompleto = ?, Nombre = ?, ApellidoPaterno = ?, ApellidoMaterno = ?, Genero = ?, FechaNacimiento = ?,
+         Calle = ?, NumeroExterior = ?, NumeroInterior = ?, Colonia = ?, Ciudad = ?, Estado = ?, CodigoPostal = ?, Pais = ?
+     WHERE IdEmpleado = ?`,
+    [
+      data.username,
+      data.rol,
+      data.puesto,
+      data.turno,
+      data.salario,
+      nombreCompleto,
+      data.nombre || null,
+      data.apellidoPaterno || null,
+      data.apellidoMaterno || null,
+      data.genero || null,
+      data.fechaNacimiento || null,
+      data.calle || null,
+      data.numeroExterior || null,
+      data.numeroInterior || null,
+      data.colonia || null,
+      data.ciudad || null,
+      data.estado || null,
+      data.codigoPostal || null,
+      data.pais || 'México',
+      data.id
+    ]
   );
-  return { id: results.insertId };
-});
 
-ipcMain.handle('modificarUsuario', async (event, data) => query(
-  `UPDATE Empleados
-   SET NombreUsuario = ?, Rol = ?, Puesto = ?, Turno = ?, Salario = ?, NombreCompleto = ?
-   WHERE IdEmpleado = ?`,
-  [data.username, data.rol, data.puesto, data.turno, data.salario, data.name, data.id]
-));
+  if (data.rol === 'Cliente') {
+    await query(
+      `INSERT INTO Clientes (IdCliente, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento, NombreCompleto, Activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
+       ON DUPLICATE KEY UPDATE Nombre = VALUES(Nombre), ApellidoPaterno = VALUES(ApellidoPaterno), ApellidoMaterno = VALUES(ApellidoMaterno),
+                               Genero = VALUES(Genero), FechaNacimiento = VALUES(FechaNacimiento), NombreCompleto = VALUES(NombreCompleto), Activo = TRUE`,
+      [data.id, data.nombre || nombreCompleto || data.username, data.apellidoPaterno || null, data.apellidoMaterno || null, data.genero || 'Prefiero no decir', data.fechaNacimiento || null, nombreCompleto || data.username]
+    );
+  }
+
+  return result;
+});
 
 async function eliminarEmpleadoSeguro(idEmpleado) {
   const rows = await query('SELECT IdEmpleado, Rol FROM Empleados WHERE IdEmpleado = ?', [idEmpleado]);
@@ -711,7 +1021,39 @@ async function eliminarEmpleadoSeguro(idEmpleado) {
 ipcMain.handle('deleteUsuario', async (event, idEmpleado) => eliminarEmpleadoSeguro(idEmpleado));
 
 ipcMain.handle('getEmpleados', async () => query('SELECT * FROM Empleados ORDER BY Activo DESC, IdEmpleado ASC'));
+ipcMain.handle('getClientes', async () => query(
+  `SELECT c.IdCliente, c.Nombre, c.ApellidoPaterno, c.ApellidoMaterno, c.Genero, c.FechaNacimiento,
+          c.NombreCompleto, c.FechaRegistro, c.Activo,
+          GROUP_CONCAT(DISTINCT v.IdVenta ORDER BY v.IdVenta DESC SEPARATOR ', ') AS Ventas,
+          GROUP_CONCAT(CONCAT('#', v.IdVenta, ': ', a.Nombre, ' x', vd.Cantidad) ORDER BY v.IdVenta DESC, a.Nombre SEPARATOR ' | ') AS ProductosComprados
+   FROM Clientes c
+   LEFT JOIN Ventas v ON v.IdCliente = c.IdCliente
+   LEFT JOIN VentaDetalle vd ON vd.IdVenta = v.IdVenta
+   LEFT JOIN Articulos a ON a.IdArticulo = vd.IdArticulo
+   GROUP BY c.IdCliente
+   ORDER BY c.FechaRegistro DESC, c.IdCliente DESC`
+));
 ipcMain.handle('getProveedores', async () => query('SELECT * FROM Proveedores ORDER BY IdProveedor ASC'));
+
+ipcMain.handle('programadorCambiarPassword', async (event, payload = {}) => {
+  const { usernameProgramador, passwordProgramador, usuarioObjetivo, passwordNuevo } = payload;
+  if (!usernameProgramador || !passwordProgramador || !usuarioObjetivo || !passwordNuevo) {
+    throw new Error('Completa las credenciales del programador, el usuario objetivo y la nueva contraseña.');
+  }
+
+  const programadores = await query(
+    `SELECT IdEmpleado FROM Empleados
+     WHERE NombreUsuario = ? AND Password = ? AND Rol = 'Programador' AND Activo = TRUE`,
+    [usernameProgramador, passwordProgramador]
+  );
+
+  if (!programadores.length) {
+    throw new Error('Solo un programador activo puede cambiar contraseñas mediante el procedimiento almacenado.');
+  }
+
+  await query('CALL sp_programador_cambiar_password(?, ?, ?)', [programadores[0].IdEmpleado, usuarioObjetivo, passwordNuevo]);
+  return { success: true, message: `Contraseña de ${usuarioObjetivo} actualizada mediante stored procedure.` };
+});
 
 ipcMain.handle('cambiarEstadoUsuario', async (event, idEmpleado, nuevoEstado) => {
   const idNum = Number(idEmpleado);
@@ -776,6 +1118,7 @@ ipcMain.handle('registrarVenta', async (event, ventaData) => {
   const {
     idEmpleado = null,
     idCliente = null,
+    datosCliente = null,
     canal = idEmpleado ? 'CajaEmpleado' : 'Autocobro',
     carrito = []
   } = ventaData || {};
@@ -801,11 +1144,19 @@ ipcMain.handle('registrarVenta', async (event, ventaData) => {
     const subtotal = carrito.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
     const iva = subtotal * 0.16;
     const total = subtotal + iva;
+    let idClienteVenta = idCliente;
+
+    if (datosCliente && buildFullName(datosCliente)) {
+      if (canal === 'Autocobro' && !datosCliente.genero) {
+        throw new Error('El género del cliente es requerido para autocobro.');
+      }
+      idClienteVenta = await registrarClienteVenta(datosCliente);
+    }
 
     const ventaResults = await query(
       `INSERT INTO Ventas (IdEmpleado, IdCliente, Subtotal, Iva, Total, TipoVenta, Estado)
        VALUES (?, ?, ?, ?, ?, 'Mostrador', 'Completada')`,
-      [idEmpleado, idCliente, subtotal, iva, total]
+      [idEmpleado, idClienteVenta, subtotal, iva, total]
     );
 
     const idVenta = ventaResults.insertId;
@@ -838,6 +1189,7 @@ ipcMain.handle('registrarVenta', async (event, ventaData) => {
     return {
       success: true,
       idVenta,
+      idCliente: idClienteVenta,
       total,
       canal: sanitizeChannel(canal),
       message: 'Venta registrada exitosamente'
@@ -1240,11 +1592,12 @@ ipcMain.handle('getReportes', async (event, filters = {}) => {
   const ventas = await query(
     `SELECT v.IdVenta, v.FechaVenta, v.IdEmpleado, v.IdCliente, v.Subtotal, v.Iva, v.Total,
             e.NombreCompleto AS EmpleadoNombre,
-            c.NombreCompleto AS ClienteNombre,
+            COALESCE(c.NombreCompleto, ce.NombreCompleto) AS ClienteNombre,
             COALESCE(vc.Canal, 'SinClasificar') AS Canal
      FROM Ventas v
      LEFT JOIN Empleados e ON e.IdEmpleado = v.IdEmpleado
-     LEFT JOIN Empleados c ON c.IdEmpleado = v.IdCliente
+     LEFT JOIN Clientes c ON c.IdCliente = v.IdCliente
+     LEFT JOIN Empleados ce ON ce.IdEmpleado = v.IdCliente
      LEFT JOIN VentasCanal vc ON vc.IdVenta = v.IdVenta
      WHERE v.FechaVenta BETWEEN ? AND ?
      ORDER BY v.FechaVenta DESC`,
