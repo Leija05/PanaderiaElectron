@@ -1230,6 +1230,9 @@ async function solicitarDatosClienteVenta({ requerido }) {
 // =============== REGISTRO USUARIO ==================
 function showRegistrationForm() {
   usuarioActual.rol = 'Gerente'
+  const opcionesRolRegistro = usuarioActual.Rol === 'Gerente'
+    ? '<option value="Empleado">Empleado</option>'
+    : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
   appContainer.innerHTML = `
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Registrar Nuevo Usuario</h2>
@@ -1262,10 +1265,7 @@ function showRegistrationForm() {
             <div class="form-group">
                 <label for="reg-role">Rol:</label>
                 <select id="reg-role" class="form-control">
-                    <option value="Cliente">Cliente</option>
-                    <option value="Empleado">Empleado</option>
-                    <option value="Gerente">Gerente</option>
-                    <option value="Programador">Programador</option>
+                    ${opcionesRolRegistro}
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1347,7 +1347,8 @@ function showRegistrationForm() {
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
-      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0
+      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0,
+      usuarioEjecutaRol: usuarioActual.Rol
     };
 
     await window.api.registrarUsuario(userData);
@@ -1422,6 +1423,9 @@ function showAddProveedor() {
 // =============== FORMULARIO PARA MODIFICAR USUARIO ==================
 function showUpdateForm(usuarioAModificar) {
   usuarioActual.rol = 'Gerente'
+  const opcionesRolEdicion = usuarioActual.Rol === 'Gerente'
+    ? '<option value="Empleado">Empleado</option>'
+    : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
   appContainer.innerHTML = `
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Modificar Usuario</h2>
@@ -1446,10 +1450,7 @@ function showUpdateForm(usuarioAModificar) {
             <div class="form-group">
                 <label for="reg-role">Rol:</label>
                 <select id="reg-role" class="form-control">
-                    <option value="Cliente">Cliente</option>
-                    <option value="Empleado">Empleado</option>
-                    <option value="Gerente">Gerente</option>
-                    <option value="Programador">Programador</option>
+                    ${opcionesRolEdicion}
                 </select>
             </div>
             <div class="form-group" id="puesto-group">
@@ -1530,7 +1531,8 @@ function showUpdateForm(usuarioAModificar) {
       rol,
       puesto: rol === 'Cliente' ? 'Usuario' : puesto,
       turno: rol === 'Cliente' ? 'Any' : turno,
-      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0
+      salario: rol === 'Cliente' ? null : parseFloat(salario) || 0,
+      usuarioEjecutaRol: usuarioActual.Rol
     };
     
     try {
@@ -1767,6 +1769,11 @@ async function renderPage(page) {
       const empleado = empleados[index];
       const estaActivo = empleado.Activo !== undefined ? empleado.Activo : true;
 
+      if (usuarioActual.Rol === 'Gerente' && modoActual === 'modificar' && empleado.Rol !== 'Empleado') {
+        showAlert('El Gerente solo puede modificar empleados. Los gerentes se agregan desde Programador.', 'warning', 'Selección no válida');
+        return;
+      }
+
       // Validar según el modo
       if (enModoDesactivar && !estaActivo) {
         showAlert('Este empleado ya está desactivado. Solo puedes seleccionar empleados activos.', 'warning', 'Selección no válida');
@@ -2000,7 +2007,12 @@ async function renderPage(page) {
     content.innerHTML = `
       <div class="card">
         <h2>Herramientas exclusivas del Programador</h2>
-        <p>Esta acción vuelve a validar el inicio de sesión del programador y ejecuta el stored procedure <code>sp_programador_cambiar_password</code>.</p>
+        <p>Estas acciones vuelven a validar el usuario y contraseña del programador antes de ejecutar stored procedures.</p>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-key"></i> Categoría: cambiar contraseñas</h3>
+        <p>Ejecuta <code>sp_programador_cambiar_password</code> para cambiar la contraseña de un usuario registrado.</p>
         <form id="programador-password-form" class="register-container">
           <div class="form-grid-2">
             <div class="form-group">
@@ -2022,6 +2034,74 @@ async function renderPage(page) {
           </div>
           <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Cambiar contraseña con stored procedure</button>
         </form>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-user-tie"></i> Categoría: agregar Gerentes</h3>
+        <p>Solo el rol Programador puede crear gerentes. El formulario no pide nombre completo: captura nombre(s), apellido paterno y apellido materno por separado.</p>
+        <form id="programador-gerente-form" class="register-container">
+          <h4>Confirmación del programador</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mgr-prog-usuario">Usuario programador:</label>
+              <input type="text" id="mgr-prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="mgr-prog-password">Contraseña programador:</label>
+              <input type="password" id="mgr-prog-password" class="form-control" required>
+            </div>
+          </div>
+
+          <h4>Datos separados del gerente</h4>
+          ${crearCamposNombre('mgr', {}, true)}
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mgr-genero">Género:</label>
+              <select id="mgr-genero" class="form-control" required>${opcionesGenero('')}</select>
+            </div>
+            <div class="form-group">
+              <label for="mgr-fecha-nacimiento">Fecha de nacimiento:</label>
+              <input type="date" id="mgr-fecha-nacimiento" class="form-control">
+            </div>
+          </div>
+
+          <h4>Cuenta y puesto</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="mgr-username">Usuario del gerente:</label>
+              <input type="text" id="mgr-username" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="mgr-password">Contraseña del gerente:</label>
+              <input type="password" id="mgr-password" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="mgr-confirm-password">Confirmar contraseña:</label>
+              <input type="password" id="mgr-confirm-password" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="mgr-puesto">Puesto:</label>
+              <input type="text" id="mgr-puesto" class="form-control" value="Gerente" required>
+            </div>
+            <div class="form-group">
+              <label for="mgr-turno">Turno:</label>
+              <select id="mgr-turno" class="form-control">
+                <option value="Any">Any</option>
+                <option value="Matutino">Matutino</option>
+                <option value="Vespertino">Vespertino</option>
+                <option value="Nocturno">Nocturno</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="mgr-salario">Salario:</label>
+              <input type="number" id="mgr-salario" class="form-control" step="0.01" min="0" value="0">
+            </div>
+          </div>
+
+          <h4>Dirección separada</h4>
+          ${crearCamposDireccion('mgr')}
+          <button type="submit" class="btn btn-success"><i class="fas fa-user-plus"></i> Agregar gerente con stored procedure</button>
+        </form>
       </div>`;
 
     document.getElementById('programador-password-form').addEventListener('submit', async (event) => {
@@ -2038,6 +2118,43 @@ async function renderPage(page) {
         document.getElementById('target-password').value = '';
       } catch (error) {
         await showAlert(error.message, 'error', 'Error del stored procedure');
+      }
+    });
+
+    document.getElementById('programador-gerente-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const nombres = leerDatosNombre('mgr');
+      const password = document.getElementById('mgr-password').value;
+      const confirm = document.getElementById('mgr-confirm-password').value;
+
+      if (password !== confirm) {
+        await showAlert('Las contraseñas del gerente no coinciden.', 'warning', 'Validación');
+        return;
+      }
+
+      if (!nombres.nombre || !nombres.apellidoPaterno) {
+        await showAlert('Captura al menos nombre(s) y apellido paterno del gerente.', 'warning', 'Validación');
+        return;
+      }
+
+      try {
+        const result = await window.api.programadorAgregarGerente({
+          usernameProgramador: document.getElementById('mgr-prog-usuario').value.trim(),
+          passwordProgramador: document.getElementById('mgr-prog-password').value,
+          username: document.getElementById('mgr-username').value.trim(),
+          password,
+          ...nombres,
+          genero: document.getElementById('mgr-genero').value,
+          fechaNacimiento: document.getElementById('mgr-fecha-nacimiento').value || null,
+          puesto: document.getElementById('mgr-puesto').value.trim(),
+          turno: document.getElementById('mgr-turno').value,
+          salario: parseFloat(document.getElementById('mgr-salario').value) || 0,
+          ...leerDatosDireccion('mgr')
+        });
+        await showAlert(result.message, 'success', 'Gerente agregado');
+        renderPage('programador');
+      } catch (error) {
+        await showAlert(error.message, 'error', 'Error al agregar gerente');
       }
     });
   }

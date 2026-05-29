@@ -104,6 +104,62 @@ async function ensureSecurityProcedure() {
       END IF;
     END
   `);
+
+  await query('DROP PROCEDURE IF EXISTS AgregarEmpleadoPorProgramador');
+  await query(`
+    CREATE PROCEDURE AgregarEmpleadoPorProgramador(
+      IN p_UsuarioProgramador VARCHAR(50),
+      IN p_PasswordProgramador VARCHAR(100),
+      IN p_NuevoUsuario VARCHAR(50),
+      IN p_NuevoPassword VARCHAR(100),
+      IN p_NuevoRol VARCHAR(20),
+      IN p_NuevoPuesto VARCHAR(50),
+      IN p_NuevoTurno VARCHAR(20),
+      IN p_NuevoSalario DECIMAL(10,2),
+      IN p_Nombre VARCHAR(60),
+      IN p_ApellidoPaterno VARCHAR(60),
+      IN p_ApellidoMaterno VARCHAR(60),
+      IN p_Genero VARCHAR(30),
+      IN p_FechaNacimiento DATE,
+      IN p_Calle VARCHAR(100),
+      IN p_NumeroExterior VARCHAR(20),
+      IN p_NumeroInterior VARCHAR(20),
+      IN p_Colonia VARCHAR(80),
+      IN p_Ciudad VARCHAR(80),
+      IN p_Estado VARCHAR(80),
+      IN p_CodigoPostal VARCHAR(15),
+      IN p_Pais VARCHAR(80)
+    )
+    BEGIN
+      DECLARE v_es_programador INT DEFAULT 0;
+      DECLARE v_nombre_completo VARCHAR(180);
+
+      SELECT COUNT(*) INTO v_es_programador
+      FROM Empleados
+      WHERE NombreUsuario = p_UsuarioProgramador
+        AND Password = p_PasswordProgramador
+        AND Rol = 'Programador'
+        AND Activo = TRUE;
+
+      IF v_es_programador = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Acceso denegado: solo un Programador activo puede registrar gerentes.';
+      END IF;
+
+      IF p_NuevoRol NOT IN ('Gerente') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Acceso denegado: esta herramienta solo registra Gerentes.';
+      END IF;
+
+      SET v_nombre_completo = TRIM(CONCAT_WS(' ', NULLIF(p_Nombre, ''), NULLIF(p_ApellidoPaterno, ''), NULLIF(p_ApellidoMaterno, '')));
+
+      INSERT INTO Empleados
+      (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento,
+       Calle, NumeroExterior, NumeroInterior, Colonia, Ciudad, Estado, CodigoPostal, Pais)
+      VALUES
+      (p_NuevoUsuario, p_NuevoPassword, p_NuevoRol, p_NuevoPuesto, COALESCE(NULLIF(p_NuevoTurno, ''), 'Any'), COALESCE(p_NuevoSalario, 0.00),
+       NULLIF(v_nombre_completo, ''), p_Nombre, p_ApellidoPaterno, p_ApellidoMaterno, p_Genero, p_FechaNacimiento,
+       p_Calle, p_NumeroExterior, p_NumeroInterior, p_Colonia, p_Ciudad, p_Estado, p_CodigoPostal, COALESCE(NULLIF(p_Pais, ''), 'México'));
+    END
+  `);
 }
 
 function splitFullName(fullName = '') {
@@ -839,6 +895,10 @@ ipcMain.handle('login', async (event, username, password) => {
 });
 
 ipcMain.handle('registrarUsuario', async (event, data) => {
+  if (data.usuarioEjecutaRol === 'Gerente' && data.rol !== 'Empleado') {
+    throw new Error('Acceso denegado: el Gerente solo puede registrar empleados. Los gerentes se agregan desde Programador.');
+  }
+
   const nombreCompleto = data.name || buildFullName(data);
   const results = await query(
     `INSERT INTO Empleados
@@ -921,6 +981,10 @@ ipcMain.handle('registrarProveedor', async (event, data) => {
 });
 
 ipcMain.handle('modificarUsuario', async (event, data) => {
+  if (data.usuarioEjecutaRol === 'Gerente' && data.rol !== 'Empleado') {
+    throw new Error('Acceso denegado: el Gerente solo puede modificar empleados. Los gerentes se gestionan desde Programador.');
+  }
+
   const nombreCompleto = data.name || buildFullName(data);
   const result = await query(
     `UPDATE Empleados
@@ -1053,6 +1117,56 @@ ipcMain.handle('programadorCambiarPassword', async (event, payload = {}) => {
 
   await query('CALL sp_programador_cambiar_password(?, ?, ?)', [programadores[0].IdEmpleado, usuarioObjetivo, passwordNuevo]);
   return { success: true, message: `Contraseña de ${usuarioObjetivo} actualizada mediante stored procedure.` };
+});
+
+
+ipcMain.handle('programadorAgregarGerente', async (event, payload = {}) => {
+  const requiredFields = [
+    ['usernameProgramador', 'usuario del programador'],
+    ['passwordProgramador', 'contraseña del programador'],
+    ['username', 'usuario del gerente'],
+    ['password', 'contraseña del gerente'],
+    ['nombre', 'nombre(s)'],
+    ['apellidoPaterno', 'apellido paterno'],
+    ['genero', 'género'],
+    ['puesto', 'puesto']
+  ];
+
+  const missing = requiredFields
+    .filter(([key]) => !String(payload[key] || '').trim())
+    .map(([, label]) => label);
+
+  if (missing.length) {
+    throw new Error(`Completa: ${missing.join(', ')}.`);
+  }
+
+  await query(
+    `CALL AgregarEmpleadoPorProgramador(?, ?, ?, ?, 'Gerente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      payload.usernameProgramador,
+      payload.passwordProgramador,
+      payload.username,
+      payload.password,
+      payload.puesto,
+      payload.turno || 'Any',
+      payload.salario ?? 0,
+      payload.nombre,
+      payload.apellidoPaterno,
+      payload.apellidoMaterno || null,
+      payload.genero,
+      payload.fechaNacimiento || null,
+      payload.calle || null,
+      payload.numeroExterior || null,
+      payload.numeroInterior || null,
+      payload.colonia || null,
+      payload.ciudad || null,
+      payload.estado || null,
+      payload.codigoPostal || null,
+      payload.pais || 'México'
+    ]
+  );
+
+  return { success: true, message: 'Gerente registrado correctamente mediante stored procedure.' };
 });
 
 ipcMain.handle('cambiarEstadoUsuario', async (event, idEmpleado, nuevoEstado) => {

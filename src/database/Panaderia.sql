@@ -290,3 +290,59 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
+
+DROP PROCEDURE IF EXISTS AgregarEmpleadoPorProgramador;
+DELIMITER //
+CREATE PROCEDURE AgregarEmpleadoPorProgramador(
+    IN p_UsuarioProgramador VARCHAR(50),
+    IN p_PasswordProgramador VARCHAR(100),
+    IN p_NuevoUsuario VARCHAR(50),
+    IN p_NuevoPassword VARCHAR(100),
+    IN p_NuevoRol VARCHAR(20),
+    IN p_NuevoPuesto VARCHAR(50),
+    IN p_NuevoTurno VARCHAR(20),
+    IN p_NuevoSalario DECIMAL(10,2),
+    IN p_Nombre VARCHAR(60),
+    IN p_ApellidoPaterno VARCHAR(60),
+    IN p_ApellidoMaterno VARCHAR(60),
+    IN p_Genero VARCHAR(30),
+    IN p_FechaNacimiento DATE,
+    IN p_Calle VARCHAR(100),
+    IN p_NumeroExterior VARCHAR(20),
+    IN p_NumeroInterior VARCHAR(20),
+    IN p_Colonia VARCHAR(80),
+    IN p_Ciudad VARCHAR(80),
+    IN p_Estado VARCHAR(80),
+    IN p_CodigoPostal VARCHAR(15),
+    IN p_Pais VARCHAR(80)
+)
+BEGIN
+    DECLARE v_es_programador INT DEFAULT 0;
+    DECLARE v_nombre_completo VARCHAR(180);
+
+    SELECT COUNT(*) INTO v_es_programador
+    FROM Empleados
+    WHERE NombreUsuario = p_UsuarioProgramador
+      AND Password = p_PasswordProgramador
+      AND Rol = 'Programador'
+      AND Activo = TRUE;
+
+    IF v_es_programador = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Acceso denegado: solo un Programador activo puede registrar gerentes.';
+    END IF;
+
+    IF p_NuevoRol NOT IN ('Gerente') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Acceso denegado: esta herramienta solo registra Gerentes.';
+    END IF;
+
+    SET v_nombre_completo = TRIM(CONCAT_WS(' ', NULLIF(p_Nombre, ''), NULLIF(p_ApellidoPaterno, ''), NULLIF(p_ApellidoMaterno, '')));
+
+    INSERT INTO Empleados
+    (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, ApellidoMaterno, Genero, FechaNacimiento,
+     Calle, NumeroExterior, NumeroInterior, Colonia, Ciudad, Estado, CodigoPostal, Pais)
+    VALUES
+    (p_NuevoUsuario, p_NuevoPassword, p_NuevoRol, p_NuevoPuesto, COALESCE(NULLIF(p_NuevoTurno, ''), 'Any'), COALESCE(p_NuevoSalario, 0.00),
+     NULLIF(v_nombre_completo, ''), p_Nombre, p_ApellidoPaterno, p_ApellidoMaterno, p_Genero, p_FechaNacimiento,
+     p_Calle, p_NumeroExterior, p_NumeroInterior, p_Colonia, p_Ciudad, p_Estado, p_CodigoPostal, COALESCE(NULLIF(p_Pais, ''), 'México'));
+END //
+DELIMITER ;

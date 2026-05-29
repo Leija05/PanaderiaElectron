@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   getClientes: () => ipcRenderer.invoke('getClientes'),
   getProveedores: () => ipcRenderer.invoke('getProveedores'),
   programadorCambiarPassword: (payload) => ipcRenderer.invoke('programadorCambiarPassword', payload),
+  programadorAgregarGerente: (payload) => ipcRenderer.invoke('programadorAgregarGerente', payload),
   getProductos: () => ipcRenderer.invoke('getProductos'),
   getVentas: () => ipcRenderer.invoke('getVentas'),
   getDetallesVenta: (idVenta) => ipcRenderer.invoke('getDetallesVenta', idVenta),
