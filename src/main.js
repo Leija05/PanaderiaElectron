@@ -985,6 +985,10 @@ ipcMain.handle('modificarUsuario', async (event, data) => {
     throw new Error('Acceso denegado: el Gerente solo puede modificar empleados. Los gerentes se gestionan desde Programador.');
   }
 
+  if (data.usuarioEjecutaRol === 'Programador' && !['Empleado', 'Gerente'].includes(data.rol)) {
+    throw new Error('Acceso denegado: el Programador solo puede modificar usuarios con rol Empleado o Gerente desde esta herramienta.');
+  }
+
   const nombreCompleto = data.name || buildFullName(data);
   const result = await query(
     `UPDATE Empleados

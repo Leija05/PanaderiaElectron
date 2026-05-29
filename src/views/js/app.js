@@ -291,7 +291,7 @@ function guardarUltimaVista(page) {
 function obtenerUltimaVistaPorRol() {
   if (esVistaCliente()) return 'compras';
 
-  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : usuarioActual?.Rol === 'Programador' ? 'programador' : 'personal';
+  const fallback = usuarioActual?.Rol === 'Empleado' ? 'ventas' : usuarioActual?.Rol === 'Programador' ? 'programador-password' : 'personal';
   const guardada = localStorage.getItem(APP_STORAGE_KEYS.ultimaVista);
 
   if (!guardada) return fallback;
@@ -299,7 +299,7 @@ function obtenerUltimaVistaPorRol() {
   const paginasPermitidas = usuarioActual?.Rol === 'Empleado'
     ? ['ventas']
     : usuarioActual?.Rol === 'Programador'
-      ? ['programador']
+      ? ['programador-password', 'programador-gerentes', 'programador-usuarios']
       : ['personal', 'clientes', 'proveedores', 'inventario', 'registroVenta', 'reportes'];
 
   return paginasPermitidas.includes(guardada) ? guardada : fallback;
@@ -815,7 +815,9 @@ function renderDashboard(updateStatus = null) {
       <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else if (usuarioActual.Rol === 'Programador') {
     navbar = `
-      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador"><i class="fas fa-code" aria-hidden="true"></i><span>Programador</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-password"><i class="fas fa-key" aria-hidden="true"></i><span>Cambiar contraseñas</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-gerentes"><i class="fas fa-user-tie" aria-hidden="true"></i><span>Agregar gerentes</span></a>
+      <a href="#" class="nav-link" role="tab" aria-selected="false" data-page="programador-usuarios"><i class="fas fa-users-gear" aria-hidden="true"></i><span>Modificar usuarios</span></a>
       <a href="#" class="nav-link nav-link-logout" id="logout-btn"><i class="fas fa-right-from-bracket" aria-hidden="true"></i><span>Cerrar sesión</span></a>`;
   } else {
     navbar = `<a href="#" class="nav-link" role="tab" aria-selected="false" data-page="compras"><i class="fas fa-basket-shopping" aria-hidden="true"></i><span>Comprar</span></a>`;
@@ -1425,7 +1427,9 @@ function showUpdateForm(usuarioAModificar) {
   usuarioActual.rol = 'Gerente'
   const opcionesRolEdicion = usuarioActual.Rol === 'Gerente'
     ? '<option value="Empleado">Empleado</option>'
-    : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
+    : usuarioActual.Rol === 'Programador'
+      ? '<option value="Empleado">Empleado</option><option value="Gerente">Gerente</option>'
+      : '<option value="Cliente">Cliente</option><option value="Empleado">Empleado</option><option value="Gerente">Gerente</option><option value="Programador">Programador</option>';
   appContainer.innerHTML = `
     <div class="register-container card">
         <h2><i class="fas fa-user-plus icon"></i> Modificar Usuario</h2>
@@ -1552,6 +1556,9 @@ function showUpdateForm(usuarioAModificar) {
 }
 // =============== PÁGINAS ==================
 async function renderPage(page) {
+  if (page === 'programador' && usuarioActual?.Rol === 'Programador') {
+    page = 'programador-password';
+  }
   guardarUltimaVista(page);
   const content = document.getElementById('content-area');
   document.querySelectorAll('.nav-link[data-page]').forEach((link) => {
@@ -2003,160 +2010,297 @@ async function renderPage(page) {
   }
 
   // =============== PROGRAMADOR ==================
-  if (page === 'programador') {
-    content.innerHTML = `
-      <div class="card">
-        <h2>Herramientas exclusivas del Programador</h2>
-        <p>Estas acciones vuelven a validar el usuario y contraseña del programador antes de ejecutar stored procedures.</p>
-      </div>
+  if (['programador-password', 'programador-gerentes', 'programador-usuarios'].includes(page)) {
+    const empleados = page === 'programador-usuarios' ? await window.api.getEmpleados() : [];
+    const usuariosEditables = empleados.filter((empleado) => ['Empleado', 'Gerente'].includes(empleado.Rol));
+    const totalGerentes = usuariosEditables.filter((empleado) => empleado.Rol === 'Gerente').length;
+    const totalEmpleados = usuariosEditables.filter((empleado) => empleado.Rol === 'Empleado').length;
 
-      <div class="card">
-        <h3><i class="fas fa-key"></i> Categoría: cambiar contraseñas</h3>
-        <p>Ejecuta <code>sp_programador_cambiar_password</code> para cambiar la contraseña de un usuario registrado.</p>
-        <form id="programador-password-form" class="register-container">
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="prog-usuario">Usuario programador:</label>
-              <input type="text" id="prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
-            </div>
-            <div class="form-group">
-              <label for="prog-password">Contraseña programador:</label>
-              <input type="password" id="prog-password" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="target-usuario">Usuario registrado a modificar:</label>
-              <input type="text" id="target-usuario" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="target-password">Nueva contraseña:</label>
-              <input type="password" id="target-password" class="form-control" required>
-            </div>
-          </div>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Cambiar contraseña con stored procedure</button>
-        </form>
-      </div>
-
-      <div class="card">
-        <h3><i class="fas fa-user-tie"></i> Categoría: agregar Gerentes</h3>
-        <p>Solo el rol Programador puede crear gerentes. El formulario no pide nombre completo: captura nombre(s), apellido paterno y apellido materno por separado.</p>
-        <form id="programador-gerente-form" class="register-container">
-          <h4>Confirmación del programador</h4>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="mgr-prog-usuario">Usuario programador:</label>
-              <input type="text" id="mgr-prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
-            </div>
-            <div class="form-group">
-              <label for="mgr-prog-password">Contraseña programador:</label>
-              <input type="password" id="mgr-prog-password" class="form-control" required>
-            </div>
-          </div>
-
-          <h4>Datos separados del gerente</h4>
-          ${crearCamposNombre('mgr', {}, true)}
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="mgr-genero">Género:</label>
-              <select id="mgr-genero" class="form-control" required>${opcionesGenero('')}</select>
-            </div>
-            <div class="form-group">
-              <label for="mgr-fecha-nacimiento">Fecha de nacimiento:</label>
-              <input type="date" id="mgr-fecha-nacimiento" class="form-control">
-            </div>
-          </div>
-
-          <h4>Cuenta y puesto</h4>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="mgr-username">Usuario del gerente:</label>
-              <input type="text" id="mgr-username" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="mgr-password">Contraseña del gerente:</label>
-              <input type="password" id="mgr-password" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="mgr-confirm-password">Confirmar contraseña:</label>
-              <input type="password" id="mgr-confirm-password" class="form-control" required>
-            </div>
-            <div class="form-group">
-              <label for="mgr-puesto">Puesto:</label>
-              <input type="text" id="mgr-puesto" class="form-control" value="Gerente" required>
-            </div>
-            <div class="form-group">
-              <label for="mgr-turno">Turno:</label>
-              <select id="mgr-turno" class="form-control">
-                <option value="Any">Any</option>
-                <option value="Matutino">Matutino</option>
-                <option value="Vespertino">Vespertino</option>
-                <option value="Nocturno">Nocturno</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="mgr-salario">Salario:</label>
-              <input type="number" id="mgr-salario" class="form-control" step="0.01" min="0" value="0">
-            </div>
-          </div>
-
-          <h4>Dirección separada</h4>
-          ${crearCamposDireccion('mgr')}
-          <button type="submit" class="btn btn-success"><i class="fas fa-user-plus"></i> Agregar gerente con stored procedure</button>
-        </form>
+    const renderProgramadorHero = (titulo, descripcion, icono) => `
+      <div class="programador-hero">
+        <div class="programador-hero-icon"><i class="fas ${icono}"></i></div>
+        <div>
+          <p class="programador-eyebrow">Panel exclusivo</p>
+          <h2>${titulo}</h2>
+          <p>${descripcion}</p>
+        </div>
       </div>`;
 
-    document.getElementById('programador-password-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      try {
-        const result = await window.api.programadorCambiarPassword({
-          usernameProgramador: document.getElementById('prog-usuario').value.trim(),
-          passwordProgramador: document.getElementById('prog-password').value,
-          usuarioObjetivo: document.getElementById('target-usuario').value.trim(),
-          passwordNuevo: document.getElementById('target-password').value
+    if (page === 'programador-password') {
+      content.innerHTML = `
+        ${renderProgramadorHero('Cambiar contraseñas', 'Revalida las credenciales del programador y ejecuta el stored procedure para actualizar contraseñas de usuarios registrados.', 'fa-key')}
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-database"></i> Stored procedure de seguridad</h3>
+              <p>Ejecuta <code>sp_programador_cambiar_password</code> sin exponer esta acción a otros roles.</p>
+            </div>
+            <span class="programador-badge">Programador</span>
+          </div>
+          <form id="programador-password-form" class="programador-form">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="prog-usuario">Usuario programador:</label>
+                <input type="text" id="prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+              </div>
+              <div class="form-group">
+                <label for="prog-password">Contraseña programador:</label>
+                <input type="password" id="prog-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="target-usuario">Usuario registrado a modificar:</label>
+                <input type="text" id="target-usuario" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="target-password">Nueva contraseña:</label>
+                <input type="password" id="target-password" class="form-control" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary programador-submit"><i class="fas fa-key"></i> Cambiar contraseña con stored procedure</button>
+          </form>
+        </div>`;
+
+      document.getElementById('programador-password-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const result = await window.api.programadorCambiarPassword({
+            usernameProgramador: document.getElementById('prog-usuario').value.trim(),
+            passwordProgramador: document.getElementById('prog-password').value,
+            usuarioObjetivo: document.getElementById('target-usuario').value.trim(),
+            passwordNuevo: document.getElementById('target-password').value
+          });
+          await showAlert(result.message, 'success', 'Stored procedure ejecutado');
+          document.getElementById('prog-password').value = '';
+          document.getElementById('target-password').value = '';
+        } catch (error) {
+          await showAlert(error.message, 'error', 'Error del stored procedure');
+        }
+      });
+    }
+
+    if (page === 'programador-gerentes') {
+      content.innerHTML = `
+        ${renderProgramadorHero('Agregar Gerentes', 'Crea gerentes desde una categoría separada, confirmando usuario y contraseña del programador antes del alta.', 'fa-user-tie')}
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-user-plus"></i> Alta de gerente</h3>
+              <p>No se captura nombre completo: se guardan nombre(s), apellido paterno y apellido materno por separado.</p>
+            </div>
+            <span class="programador-badge">Solo gerentes</span>
+          </div>
+          <form id="programador-gerente-form" class="programador-form">
+            <div class="programador-section-title"><i class="fas fa-shield-halved"></i> Confirmación del programador</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-prog-usuario">Usuario programador:</label>
+                <input type="text" id="mgr-prog-usuario" class="form-control" value="${usuarioActual.NombreUsuario || ''}" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-prog-password">Contraseña programador:</label>
+                <input type="password" id="mgr-prog-password" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-id-card"></i> Datos separados del gerente</div>
+            ${crearCamposNombre('mgr', {}, true)}
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-genero">Género:</label>
+                <select id="mgr-genero" class="form-control" required>${opcionesGenero('')}</select>
+              </div>
+              <div class="form-group">
+                <label for="mgr-fecha-nacimiento">Fecha de nacimiento:</label>
+                <input type="date" id="mgr-fecha-nacimiento" class="form-control">
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-user-lock"></i> Cuenta y puesto</div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="mgr-username">Usuario del gerente:</label>
+                <input type="text" id="mgr-username" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-password">Contraseña del gerente:</label>
+                <input type="password" id="mgr-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-confirm-password">Confirmar contraseña:</label>
+                <input type="password" id="mgr-confirm-password" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-puesto">Puesto:</label>
+                <input type="text" id="mgr-puesto" class="form-control" value="Gerente" required>
+              </div>
+              <div class="form-group">
+                <label for="mgr-turno">Turno:</label>
+                <select id="mgr-turno" class="form-control">
+                  <option value="Any">Any</option>
+                  <option value="Matutino">Matutino</option>
+                  <option value="Vespertino">Vespertino</option>
+                  <option value="Nocturno">Nocturno</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mgr-salario">Salario:</label>
+                <input type="number" id="mgr-salario" class="form-control" step="0.01" min="0" value="0">
+              </div>
+            </div>
+
+            <div class="programador-section-title"><i class="fas fa-location-dot"></i> Dirección separada</div>
+            ${crearCamposDireccion('mgr')}
+            <button type="submit" class="btn btn-success programador-submit"><i class="fas fa-user-plus"></i> Agregar gerente con stored procedure</button>
+          </form>
+        </div>`;
+
+      document.getElementById('programador-gerente-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const nombres = leerDatosNombre('mgr');
+        const password = document.getElementById('mgr-password').value;
+        const confirm = document.getElementById('mgr-confirm-password').value;
+
+        if (password !== confirm) {
+          await showAlert('Las contraseñas del gerente no coinciden.', 'warning', 'Validación');
+          return;
+        }
+
+        if (!nombres.nombre || !nombres.apellidoPaterno) {
+          await showAlert('Captura al menos nombre(s) y apellido paterno del gerente.', 'warning', 'Validación');
+          return;
+        }
+
+        try {
+          const result = await window.api.programadorAgregarGerente({
+            usernameProgramador: document.getElementById('mgr-prog-usuario').value.trim(),
+            passwordProgramador: document.getElementById('mgr-prog-password').value,
+            username: document.getElementById('mgr-username').value.trim(),
+            password,
+            ...nombres,
+            genero: document.getElementById('mgr-genero').value,
+            fechaNacimiento: document.getElementById('mgr-fecha-nacimiento').value || null,
+            puesto: document.getElementById('mgr-puesto').value.trim(),
+            turno: document.getElementById('mgr-turno').value,
+            salario: parseFloat(document.getElementById('mgr-salario').value) || 0,
+            ...leerDatosDireccion('mgr')
+          });
+          await showAlert(result.message, 'success', 'Gerente agregado');
+          renderPage('programador-gerentes');
+        } catch (error) {
+          await showAlert(error.message, 'error', 'Error al agregar gerente');
+        }
+      });
+    }
+
+    if (page === 'programador-usuarios') {
+      const rows = usuariosEditables.map((empleado, index) => {
+        const estaActivo = empleado.Activo !== undefined ? empleado.Activo : true;
+        const claseFila = estaActivo ? '' : 'empleado-desactivado';
+        const indicadorEstado = estaActivo ? iconHTML('success') : iconHTML('error');
+        const direccion = [empleado.Calle, empleado.NumeroExterior, empleado.Colonia, empleado.Ciudad].filter(Boolean).join(', ') || empleado.Direccion || 'No especificada';
+        return `
+          <tr data-index="${index}" class="${claseFila}">
+            <td>${empleado.IdEmpleado || 'N/A'}</td>
+            <td>${indicadorEstado} ${empleado.NombreUsuario || 'No especificado'}</td>
+            <td><span class="programador-role-pill ${empleado.Rol === 'Gerente' ? 'is-manager' : ''}">${empleado.Rol}</span></td>
+            <td>${empleado.Nombre || 'No especificado'}</td>
+            <td>${empleado.ApellidoPaterno || 'No especificado'}</td>
+            <td>${empleado.ApellidoMaterno || 'No especificado'}</td>
+            <td>${empleado.Genero || 'No especificado'}</td>
+            <td>${direccion}</td>
+            <td>${empleado.Puesto || 'No especificado'}</td>
+            <td>${empleado.Turno || 'No especificado'}</td>
+            <td>$${empleado.Salario ? parseFloat(empleado.Salario).toFixed(2) : '0.00'}</td>
+          </tr>`;
+      }).join('') || '<tr><td colspan="11">No hay empleados o gerentes registrados.</td></tr>';
+
+      content.innerHTML = `
+        ${renderProgramadorHero('Modificar usuarios', 'El programador puede modificar usuarios con rol Gerente o Empleado desde una categoría propia del sidebar.', 'fa-users-gear')}
+        <div class="programador-stats-grid">
+          <div class="programador-stat-card"><span>${usuariosEditables.length}</span><small>Usuarios editables</small></div>
+          <div class="programador-stat-card"><span>${totalGerentes}</span><small>Gerentes</small></div>
+          <div class="programador-stat-card"><span>${totalEmpleados}</span><small>Empleados</small></div>
+        </div>
+        <div class="programador-tool-card">
+          <div class="programador-card-header">
+            <div>
+              <h3><i class="fas fa-pen-to-square"></i> Selecciona un usuario</h3>
+              <p>Filtra la lista, selecciona un gerente o empleado y usa el botón para modificar sus datos separados.</p>
+            </div>
+            <button id="programador-modificar-usuario" class="btn btn-primary" disabled><i class="fas fa-pen"></i> Modificar seleccionado</button>
+          </div>
+          <div class="filter-toolbar">
+            <input type="text" id="filtroProgramadorUsuarios" class="form-control" placeholder="Buscar por usuario, nombre, rol, puesto o turno...">
+            <span id="resumenProgramadorUsuarios" class="filter-summary"></span>
+          </div>
+          <table class="table programador-users-table" id="tablaProgramadorUsuarios">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Nombre(s)</th>
+                <th>Apellido paterno</th>
+                <th>Apellido materno</th>
+                <th>Género</th>
+                <th>Dirección</th>
+                <th>Puesto</th>
+                <th>Turno</th>
+                <th>Salario</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+
+      const tabla = document.getElementById('tablaProgramadorUsuarios');
+      const filtro = document.getElementById('filtroProgramadorUsuarios');
+      const resumen = document.getElementById('resumenProgramadorUsuarios');
+      const botonModificar = document.getElementById('programador-modificar-usuario');
+      let seleccionado = null;
+
+      function actualizarResumen() {
+        const visibles = Array.from(tabla.querySelectorAll('tbody tr')).filter((fila) => fila.style.display !== 'none').length;
+        resumen.textContent = `${visibles} de ${usuariosEditables.length} usuarios visibles`;
+      }
+
+      filtro.addEventListener('input', (event) => {
+        const texto = event.target.value.trim().toLowerCase();
+        tabla.querySelectorAll('tbody tr').forEach((fila) => {
+          fila.style.display = fila.textContent.toLowerCase().includes(texto) ? '' : 'none';
         });
-        await showAlert(result.message, 'success', 'Stored procedure ejecutado');
-        document.getElementById('prog-password').value = '';
-        document.getElementById('target-password').value = '';
-      } catch (error) {
-        await showAlert(error.message, 'error', 'Error del stored procedure');
-      }
-    });
+        actualizarResumen();
+      });
 
-    document.getElementById('programador-gerente-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const nombres = leerDatosNombre('mgr');
-      const password = document.getElementById('mgr-password').value;
-      const confirm = document.getElementById('mgr-confirm-password').value;
+      tabla.addEventListener('click', (event) => {
+        const fila = event.target.closest('tr[data-index]');
+        if (!fila) return;
+        tabla.querySelectorAll('.fila-seleccionada').forEach((row) => row.classList.remove('fila-seleccionada'));
+        fila.classList.add('fila-seleccionada');
+        seleccionado = usuariosEditables[Number(fila.dataset.index)];
+        botonModificar.disabled = false;
+      });
 
-      if (password !== confirm) {
-        await showAlert('Las contraseñas del gerente no coinciden.', 'warning', 'Validación');
-        return;
-      }
+      botonModificar.addEventListener('click', async () => {
+        if (!seleccionado) {
+          await showAlert('Selecciona un gerente o empleado para modificar.', 'warning', 'Modificar usuario');
+          return;
+        }
+        const usuarioAModificar = [
+          seleccionado.IdEmpleado,
+          seleccionado.NombreUsuario,
+          seleccionado.NombreCompleto,
+          seleccionado.Rol,
+          seleccionado.Puesto,
+          seleccionado.Turno,
+          seleccionado.Salario
+        ];
+        usuarioAModificar.__raw = seleccionado;
+        showUpdateForm(usuarioAModificar);
+      });
 
-      if (!nombres.nombre || !nombres.apellidoPaterno) {
-        await showAlert('Captura al menos nombre(s) y apellido paterno del gerente.', 'warning', 'Validación');
-        return;
-      }
-
-      try {
-        const result = await window.api.programadorAgregarGerente({
-          usernameProgramador: document.getElementById('mgr-prog-usuario').value.trim(),
-          passwordProgramador: document.getElementById('mgr-prog-password').value,
-          username: document.getElementById('mgr-username').value.trim(),
-          password,
-          ...nombres,
-          genero: document.getElementById('mgr-genero').value,
-          fechaNacimiento: document.getElementById('mgr-fecha-nacimiento').value || null,
-          puesto: document.getElementById('mgr-puesto').value.trim(),
-          turno: document.getElementById('mgr-turno').value,
-          salario: parseFloat(document.getElementById('mgr-salario').value) || 0,
-          ...leerDatosDireccion('mgr')
-        });
-        await showAlert(result.message, 'success', 'Gerente agregado');
-        renderPage('programador');
-      } catch (error) {
-        await showAlert(error.message, 'error', 'Error al agregar gerente');
-      }
-    });
+      actualizarResumen();
+    }
   }
 
   // =============== PROVEEDORES ==================
