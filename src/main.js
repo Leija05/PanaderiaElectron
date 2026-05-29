@@ -624,9 +624,17 @@ ipcMain.handle('login', async (event, username, password) => {
 ipcMain.handle('registrarUsuario', async (event, data) => {
   const results = await query(
     `INSERT INTO Empleados
-     (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, FechaRegistro)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [data.username, data.password, data.rol, data.puesto, data.turno, data.salario, data.name, new Date()]
+    (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.username,
+      data.password,
+      data.rol,
+      data.puesto || null,
+      data.turno || null,
+      data.salario ?? null,
+      data.name || null
+    ]
   );
   return { id: results.insertId };
 });
