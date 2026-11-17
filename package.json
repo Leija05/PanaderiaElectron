@@ -1,14 +1,16 @@
 {
   "name": "dulcehorno",
   "productName": "DulceHorno",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Punto de Venta Panaderia",
   "main": "src/main.js",
   "scripts": {
+    "build:ui": "node scripts/build.js",
+    "prestart": "npm run build:ui",
     "start": "electron .",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean",
-    "predist": "npm run clean",
+    "prebuild": "npm run clean && npm run build:ui",
+    "predist": "npm run clean && npm run build:ui",
     "build": "electron-builder",
     "dist": "electron-builder --publish always"
   },
@@ -40,7 +42,10 @@
   "dependencies": {
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
+    "esbuild": "^0.28.2",
     "mysql": "^2.18.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "sqlite3": "^5.1.7"
   },
   "repository": {

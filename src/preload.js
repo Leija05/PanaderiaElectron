@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   modificarUsuario: (data) => ipcRenderer.invoke('modificarUsuario', data),
   deleteUsuario: (idEmpleado) => ipcRenderer.invoke('deleteUsuario', idEmpleado),
   cambiarEstadoUsuario: (idEmpleado, nuevoEstado) => ipcRenderer.invoke('cambiarEstadoUsuario', idEmpleado, nuevoEstado),
-  cambiarEstadoProveedor: (idProveedor, nuevoEstado) => ipcRenderer.invoke('cambiarEstadoUsuario', idProveedor, nuevoEstado),
+  cambiarEstadoProveedor: (idProveedor, nuevoEstado) => ipcRenderer.invoke('cambiarEstadoProveedor', idProveedor, nuevoEstado),
   registrarVenta: (ventaData) => ipcRenderer.invoke('registrarVenta', ventaData),
   registrarProducto: (data) => ipcRenderer.invoke('registrarProducto', data),
   registrarProveedor: (data) => ipcRenderer.invoke('registrarProveedor', data),

@@ -1,5 +1,123 @@
+# ==============================================================================
+# Panadería Dulce Horno - Git Ignore (Producción)
+# ==============================================================================
+
+# Dependencias y Gestores de Paquetes
 node_modules/
-dist/
-.env
 package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Carpetas de Agentes IA y Asistentes
+.agents/
+.agent/
+.claude/
+.gemini/
+.cursor/
+agent-brain/
+
+# Mapas de Compilación (Source Maps)
+*.map
+*.js.map
+*.css.map
+src/views/bundle.js.map
+# (Descomenta la siguiente línea si deseas ignorar también el bundle generado en lugar de subirlo)
+# src/views/bundle.js
+
+# Compilación y Empaquetado Electron (electron-builder)
+dist/
+build/
+out/
+release/
+*.exe
+*.msi
+*.zip
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.blockmap
+latest*.yml
+builder-debug.yml
+builder-effective-config.yaml
+
+# Variables de Entorno, Certificados y Claves
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.key
+*.pem
+*.cert
+*.crt
+*.pfx
+*.p12
+
+# Logs y Depuración
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+electron-debug.log*
+
+# Temporales, Caché y Scratch
+.cache/
+.tmp/
+tmp/
+temp/
+*.tmp
+scratch/
+.turbo/
+.parcel-cache/
+.eslintcache/
+
+# Archivos del Sistema Operativo
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+Desktop.ini
+$RECYCLE.BIN/
+.git/*.lock
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.directory
+.fuse_hidden*
+.nfs*
+
+# Editores e IDEs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# Bases de Datos Locales Temporales y Respaldos
+*.sqlite-journal
+*.sqlite3-journal
+*.db-journal
+*.sql.bak
+*.bak
