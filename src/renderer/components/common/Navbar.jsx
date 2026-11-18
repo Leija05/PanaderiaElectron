@@ -11,7 +11,6 @@ import {
   UserIcon,
   TruckIcon,
   CutIcon,
-  CodeIcon,
   SunIcon,
   MoonIcon,
   LogoutIcon,
@@ -35,7 +34,8 @@ export const Navbar = ({ currentPage, onNavigate, onOpenSettings }) => {
     navItems.push({ id: 'reportes', label: 'Reportes', icon: <ChartIcon /> });
     navItems.push({ id: 'clientes', label: 'Clientes', icon: <UserIcon /> });
     navItems.push({ id: 'cortes', label: 'Corte de Caja', icon: <CutIcon /> });
-  } else if (role === 'Gerente') {
+  } else {
+    // Gerente y Administración
     navItems.push({ id: 'ventas', label: 'Caja POS', icon: <PosIcon /> });
     navItems.push({ id: 'inventario', label: 'Inventario', icon: <BoxIcon /> });
     navItems.push({ id: 'reportes', label: 'Reportes', icon: <ChartIcon /> });
@@ -43,12 +43,6 @@ export const Navbar = ({ currentPage, onNavigate, onOpenSettings }) => {
     navItems.push({ id: 'clientes', label: 'Clientes', icon: <UserIcon /> });
     navItems.push({ id: 'proveedores', label: 'Proveedores', icon: <TruckIcon /> });
     navItems.push({ id: 'cortes', label: 'Cortes', icon: <CutIcon /> });
-  } else if (role === 'Programador') {
-    navItems.push({ id: 'programador', label: 'Herramientas SP', icon: <CodeIcon /> });
-    navItems.push({ id: 'ventas', label: 'Probar Caja', icon: <PosIcon /> });
-    navItems.push({ id: 'inventario', label: 'Inventario', icon: <BoxIcon /> });
-    navItems.push({ id: 'reportes', label: 'Reportes', icon: <ChartIcon /> });
-    navItems.push({ id: 'personal', label: 'Personal', icon: <UsersIcon /> });
   }
 
   const userInitial = (user?.NombreCompleto || user?.NombreUsuario || 'U').charAt(0).toUpperCase();

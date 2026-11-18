@@ -23,6 +23,8 @@ async function run() {
   try {
     const inicio = new Date(Date.now() - 3600000 * 8); // Hace 8 horas
     const fin = new Date();
+    const empRows = await db.query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Empleado' LIMIT 1");
+    const idCajero = empRows.length ? empRows[0].IdEmpleado : gerente.IdEmpleado;
 
     const corteRes = await db.query(
       `INSERT INTO CortesTurno
@@ -30,7 +32,7 @@ async function run() {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         'CajaEmpleado',
-        58,
+        idCajero,
         inicio,
         fin,
         12,

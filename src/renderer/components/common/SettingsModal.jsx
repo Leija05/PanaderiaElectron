@@ -21,7 +21,13 @@ import {
   DownloadIcon
 } from './Icons';
 
-export const SettingsModal = ({ isOpen, onClose }) => {
+export const SettingsModal = ({
+  isOpen,
+  onClose,
+  onCheckUpdates,
+  onSimulateUpdate,
+  updateStatus
+}) => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -39,19 +45,25 @@ export const SettingsModal = ({ isOpen, onClose }) => {
   } = useSettings();
 
   const role = user?.Rol || 'Empleado';
-  const isGerente = role === 'Gerente' || role === 'Programador';
-  const isProgramador = role === 'Programador';
+  const isGerente = role === 'Gerente' || role === 'Programador' || role === 'Administrador';
 
-  const [activeTab, setActiveTab] = useState('perfil'); // 'perfil' | 'tienda' | 'sistema'
+  const [activeTab, setActiveTab] = useState('perfil'); // 'perfil' | 'tienda' | 'remoto'
+
+  // Entorno de desarrollo vs empaquetado
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && window.api && typeof window.api.getAppInfo === 'function') {
+      window.api.getAppInfo().then((info) => {
+        if (info && typeof info.isDev === 'boolean') {
+          setIsDev(info.isDev);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen]);
 
   // Form states locales para Tienda
   const [storeForm, setStoreForm] = useState({ ...globalSettings });
-  // Form states locales para Dev
-  const [devForm, setDevForm] = useState({ ...devSettings });
-
-  // Estado para prueba de ping de base de datos
-  const [dbPingStatus, setDbPingStatus] = useState(null); // { latency: number, ok: boolean, timestamp: string }
-  const [isPinging, setIsPinging] = useState(false);
 
   // Estado para importar JSON
   const [jsonInput, setJsonInput] = useState('');
@@ -68,6 +80,64 @@ export const SettingsModal = ({ isOpen, onClose }) => {
         .catch(() => {});
     }
   }, [isOpen]);
+
+  // Soporte Remoto & Enlace al Hub Central
+  const [remoteStatus, setRemoteStatus] = useState(null);
+  const [remoteBranchName, setRemoteBranchName] = useState('');
+  const [remoteRelayUrl, setRemoteRelayUrl] = useState('');
+  const [remoteEnabled, setRemoteEnabled] = useState(true);
+  const [remoteSessionPin, setRemoteSessionPin] = useState('');
+  const [savingRemote, setSavingRemote] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && window.api && typeof window.api.getRemoteSupportStatus === 'function') {
+      window.api.getRemoteSupportStatus().then((info) => {
+        if (info) {
+          setRemoteStatus(info);
+          setRemoteBranchName(info.branchName || '');
+          setRemoteRelayUrl(info.relayUrl || '');
+          setRemoteEnabled(Boolean(info.enabled));
+          setRemoteSessionPin(info.sessionPin || '');
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, activeTab]);
+
+  const handleSaveRemoteConfig = async (e) => {
+    if (e) e.preventDefault();
+    if (!window.api || typeof window.api.updateRemoteSupportConfig !== 'function') return;
+    setSavingRemote(true);
+    try {
+      const updated = await window.api.updateRemoteSupportConfig({
+        branchName: remoteBranchName.trim() || 'Panadería Dulce Horno - Sucursal',
+        relayUrl: remoteRelayUrl.trim() || 'ws://127.0.0.1:4800',
+        enabled: remoteEnabled
+      });
+      setRemoteStatus(updated);
+      showToast('Parámetros de soporte remoto actualizados exitosamente', 'success');
+    } catch (err) {
+      showToast('Error guardando configuración remota: ' + err.message, 'error');
+    } finally {
+      setSavingRemote(false);
+    }
+  };
+
+  const handleRegeneratePin = async () => {
+    if (!window.api || typeof window.api.regenerateSessionPin !== 'function') return;
+    try {
+      const newPin = await window.api.regenerateSessionPin();
+      setRemoteSessionPin(newPin);
+      showToast(`Nuevo PIN de soporte generado: ${newPin}`, 'success');
+    } catch (err) {
+      showToast('Error generando PIN: ' + err.message, 'error');
+    }
+  };
+
+  const handleCopyPin = () => {
+    if (!remoteSessionPin) return;
+    navigator.clipboard.writeText(remoteSessionPin);
+    showToast(`PIN "${remoteSessionPin}" copiado. Proporciónalo a tu técnico para soporte.`, 'success');
+  };
 
   const handleToggleAutostart = async (enable) => {
     if (!isGerente) {
@@ -118,48 +188,6 @@ export const SettingsModal = ({ isOpen, onClose }) => {
       showToast('Parámetros de tienda guardados con éxito', 'success');
     } catch (err) {
       showToast(err.message, 'error');
-    }
-  };
-
-  const handleSaveDev = (e) => {
-    e.preventDefault();
-    try {
-      updateDevSettings({
-        modoDebug: Boolean(devForm.modoDebug),
-        mostrarLogsIPC: Boolean(devForm.mostrarLogsIPC),
-        simularModoOffline: Boolean(devForm.simularModoOffline),
-        autoAbrirDevTools: Boolean(devForm.autoAbrirDevTools),
-        tasaRefrescoMs: Number(devForm.tasaRefrescoMs) || 5000
-      });
-      showToast('Configuraciones técnicas actualizadas', 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const handlePingDatabase = async () => {
-    try {
-      setIsPinging(true);
-      const start = performance.now();
-      await window.api.getProductos();
-      const end = performance.now();
-      const latency = Math.round(end - start);
-      setDbPingStatus({
-        latency,
-        ok: true,
-        timestamp: new Date().toLocaleTimeString('es-MX')
-      });
-      showToast(`Ping a MySQL exitoso: ${latency}ms`, 'success');
-    } catch (err) {
-      setDbPingStatus({
-        latency: 0,
-        ok: false,
-        error: err.message,
-        timestamp: new Date().toLocaleTimeString('es-MX')
-      });
-      showToast('Error de comunicación con MySQL: ' + err.message, 'error');
-    } finally {
-      setIsPinging(false);
     }
   };
 
@@ -229,16 +257,15 @@ export const SettingsModal = ({ isOpen, onClose }) => {
           </span>
         </button>
 
-        <button
-          className={`tab-btn ${activeTab === 'sistema' ? 'active' : ''}`}
-          onClick={() => setActiveTab('sistema')}
-        >
-          <CodeIcon style={{ width: 16, height: 16 }} />
-          <span>Sistema &amp; Dev</span>
-          <span className={`tab-pill-badge ${isProgramador ? 'badge-dev' : 'badge-lock'}`}>
-            {isProgramador ? 'Desarrollo' : 'Restringido'}
-          </span>
-        </button>
+        {isGerente && (
+          <button
+            className={`tab-btn ${activeTab === 'remoto' ? 'active' : ''}`}
+            onClick={() => setActiveTab('remoto')}
+          >
+            <span>Soporte Remoto</span>
+            <span className="tab-pill-badge badge-gerente">Asistencia</span>
+          </button>
+        )}
       </div>
 
       {/* PESTAÑA 1: MI PERFIL (TODOS LOS ROLES) */}
@@ -427,7 +454,7 @@ export const SettingsModal = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* PESTAÑA 2: PARÁMETROS DE TIENDA (GERENTE Y PROGRAMADOR) */}
+      {/* PESTAÑA 2: PARÁMETROS DE TIENDA (GERENTE) */}
       {activeTab === 'tienda' && (
         <div className="settings-panel animate-fade-in">
           {!isGerente ? (
@@ -436,7 +463,7 @@ export const SettingsModal = ({ isOpen, onClose }) => {
               <div>
                 <strong>Nivel de Acceso: Modo Consulta (Solo Lectura)</strong>
                 <p className="text-xs mt-0.5">
-                  Como empleado puedes revisar los parámetros de operación, membretes y límites. Para modificarlos se requiere la cuenta del Gerente o Programador.
+                  Como empleado puedes revisar los parámetros de operación, membretes y límites. Para modificarlos se requiere la cuenta del Gerente o Administrador.
                 </p>
               </div>
             </div>
@@ -684,6 +711,48 @@ export const SettingsModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* Sección: Actualizaciones del Software */}
+            <div className="settings-section-card mb-3">
+              <h4 className="font-semibold text-primary mb-2">Actualizaciones del Software</h4>
+              <div className="settings-row-item">
+                <div>
+                  <strong>Buscar Nueva Versión</strong>
+                  <p className="text-secondary text-xs">
+                    Verifica automáticamente en GitHub Releases si hay una versión más reciente de Dulce Horno.
+                  </p>
+                  <small className="text-muted text-xs" style={{ display: 'block', marginTop: '2px' }}>
+                    Versión actual del sistema: <strong>v1.1.0</strong>
+                  </small>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {isDev && onSimulateUpdate && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => {
+                        onClose();
+                        onSimulateUpdate();
+                      }}
+                      title="Ver en vivo cómo busca, descarga con barra de porcentaje y prepara la instalación"
+                    >
+                      🧪 Simular Actualización (Demo)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => {
+                      onClose();
+                      if (onCheckUpdates) onCheckUpdates();
+                    }}
+                  >
+                    <RefreshIcon style={{ width: 14, height: 14, marginRight: 5 }} />
+                    Comprobar Ahora
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {isGerente && (
               <div className="text-right">
                 <button type="submit" className="btn btn-primary">
@@ -696,174 +765,136 @@ export const SettingsModal = ({ isOpen, onClose }) => {
         </div>
       )}
 
-      {/* PESTAÑA 3: SISTEMA Y DESARROLLO (EXCLUSIVO PROGRAMADOR) */}
-      {activeTab === 'sistema' && (
+      {/* PESTAÑA: SOPORTE REMOTO & ASISTENCIA AL CLIENTE */}
+      {activeTab === 'remoto' && isGerente && (
         <div className="settings-panel animate-fade-in">
-          {!isProgramador ? (
-            <div className="access-level-banner access-danger mb-3">
-              <LockIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
+          {/* Tarjeta 1: Estado del Túnel de Soporte */}
+          <div className="settings-section-card mb-3">
+            <h4 className="font-semibold text-primary mb-2">Estado del Enlace de Soporte Técnico</h4>
+            <p className="text-secondary text-xs mb-3">
+              Permite que el equipo de desarrollo y soporte de DulceHorno se conecte remotamente a esta computadora para
+              diagnosticar fallas, optimizar la base de datos o recuperar cuentas de administrador.
+            </p>
+
+            <div className="settings-row-item">
               <div>
-                <strong>Acceso Denegado: Exclusivo para Programador</strong>
-                <p className="text-xs mt-0.5">
-                  Esta pestaña contiene herramientas de bajo nivel, diagnósticos IPC y simulación de conectividad. Solo el rol de Programador tiene acceso técnico.
-                </p>
+                <strong>Conexión con Broker DulceHorno</strong>
+                <div className="text-secondary text-xs">
+                  {remoteStatus?.connected
+                    ? 'Enlace activo y seguro. Esta caja es visible en el Centro de Mando.'
+                    : 'Desconectado del servidor de soporte (reintentando en segundo plano).'}
+                </div>
+              </div>
+              <span
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  background: remoteStatus?.connected ? 'rgba(46,125,50,0.15)' : 'rgba(211,47,47,0.15)',
+                  color: remoteStatus?.connected ? '#2e7d32' : '#d32f2f'
+                }}
+              >
+                {remoteStatus?.connected ? '● En Línea' : '○ Desconectado'}
+              </span>
+            </div>
+
+            <div className="settings-row-item">
+              <div>
+                <strong>Código / PIN de Asistencia en Vivo</strong>
+                <div className="text-secondary text-xs">
+                  Proporciona este código a tu técnico cuando solicites asistencia por teléfono o WhatsApp.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span
+                  className="font-mono font-bold"
+                  style={{
+                    fontSize: '1.15rem',
+                    color: 'var(--color-primary)',
+                    background: 'rgba(0,0,0,0.05)',
+                    padding: '4px 10px',
+                    borderRadius: '6px'
+                  }}
+                >
+                  {remoteSessionPin || 'DH-0000'}
+                </span>
+                <button type="button" className="btn btn-xs btn-outline" onClick={handleCopyPin} title="Copiar al portapapeles">
+                  Copiar PIN
+                </button>
+                <button type="button" className="btn btn-xs btn-outline" onClick={handleRegeneratePin} title="Generar nuevo código aleatorio">
+                  ↻ Nuevo PIN
+                </button>
               </div>
             </div>
-          ) : (
-            <div className="access-level-banner access-info mb-3">
-              <CodeIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
-              <div>
-                <strong>Entorno de Diagnóstico e Ingeniería Activo</strong>
-                <p className="text-xs mt-0.5">
-                  Herramientas de inspección de red MySQL, volcado de tráfico IPC y serialización de respaldos para depuración del sistema.
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
 
-          {isProgramador && (
-            <form onSubmit={handleSaveDev}>
-              {/* Tarjeta 1: Monitor de Salud de Base de Datos */}
-              <div className="settings-section-card mb-3">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div className="settings-section-header" style={{ marginBottom: 0 }}>
-                    <DatabaseIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
-                    <h4 className="settings-section-title">Monitor de Salud de Base de Datos y Red</h4>
-                  </div>
-                  {dbPingStatus && (
-                    <span className={`ping-indicator-badge ${dbPingStatus.ok ? (dbPingStatus.latency < 50 ? 'ping-fast' : 'ping-slow') : 'ping-error'}`}>
-                      {dbPingStatus.ok ? `● ${dbPingStatus.latency}ms (${dbPingStatus.timestamp})` : '● Error'}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-secondary text-xs mb-3">
-                  Comprueba la latencia del pool de conexiones MySQL 8.0 y el tiempo de respuesta del motor de consultas.
-                </p>
-
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    disabled={isPinging}
-                    onClick={handlePingDatabase}
-                  >
-                    <RefreshIcon style={{ width: 14, height: 14 }} />
-                    <span>{isPinging ? 'Midiendo latencia...' : 'Probar Latencia de MySQL'}</span>
-                  </button>
-                  <span className="text-muted text-xs font-mono">Host: localhost:3306 &bull; DB: panaderia</span>
-                </div>
+          {/* Tarjeta 2: Identificación de la Sucursal */}
+          <div className="settings-section-card mb-3">
+            <h4 className="font-semibold text-primary mb-2">Identificación de la Sucursal</h4>
+            <form onSubmit={handleSaveRemoteConfig}>
+              <div className="form-group mb-3">
+                <label className="form-label text-xs">Nombre Comercial de esta Sucursal / Panadería:</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={remoteBranchName}
+                  onChange={(e) => setRemoteBranchName(e.target.value)}
+                  placeholder="Ej. Panadería Dulce Horno - Sucursal Centro"
+                />
+                <small className="text-muted text-xs">
+                  Este es el nombre con el que el equipo de soporte técnico identificará tu caja en su panel de asistencia.
+                </small>
               </div>
 
-              {/* Tarjeta 2: Diagnóstico y Registro Técnico */}
-              <div className="settings-section-card mb-3">
-                <div className="settings-section-header">
-                  <CodeIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
-                  <h4 className="settings-section-title">Herramientas de Depuración y Diagnóstico</h4>
-                </div>
-                
-                <div className="settings-row-item">
-                  <div>
-                    <strong>Modo Desarrollador Activo</strong>
-                    <p className="text-secondary text-xs">Muestra tiempos de ejecución y detalles de cada comanda.</p>
-                  </div>
-                  <ToggleSwitch
-                    checked={Boolean(devForm.modoDebug)}
-                    onChange={(e) => setDevForm({ ...devForm, modoDebug: e.target.checked })}
+              <div className="form-group mb-3">
+                <label className="form-label text-xs">Servidor Central / Cloud Relay / Túnel:</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
+                    value={remoteRelayUrl}
+                    onChange={(e) => setRemoteRelayUrl(e.target.value)}
+                    placeholder="ws://127.0.0.1:4800 o https://tu-tunel.trycloudflare.com"
                   />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-xs"
+                    onClick={() => setRemoteRelayUrl('ws://127.0.0.1:4800')}
+                    title="Restablecer a Localhost"
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    Localhost
+                  </button>
                 </div>
-
-                <div className="settings-row-item mt-3">
-                  <div>
-                    <strong>Registro de Tráfico IPC en Consola</strong>
-                    <p className="text-secondary text-xs">Imprime en la terminal de Electron cada canal y payload invocado.</p>
-                  </div>
-                  <ToggleSwitch
-                    checked={Boolean(devForm.mostrarLogsIPC)}
-                    onChange={(e) => setDevForm({ ...devForm, mostrarLogsIPC: e.target.checked })}
-                  />
-                </div>
-
-                <div className="settings-row-item mt-3">
-                  <div>
-                    <strong>Simular Modo Desconectado / Fallas de Red</strong>
-                    <p className="text-secondary text-xs">Permite verificar el manejo de errores ante interrupción de conexión.</p>
-                  </div>
-                  <ToggleSwitch
-                    checked={Boolean(devForm.simularModoOffline)}
-                    onChange={(e) => setDevForm({ ...devForm, simularModoOffline: e.target.checked })}
-                  />
-                </div>
+                <small className="text-muted text-xs">
+                  Pega aquí la URL de Cloudflare Tunnel (ej: https://visibility-ballet-surname-unity.trycloudflare.com) o la IP de tu servidor central.
+                </small>
               </div>
 
-              {/* Tarjeta 3: Respaldos y Migración de Configuraciones */}
-              <div className="settings-section-card mb-3">
-                <div className="settings-section-header">
-                  <DownloadIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
-                  <h4 className="settings-section-title">Gestión de Respaldos y Migración (.JSON)</h4>
-                </div>
-                <p className="text-secondary text-xs mb-3">
-                  Exporta e importa todas las reglas de negocio, membresías de tickets, políticas e IVA en formato portable.
-                </p>
-
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  <button type="button" className="btn btn-outline" onClick={handleExportJSON}>
-                    <DownloadIcon style={{ width: 14, height: 14 }} />
-                    <span>Exportar Configuración (.JSON)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setShowJsonImportBox(!showJsonImportBox)}
-                  >
-                    <span>{showJsonImportBox ? 'Ocultar Importador' : 'Importar Configuración (.JSON)'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-danger-outline"
-                    onClick={() => {
-                      if (window.confirm('¿Deseas restablecer todas las configuraciones de tienda y desarrollador a sus valores de fábrica?')) {
-                        resetAllSettings();
-                        setStoreForm(DEFAULT_GLOBAL_SETTINGS);
-                        setDevForm(DEFAULT_DEV_SETTINGS);
-                        showToast('Configuraciones globales restablecidas a valores de fábrica', 'warning');
-                      }
-                    }}
-                  >
-                    Restablecer Todo a Fábrica
-                  </button>
-                </div>
-
-                {showJsonImportBox && (
-                  <div className="animate-fade-in mt-2" style={{ background: 'var(--bg-surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                    <label className="form-label">Pega el contenido JSON de configuración:</label>
-                    <textarea
-                      className="form-control font-mono text-xs"
-                      rows={5}
-                      placeholder='{ "globalSettings": { ... }, "devSettings": { ... } }'
-                      value={jsonInput}
-                      onChange={(e) => setJsonInput(e.target.value)}
-                    />
-                    <div className="text-right mt-2">
-                      <button type="button" className="btn btn-sm btn-primary" onClick={handleImportJSONSubmit}>
-                        <CheckIcon style={{ width: 14, height: 14 }} />
-                        <span>Cargar y Aplicar JSON</span>
-                      </button>
-                    </div>
+              <div className="settings-row-item mb-3">
+                <div>
+                  <strong>Habilitar Soporte y Diagnóstico Remoto</strong>
+                  <div className="text-secondary text-xs">
+                    Si desactivas esta opción, el sistema no aceptará conexiones remotas de mantenimiento.
                   </div>
-                )}
+                </div>
+                <ToggleSwitch
+                  id="toggle-remote-enabled"
+                  checked={remoteEnabled}
+                  onChange={setRemoteEnabled}
+                />
               </div>
 
               <div className="text-right">
-                <button type="submit" className="btn btn-primary">
-                  <CheckIcon style={{ width: 16, height: 16 }} />
-                  <span>Aplicar Parámetros de Programador</span>
+                <button type="submit" className="btn btn-primary" disabled={savingRemote}>
+                  <CheckIcon style={{ width: 14, height: 14 }} />
+                  <span>{savingRemote ? 'Guardando...' : 'Guardar Parámetros de Sucursal'}</span>
                 </button>
               </div>
             </form>
-          )}
+          </div>
         </div>
       )}
     </Modal>

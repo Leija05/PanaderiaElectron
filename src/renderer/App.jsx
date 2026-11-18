@@ -6,6 +6,7 @@ import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
 import { Navbar } from './components/common/Navbar';
 import { SettingsModal } from './components/common/SettingsModal';
+import { UpdateModal } from './components/common/UpdateModal';
 
 import { LoginView } from './views/LoginView';
 import { POSView } from './views/POSView';
@@ -15,38 +16,94 @@ import { ClientesView } from './views/ClientesView';
 import { ProveedoresView } from './views/ProveedoresView';
 import { ReportesView } from './views/ReportesView';
 import { CortesView } from './views/CortesView';
-import { ProgramadorView } from './views/ProgramadorView';
 
 const AppContent = () => {
   const { user, isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState('ventas');
   const [updateStatus, setUpdateStatus] = useState(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
       if (user.Rol === 'Cliente') {
         setCurrentPage('compras');
-      } else if (user.Rol === 'Programador') {
-        setCurrentPage('programador');
       } else {
         setCurrentPage('ventas');
       }
     }
   }, [user]);
 
+  // Suscripción al actualizador y consulta inicial
   useEffect(() => {
+    let mounted = true;
+
+    if (window.api && typeof window.api.getUpdateStatus === 'function') {
+      window.api.getUpdateStatus()
+        .then((status) => {
+          if (mounted && status) {
+            setUpdateStatus(status);
+            // Mostrar modal si está buscando, disponible, descargando o listo para instalar
+            if (['checking', 'available', 'downloading', 'pending_install'].includes(status.status)) {
+              setIsUpdateModalOpen(true);
+            }
+          }
+        })
+        .catch((err) => console.warn('Error al obtener estado inicial del actualizador:', err));
+    }
+
     if (window.api && typeof window.api.onUpdateStatus === 'function') {
       const cleanup = window.api.onUpdateStatus((status) => {
-        setUpdateStatus(status);
+        if (mounted && status) {
+          setUpdateStatus(status);
+          if (['checking', 'available', 'downloading', 'pending_install'].includes(status.status)) {
+            setIsUpdateModalOpen(true);
+          }
+        }
       });
-      return cleanup;
+      return () => {
+        mounted = false;
+        if (typeof cleanup === 'function') cleanup();
+      };
     }
   }, []);
 
-  if (!isAuthenticated) {
-    return <LoginView onLoginSuccess={() => {}} />;
-  }
+  const handleCloseUpdateModal = () => {
+    setIsUpdateModalOpen(false);
+    if (updateStatus) {
+      setUpdateStatus((prev) => ({ ...prev, dismissed: true }));
+    }
+  };
+
+  const handleCheckUpdates = async () => {
+    setIsUpdateModalOpen(true);
+    setUpdateStatus((prev) => ({
+      ...(prev || {}),
+      status: 'checking',
+      message: 'Comprobando la última versión en GitHub Releases...'
+    }));
+    if (window.api && typeof window.api.retryUpdateCheck === 'function') {
+      try {
+        const res = await window.api.retryUpdateCheck();
+        if (res) setUpdateStatus(res);
+      } catch (e) {
+        console.error('Error al comprobar actualizaciones:', e);
+      }
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (window.api && typeof window.api.installPendingUpdate === 'function') {
+      await window.api.installPendingUpdate();
+    }
+  };
+
+  const handleSimulateUpdate = async () => {
+    setIsUpdateModalOpen(true);
+    if (window.api && typeof window.api.simulateUpdateDemo === 'function') {
+      await window.api.simulateUpdateDemo();
+    }
+  };
 
   const renderCurrentView = () => {
     switch (currentPage) {
@@ -66,49 +123,45 @@ const AppContent = () => {
         return <ReportesView />;
       case 'cortes':
         return <CortesView />;
-      case 'programador':
-        return <ProgramadorView />;
       default:
         return <POSView isClientMode={user?.Rol === 'Cliente'} />;
     }
   };
 
   return (
-    <div className="app-layout">
-      <Navbar
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+    <>
+      {/* Modal global de actualización (visible tanto en Login como dentro del POS) */}
+      <UpdateModal
+        isOpen={isUpdateModalOpen}
+        status={updateStatus}
+        onClose={handleCloseUpdateModal}
+        onRetry={handleCheckUpdates}
+        onInstall={handleInstallUpdate}
+        onSimulate={handleSimulateUpdate}
       />
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
+      {!isAuthenticated ? (
+        <LoginView onLoginSuccess={() => {}} />
+      ) : (
+        <div className="app-layout">
+          <Navbar
+            currentPage={currentPage}
+            onNavigate={setCurrentPage}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
 
-      {updateStatus && updateStatus.status === 'downloading' && (
-        <div className="updater-banner">
-          <span>
-            Descargando actualización obligatoria:{' '}
-            <strong>{updateStatus.progressPercent?.toFixed(1)}%</strong>
-          </span>
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            onCheckUpdates={handleCheckUpdates}
+            onSimulateUpdate={handleSimulateUpdate}
+            updateStatus={updateStatus}
+          />
+
+          <main className="app-main-viewport">{renderCurrentView()}</main>
         </div>
       )}
-
-      {updateStatus && updateStatus.status === 'pending_install' && (
-        <div className="updater-banner">
-          <span>Actualización {updateStatus.version} lista para instalarse.</span>
-          <button
-            className="btn btn-sm btn-primary ml-3"
-            onClick={() => window.api.installPendingUpdate()}
-          >
-            Reiniciar ahora
-          </button>
-        </div>
-      )}
-
-      <main className="app-main-viewport">{renderCurrentView()}</main>
-    </div>
+    </>
   );
 };
 
@@ -127,4 +180,3 @@ export const App = () => {
     </ThemeProvider>
   );
 };
-

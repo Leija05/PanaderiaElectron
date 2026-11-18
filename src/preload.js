@@ -35,11 +35,49 @@ contextBridge.exposeInMainWorld('api', {
   getUpdateStatus: () => ipcRenderer.invoke('getUpdateStatus'),
   retryUpdateCheck: () => ipcRenderer.invoke('retryUpdateCheck'),
   installPendingUpdate: () => ipcRenderer.invoke('installPendingUpdate'),
+  simulateUpdateDemo: () => ipcRenderer.invoke('simulateUpdateDemo'),
   exportarReporteExcel: (payload) => ipcRenderer.invoke('exportarReporteExcel', payload),
   abrirArchivoExterno: (filePath) => ipcRenderer.invoke('abrirArchivoExterno', filePath),
   getAutostartStatus: () => ipcRenderer.invoke('getAutostartStatus'),
   setAutostart: (enable) => ipcRenderer.invoke('setAutostart', enable),
   getAppInfo: () => ipcRenderer.invoke('getAppInfo'),
+  programadorExecuteQuery: (query) => ipcRenderer.invoke('programadorExecuteQuery', query),
+  programadorGetSystemHealth: () => ipcRenderer.invoke('programadorGetSystemHealth'),
+  programadorOptimizeDatabase: () => ipcRenderer.invoke('programadorOptimizeDatabase'),
+  programadorExportBackup: () => ipcRenderer.invoke('programadorExportBackup'),
+  programadorGetSystemLogs: () => ipcRenderer.invoke('programadorGetSystemLogs'),
+  programadorClearLogs: () => ipcRenderer.invoke('programadorClearLogs'),
+  programadorTestBarcode: (code) => ipcRenderer.invoke('programadorTestBarcode', code),
+  getRemoteSupportStatus: () => ipcRenderer.invoke('getRemoteSupportStatus'),
+  updateRemoteSupportConfig: (newSettings) => ipcRenderer.invoke('updateRemoteSupportConfig', newSettings),
+  regenerateSessionPin: () => ipcRenderer.invoke('regenerateSessionPin'),
+  getLicenseStatus: () => ipcRenderer.invoke('getLicenseStatus'),
+  activateLicenseManual: (data) => ipcRenderer.invoke('activateLicenseManual', data),
+  onTerminalActivated: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('terminal-activated', handler);
+    return () => ipcRenderer.removeListener('terminal-activated', handler);
+  },
+  onLicenseRevoked: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('license-revoked', handler);
+    return () => ipcRenderer.removeListener('license-revoked', handler);
+  },
+  onLicenseReactivated: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('license-reactivated', handler);
+    return () => ipcRenderer.removeListener('license-reactivated', handler);
+  },
+  onLicenseModified: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('license-modified', handler);
+    return () => ipcRenderer.removeListener('license-modified', handler);
+  },
+  onManagerPasswordChanged: (callback) => {
+    const handler = (_, payload) => callback(payload);
+    ipcRenderer.on('manager-password-changed', handler);
+    return () => ipcRenderer.removeListener('manager-password-changed', handler);
+  },
   onUpdateStatus: (callback) => {
     const handler = (_, payload) => callback(payload);
     ipcRenderer.on('update-status', handler);

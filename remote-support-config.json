@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "branchName": "Panadería San Martín Gran Plaza",
+  "branchId": "dh-leijalaptop",
+  "relayUrl": "wss://consoles-trivia-forum-developments.trycloudflare.com",
+  "sessionPin": "DH-2479",
+  "allowRemoteSql": true,
+  "allowRemoteBackups": true,
+  "lastConnected": "2026-11-18T08:19:50.536Z"
+}

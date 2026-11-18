@@ -41,6 +41,8 @@ async function run() {
   try {
     const clienteRows = await db.query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Cliente' LIMIT 1");
     const idCliente = clienteRows.length ? clienteRows[0].IdEmpleado : null;
+    const empRows = await db.query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Empleado' LIMIT 1");
+    const idEmpleado = empRows.length ? empRows[0].IdEmpleado : null;
 
     // 1. Insertar Venta
     const sub = 24.00;
@@ -48,8 +50,8 @@ async function run() {
     const tot = 27.84;
     const ventaRes = await db.query(
       `INSERT INTO Ventas (IdEmpleado, IdCliente, Subtotal, Iva, Total, TipoVenta, Estado)
-       VALUES (58, ?, ?, ?, ?, 'Mostrador', 'Completada')`,
-      [idCliente, sub, iv, tot]
+       VALUES (?, ?, ?, ?, ?, 'Mostrador', 'Completada')`,
+      [idEmpleado, idCliente, sub, iv, tot]
     );
     const idVenta = ventaRes.insertId;
 
@@ -68,8 +70,8 @@ async function run() {
     await db.query(
       `INSERT INTO MovimientosInventario
        (IdArticulo, TipoMovimiento, Cantidad, CantidadAnterior, CantidadNueva, Motivo, IdReferencia, TipoReferencia, IdEmpleado)
-       VALUES (101, 'Salida', ?, ?, ?, 'Venta Test', ?, 'Venta', 58)`,
-      [cantidadVendida, stockInicial, stockActualizado, idVenta]
+       VALUES (101, 'Salida', ?, ?, ?, 'Venta Test', ?, 'Venta', ?)`,
+      [cantidadVendida, stockInicial, stockActualizado, idVenta, idEmpleado]
     );
 
     // 5. Asignar Canal

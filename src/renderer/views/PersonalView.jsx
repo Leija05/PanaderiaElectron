@@ -50,7 +50,7 @@ export const PersonalView = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return employees
-      .filter((e) => ['Empleado', 'Gerente', 'Programador'].includes(e.Rol))
+      .filter((e) => ['Empleado', 'Gerente'].includes(e.Rol))
       .filter((e) => {
         if (!q) return true;
         const full = `${e.NombreCompleto || ''} ${e.NombreUsuario || ''} ${e.Puesto || ''}`.toLowerCase();
@@ -211,8 +211,7 @@ export const PersonalView = () => {
                   const isActivo = Boolean(emp.Activo);
                   const roleBadges = {
                     Gerente: 'badge-primary',
-                    Empleado: 'badge-secondary',
-                    Programador: 'badge-dark'
+                    Empleado: 'badge-secondary'
                   };
 
                   return (
@@ -352,7 +351,7 @@ export const PersonalView = () => {
                 onChange={(e) => setEmpForm({ ...empForm, rol: e.target.value })}
               >
                 <option value="Empleado">Empleado</option>
-                {user?.Rol === 'Programador' && <option value="Gerente">Gerente</option>}
+                <option value="Gerente">Gerente</option>
               </select>
             </div>
           </div>

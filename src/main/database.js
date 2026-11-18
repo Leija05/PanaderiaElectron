@@ -71,6 +71,38 @@ async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
   return false;
 }
 
+/**
+ * Garantiza que la base de datos 'panaderia' exista en el servidor MySQL.
+ * Si no existe, la crea con codificación utf8mb4 antes de abrir pools.
+ */
+async function ensureDatabaseExists() {
+  return new Promise((resolve) => {
+    const rawConn = mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      port: Number(process.env.DB_PORT || 3306)
+    });
+
+    rawConn.connect((err) => {
+      if (err) {
+        console.warn('[DulceHorno DB Init] Aviso conectando para verificar database:', err.message);
+        try { rawConn.destroy(); } catch (_) {}
+        return resolve(false);
+      }
+      const dbName = process.env.DB_NAME || 'panaderia';
+      rawConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`, (createErr) => {
+        if (createErr) {
+          console.warn('[DulceHorno DB Init] Error asegurando database:', createErr.message);
+        } else {
+          console.log(`[DulceHorno DB Init] Base de datos "${dbName}" verificada/creada exitosamente.`);
+        }
+        rawConn.end(() => resolve(true));
+      });
+    });
+  });
+}
+
 // Pool de conexiones seguro con reconexión automática
 const pool = mysql.createPool({
   connectionLimit: 10,
@@ -343,6 +375,182 @@ async function ensureSupportTables() {
     } catch (_) {}
   }
 
+  // 1. Garantizar tablas maestras del negocio
+  await query(`
+    CREATE TABLE IF NOT EXISTS Categorias (
+      IdCategoria INT AUTO_INCREMENT PRIMARY KEY,
+      Nombre VARCHAR(50) NOT NULL UNIQUE,
+      Descripcion VARCHAR(100)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Empleados (
+      IdEmpleado INT AUTO_INCREMENT PRIMARY KEY,
+      NombreUsuario VARCHAR(50) NOT NULL UNIQUE,
+      Password VARCHAR(255) NOT NULL,
+      Rol ENUM('Cliente', 'Empleado', 'Gerente', 'Programador') NOT NULL,
+      Puesto VARCHAR(50),
+      Turno ENUM('Matutino', 'Vespertino', 'Nocturno', 'Any') DEFAULT 'Any',
+      Salario DECIMAL(10,2) DEFAULT 0.00,
+      NombreCompleto VARCHAR(180),
+      Nombre VARCHAR(60),
+      ApellidoPaterno VARCHAR(60),
+      ApellidoMaterno VARCHAR(60),
+      Genero ENUM('Femenino','Masculino','No binario','Prefiero no decir','Otro') DEFAULT 'Prefiero no decir',
+      FechaNacimiento DATE,
+      Telefono VARCHAR(20),
+      Email VARCHAR(100),
+      Direccion VARCHAR(150),
+      Calle VARCHAR(100),
+      NumeroExterior VARCHAR(20),
+      NumeroInterior VARCHAR(20),
+      Colonia VARCHAR(80),
+      Ciudad VARCHAR(80),
+      Estado VARCHAR(80),
+      CodigoPostal VARCHAR(15),
+      Pais VARCHAR(80) DEFAULT 'México',
+      FechaRegistro DATETIME DEFAULT CURRENT_TIMESTAMP,
+      Activo BOOLEAN DEFAULT TRUE
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Proveedores (
+      IdProveedor INT AUTO_INCREMENT PRIMARY KEY,
+      Nombre VARCHAR(100) NOT NULL,
+      NombreEmpresa VARCHAR(100),
+      Direccion VARCHAR(150),
+      Calle VARCHAR(100),
+      NumeroExterior VARCHAR(20),
+      NumeroInterior VARCHAR(20),
+      Colonia VARCHAR(80),
+      Ciudad VARCHAR(80),
+      Estado VARCHAR(80),
+      CodigoPostal VARCHAR(15),
+      Pais VARCHAR(80) DEFAULT 'México',
+      Telefono VARCHAR(20),
+      Correo VARCHAR(100),
+      Contacto VARCHAR(100),
+      ContactoNombre VARCHAR(60),
+      ContactoApellidoPaterno VARCHAR(60),
+      ContactoApellidoMaterno VARCHAR(60),
+      RUC VARCHAR(20),
+      Activo BOOLEAN DEFAULT TRUE
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Articulos (
+      IdArticulo INT AUTO_INCREMENT PRIMARY KEY,
+      Nombre VARCHAR(100) NOT NULL,
+      Descripcion VARCHAR(255),
+      IdCategoria INT,
+      Cantidad INT NOT NULL DEFAULT 0,
+      Minimo INT DEFAULT 5,
+      PrecioVenta DECIMAL(10,2) NOT NULL,
+      PrecioCompra DECIMAL(10,2) DEFAULT 0.00,
+      Activo BOOLEAN DEFAULT TRUE,
+      FechaCreacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (IdCategoria) REFERENCES Categorias(IdCategoria)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Ventas (
+      IdVenta INT AUTO_INCREMENT PRIMARY KEY,
+      IdEmpleado INT,
+      IdCliente INT,
+      FechaVenta DATETIME DEFAULT CURRENT_TIMESTAMP,
+      Subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      Iva DECIMAL(10,2) DEFAULT 0.00,
+      Total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      TipoVenta ENUM('Mostrador', 'Delivery') DEFAULT 'Mostrador',
+      Estado ENUM('Pendiente', 'Completada', 'Cancelada') DEFAULT 'Completada',
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS VentaDetalle (
+      IdDetalle INT AUTO_INCREMENT PRIMARY KEY,
+      IdVenta INT NOT NULL,
+      IdArticulo INT NOT NULL,
+      Cantidad INT NOT NULL,
+      PrecioUnitario DECIMAL(10,2) NOT NULL,
+      Subtotal DECIMAL(10,2) NOT NULL,
+      FOREIGN KEY (IdVenta) REFERENCES Ventas(IdVenta) ON DELETE CASCADE,
+      FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Compras (
+      IdCompra INT AUTO_INCREMENT PRIMARY KEY,
+      IdProveedor INT,
+      IdEmpleado INT,
+      FechaCompra DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FechaRecepcion DATETIME,
+      Subtotal DECIMAL(10,2) DEFAULT 0.00,
+      Iva DECIMAL(10,2) DEFAULT 0.00,
+      Total DECIMAL(10,2) DEFAULT 0.00,
+      Estado ENUM('Pendiente', 'Recibida', 'Cancelada') DEFAULT 'Pendiente',
+      Observaciones TEXT,
+      FOREIGN KEY (IdProveedor) REFERENCES Proveedores(IdProveedor),
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS CompraDetalle (
+      IdDetalle INT AUTO_INCREMENT PRIMARY KEY,
+      IdCompra INT NOT NULL,
+      IdArticulo INT NOT NULL,
+      Cantidad INT NOT NULL,
+      PrecioUnitario DECIMAL(10,2) NOT NULL,
+      Subtotal DECIMAL(10,2) NOT NULL,
+      FOREIGN KEY (IdCompra) REFERENCES Compras(IdCompra) ON DELETE CASCADE,
+      FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS MovimientosInventario (
+      IdMovimiento INT AUTO_INCREMENT PRIMARY KEY,
+      IdArticulo INT NOT NULL,
+      TipoMovimiento ENUM('Entrada', 'Salida', 'Ajuste') NOT NULL,
+      Cantidad INT NOT NULL,
+      CantidadAnterior INT,
+      CantidadNueva INT,
+      Motivo VARCHAR(100),
+      IdReferencia INT,
+      TipoReferencia ENUM('Compra', 'Venta', 'Ajuste') NOT NULL,
+      IdEmpleado INT,
+      FechaMovimiento DATETIME DEFAULT CURRENT_TIMESTAMP,
+      Observaciones TEXT,
+      FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo),
+      FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS Envios (
+      IdEnvio INT AUTO_INCREMENT PRIMARY KEY,
+      IdVenta INT NOT NULL,
+      IdEmpleadoRepartidor INT,
+      DireccionEntrega VARCHAR(150) NOT NULL,
+      TelefonoContacto VARCHAR(20),
+      CostoEnvio DECIMAL(10,2) DEFAULT 0.00,
+      FechaEnvio DATETIME,
+      FechaEntregaEstimada DATETIME,
+      FechaEntregaReal DATETIME,
+      Estado ENUM('Preparando', 'En ruta', 'Entregado', 'Cancelado') DEFAULT 'Preparando',
+      Observaciones TEXT,
+      FOREIGN KEY (IdVenta) REFERENCES Ventas(IdVenta),
+      FOREIGN KEY (IdEmpleadoRepartidor) REFERENCES Empleados(IdEmpleado)
+    )
+  `);
+
   await ensureEmpleadosRolProgramador();
 
   await ensureColumn('Empleados', 'Nombre', 'VARCHAR(60) NULL AFTER NombreCompleto');
@@ -402,41 +610,21 @@ async function ensureSupportTables() {
     // Si ya era 255 o similar, continuar
   }
 
-  // Garantizar existencia de usuarios predeterminados y de prueba
-  const usuariosEsenciales = [
-    ['admin', 'admin123', 'Gerente', 'Gerente General', 'Vespertino', 15000.00, 'Administrador Principal', 'Administrador', 'Principal', 'Prefiero no decir'],
-    ['empleado1', 'empleado123', 'Empleado', 'Vendedor', 'Matutino', 8000.00, 'Juan Pérez Hernández', 'Juan', 'Pérez', 'Masculino'],
-    ['cliente1', 'cliente123', 'Cliente', 'Cliente', 'Any', 0.00, 'María García López', 'María', 'García', 'Femenino'],
-    ['programador', 'programador123', 'Programador', 'Programador del sistema', 'Any', 0.00, 'Programador Sistema', 'Programador', 'Sistema', 'Prefiero no decir'],
-    ['gerente_demo', 'demo123', 'Gerente', 'Gerente General', 'Matutino', 18000.00, 'Gerente Demo', 'Gerente', 'Demo', 'Prefiero no decir'],
-    ['empleado_demo_1', 'demo123', 'Empleado', 'Cajero', 'Matutino', 9000.00, 'Cajero Demo 1', 'Cajero', 'Demo', 'Prefiero no decir'],
-    ['cliente_demo_1', 'demo123', 'Cliente', 'Cliente', 'Any', 0.00, 'Cliente Demo 1', 'Cliente', 'Demo', 'Prefiero no decir']
-  ];
-
-  for (const u of usuariosEsenciales) {
-    await query(
-      `INSERT IGNORE INTO Empleados
-       (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, Genero)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      u
-    );
-  }
-
-  // Reparar contraseñas que hayan quedado truncadas o alteradas con prefijo scrypt
-  try {
+  // Garantizar únicamente el usuario técnico Programador para soporte y Stored Procedures
+  const progRowsCheck = await query("SELECT IdEmpleado FROM Empleados WHERE NombreUsuario = 'programador'");
+  if (!progRowsCheck.length) {
+    await query(`
+      INSERT INTO Empleados
+      (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Nombre, ApellidoPaterno, Genero)
+      VALUES ('programador', 'programador123', 'Programador', 'Soporte Técnico Especializado', 'Any', 0.00, 'Programador Sistema', 'Programador', 'Sistema', 'Prefiero no decir')
+    `);
+  } else {
     await query("UPDATE Empleados SET Password = 'programador123' WHERE NombreUsuario = 'programador'");
-    await query("UPDATE Empleados SET Password = 'admin123' WHERE NombreUsuario = 'admin'");
-    await query("UPDATE Empleados SET Password = 'empleado123' WHERE NombreUsuario = 'empleado1'");
-    await query("UPDATE Empleados SET Password = 'cliente123' WHERE NombreUsuario = 'cliente1'");
-    await query("UPDATE Empleados SET Password = 'demo123' WHERE NombreUsuario = 'gerente_demo'");
-    await query("UPDATE Empleados SET Password = 'demo123' WHERE NombreUsuario = 'empleado_demo_1'");
-    await query("UPDATE Empleados SET Password = 'demo123' WHERE NombreUsuario = 'cliente_demo_1'");
-    await query("UPDATE Empleados SET Password = 'admin123' WHERE NombreUsuario = 'LEZH' AND Password LIKE 'scrypt:%'");
-    await query("UPDATE Empleados SET Password = '123456' WHERE NombreUsuario LIKE 'empleado_%' AND Password LIKE 'scrypt:%'");
-    await query("UPDATE Empleados SET Password = '123456' WHERE NombreUsuario = 'Nicky' AND Password LIKE 'scrypt:%'");
-  } catch (err) {
-    console.error('Aviso al reparar contraseñas en MySQL:', err.message);
   }
+
+  try {
+    await query("UPDATE Empleados SET Password = 'admin123' WHERE NombreUsuario = 'LEZH' AND Password LIKE 'scrypt:%'");
+  } catch (_) {}
 
   await ensureSecurityProcedure();
 
@@ -547,6 +735,61 @@ async function ensureSupportTables() {
       FOREIGN KEY (IdArticulo) REFERENCES Articulos(IdArticulo)
     )
   `);
+
+  // Tabla para control de licenciamiento y activación de terminal
+  await query(`
+    CREATE TABLE IF NOT EXISTS LicenciaSistema (
+      IdLicencia INT AUTO_INCREMENT PRIMARY KEY,
+      IdTerminal VARCHAR(100) NULL,
+      TokenActivacion VARCHAR(100) NOT NULL UNIQUE,
+      NombreNegocio VARCHAR(150) NOT NULL DEFAULT 'Panadería Dulce Horno',
+      Propietario VARCHAR(150) NULL,
+      TipoLicencia VARCHAR(80) NOT NULL DEFAULT 'Comercial Pro Vitalicia',
+      Estado ENUM('Pendiente', 'Activa', 'Suspendida', 'Revocada') NOT NULL DEFAULT 'Pendiente',
+      FechaActivacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FechaExpiracion DATETIME NULL,
+      ActivadoPor VARCHAR(100) NULL,
+      MotivoSuspension TEXT NULL,
+      Notas TEXT NULL
+    )
+  `);
+
+  // Asegurar columnas nuevas en instalaciones previas
+  try {
+    await query("ALTER TABLE LicenciaSistema MODIFY Estado ENUM('Pendiente', 'Activa', 'Suspendida', 'Revocada') NOT NULL DEFAULT 'Pendiente'");
+  } catch (_) {}
+  try {
+    await query('ALTER TABLE LicenciaSistema ADD COLUMN IdTerminal VARCHAR(100) NULL AFTER IdLicencia');
+  } catch (_) {}
+  try {
+    await query('ALTER TABLE LicenciaSistema ADD COLUMN FechaExpiracion DATETIME NULL AFTER FechaActivacion');
+  } catch (_) {}
+  try {
+    await query('ALTER TABLE LicenciaSistema ADD COLUMN MotivoSuspension TEXT NULL AFTER ActivadoPor');
+  } catch (_) {}
+
+  // Asegurar categorías estándar del catálogo listas para cuando el Gerente agregue sus panes reales
+  const catCountRes = await query('SELECT COUNT(*) as c FROM Categorias');
+  if (!catCountRes[0] || Number(catCountRes[0].c) === 0) {
+    await query(`
+      INSERT IGNORE INTO Categorias (IdCategoria, Nombre, Descripcion) VALUES
+      (1, 'Pan Dulce', 'Conchas, donas, cuernos, orejas y panes tradicionales'),
+      (2, 'Pan Blanco & Bolillos', 'Bolillo rústico, telera, baguettes y pan de mesa'),
+      (3, 'Repostería & Pasteles', 'Pasteles, pays, panqués y tartas artesanales'),
+      (4, 'Bebidas & Cafetería', 'Café, chocolate de metate, leche y refrescos'),
+      (5, 'Otros & Abarrotes', 'Materias primas, insumos y complementos')
+    `);
+  }
+
+  // Asegurar usuario programador interno para auditoría y SPs
+  const progRows = await query("SELECT IdEmpleado FROM Empleados WHERE Rol = 'Programador'");
+  if (!progRows.length) {
+    const progHash = hashPassword('programador123');
+    await query(`
+      INSERT INTO Empleados (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Activo)
+      VALUES ('programador', ?, 'Programador', 'Soporte Técnico Especializado', 'Any', 0, 'Programador del Sistema', TRUE)
+    `, [progHash]);
+  }
 }
 
 function randomInt(min, max) {
@@ -695,6 +938,7 @@ module.exports = {
   hashPassword,
   verifyPassword,
   ensureMySQLRunning,
+  ensureDatabaseExists,
   ensureSupportTables,
   seedRandomDataIfEmpty,
   closePool

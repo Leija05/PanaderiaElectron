@@ -1,9 +1,32 @@
 const { ipcMain, dialog, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { performance } = require('perf_hooks');
 const db = require('./database.js');
 const updater = require('./updater.js');
 const { generateExecutiveExcel } = require('./excelService.js');
+
+// Buffer circular en memoria para auditoría técnica de eventos (Programador)
+const systemLogs = [
+  { timestamp: new Date().toISOString(), level: 'INFO', module: 'BOOT', message: 'Servicio IPC Dulce Horno iniciado correctamente.' }
+];
+
+let ipcHandlersRegistered = false;
+
+function logSystemEvent(level, moduleName, message, details = null) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    level: String(level || 'INFO').toUpperCase(),
+    module: String(moduleName || 'SYS').toUpperCase(),
+    message: String(message || ''),
+    details: details ? (typeof details === 'object' ? JSON.stringify(details) : String(details)) : null
+  };
+  systemLogs.push(entry);
+  if (systemLogs.length > 350) {
+    systemLogs.shift();
+  }
+}
 
 const DEFAULT_BOLILLO_WEIGHT_KG = 0.065;
 
@@ -292,6 +315,12 @@ async function obtenerDetalleRecepcion(idRecepcion) {
 }
 
 function registerIpcHandlers() {
+  if (ipcHandlersRegistered) {
+    console.log('[IPC] Handlers ya registrados previamente, omitiendo re-registro.');
+    return;
+  }
+  ipcHandlersRegistered = true;
+  console.log('[IPC] Registrando suite de handlers IPC (incluyendo herramientas de programador)...');
   // ============================================
   // Actualizaciones
   // ============================================
@@ -301,6 +330,7 @@ function registerIpcHandlers() {
     return updater.getUpdateState();
   });
   ipcMain.handle('installPendingUpdate', async () => updater.installPendingUpdate());
+  ipcMain.handle('simulateUpdateDemo', async () => updater.simulateUpdateDemo());
 
   // ============================================
   // Ventas y Catálogo
@@ -693,6 +723,288 @@ function registerIpcHandlers() {
     );
 
     return { success: true, message: 'Gerente registrado correctamente mediante stored procedure.' };
+  });
+
+  // Ejecutor de Consultas SQL Directas (SQL Console)
+  ipcMain.handle('programadorExecuteQuery', async (event, queryStr) => {
+    if (!queryStr || typeof queryStr !== 'string') {
+      throw new Error('Debes proporcionar una consulta SQL válida.');
+    }
+    const trimmed = queryStr.trim();
+    if (!trimmed) {
+      throw new Error('La consulta no puede estar vacía.');
+    }
+
+    // Bloqueo de seguridad preventivo contra destrucción accidental
+    const dangerousPatterns = [/drop\s+database/i, /truncate\s+database/i];
+    for (const pat of dangerousPatterns) {
+      if (pat.test(trimmed)) {
+        logSystemEvent('WARN', 'SQL_GUARD', 'Intento de ejecutar query destructiva bloqueado: ' + trimmed);
+        throw new Error('Comando bloqueado por el guardia de seguridad: no se permite eliminar la base de datos completa.');
+      }
+    }
+
+    const start = performance.now();
+    try {
+      const results = await db.query(trimmed);
+      const executionTimeMs = Number((performance.now() - start).toFixed(2));
+      logSystemEvent('INFO', 'SQL', `Query ejecutada en ${executionTimeMs}ms: ${trimmed.slice(0, 70)}...`);
+
+      if (Array.isArray(results)) {
+        const columns = results.length > 0 ? Object.keys(results[0]) : [];
+        return {
+          success: true,
+          isSelect: true,
+          rows: results.slice(0, 250),
+          totalRows: results.length,
+          columns,
+          executionTimeMs
+        };
+      }
+
+      return {
+        success: true,
+        isSelect: false,
+        affectedRows: results.affectedRows ?? 0,
+        changedRows: results.changedRows ?? 0,
+        insertId: results.insertId ?? null,
+        message: results.message || 'Operación completada exitosamente',
+        executionTimeMs
+      };
+    } catch (err) {
+      const executionTimeMs = Number((performance.now() - start).toFixed(2));
+      logSystemEvent('ERROR', 'SQL', `Fallo al ejecutar query (${executionTimeMs}ms): ${err.message}`);
+      throw err;
+    }
+  });
+
+  // Diagnóstico de Salud y Métricas del Sistema (System Health)
+  ipcMain.handle('programadorGetSystemHealth', async (event) => {
+    const start = performance.now();
+    let dbPingMs = null;
+    let dbVersion = 'Desconocida';
+    let dbTables = [];
+    let dbTotalSizeMB = '0.00';
+    let spList = [];
+    let triggersList = [];
+
+    let currentDbName = 'panaderia';
+    try {
+      const dbNameRes = await db.query('SELECT DATABASE() as dbName');
+      currentDbName = dbNameRes[0]?.dbName || 'panaderia';
+
+      const versionRes = await db.query('SELECT VERSION() as version');
+      dbVersion = versionRes[0]?.version || 'MySQL 8.0';
+      dbPingMs = Number((performance.now() - start).toFixed(2));
+
+      // Métricas por tabla desde information_schema usando la base de datos activa
+      const tablesRes = await db.query(`
+        SELECT 
+          TABLE_NAME as tableName, 
+          TABLE_ROWS as tableRows, 
+          ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 2) as sizeKB,
+          CREATE_TIME as createTime,
+          UPDATE_TIME as updateTime
+        FROM information_schema.TABLES 
+        WHERE TABLE_SCHEMA = DATABASE()
+        ORDER BY (DATA_LENGTH + INDEX_LENGTH) DESC
+      `);
+      dbTables = tablesRes || [];
+      const totalKB = dbTables.reduce((acc, t) => acc + (Number(t.sizeKB) || 0), 0);
+      dbTotalSizeMB = (totalKB / 1024).toFixed(2);
+
+      // Stored procedures registrados
+      const spRes = await db.query(`
+        SELECT ROUTINE_NAME as spName, ROUTINE_TYPE as spType, CREATED as created, LAST_ALTERED as modified
+        FROM information_schema.ROUTINES 
+        WHERE ROUTINE_SCHEMA = DATABASE()
+      `);
+      spList = spRes || [];
+
+      // Triggers activos
+      const trigRes = await db.query(`
+        SELECT TRIGGER_NAME as trigName, EVENT_MANIPULATION as event, EVENT_OBJECT_TABLE as tableName, ACTION_TIMING as timing
+        FROM information_schema.TRIGGERS
+        WHERE TRIGGER_SCHEMA = DATABASE()
+      `);
+      triggersList = trigRes || [];
+    } catch (err) {
+      logSystemEvent('WARN', 'HEALTH', 'Aviso al consultar métricas de BD: ' + err.message);
+    }
+
+    const mem = process.memoryUsage();
+    const cpus = os.cpus() || [];
+
+    return {
+      success: true,
+      database: {
+        status: dbPingMs !== null ? 'ONLINE' : 'ERROR',
+        pingMs: dbPingMs,
+        version: dbVersion,
+        databaseName: currentDbName,
+        totalSizeMB: dbTotalSizeMB,
+        totalTables: dbTables.length,
+        tables: dbTables,
+        storedProcedures: spList,
+        triggers: triggersList
+      },
+      system: {
+        platform: process.platform,
+        arch: process.arch,
+        cpuModel: cpus[0]?.model || 'CPU Genérica',
+        cpuCores: cpus.length,
+        totalMemMB: (os.totalmem() / (1024 * 1024)).toFixed(0),
+        freeMemMB: (os.freemem() / (1024 * 1024)).toFixed(0),
+        heapUsedMB: (mem.heapUsed / (1024 * 1024)).toFixed(2),
+        heapTotalMB: (mem.heapTotal / (1024 * 1024)).toFixed(2),
+        rssMB: (mem.rss / (1024 * 1024)).toFixed(2),
+        uptimeSeconds: Math.floor(process.uptime()),
+        versions: {
+          node: process.versions.node,
+          electron: process.versions.electron,
+          chrome: process.versions.chrome,
+          v8: process.versions.v8
+        }
+      }
+    };
+  });
+
+  // Mantenimiento y Optimización de Tablas MySQL
+  ipcMain.handle('programadorOptimizeDatabase', async (event) => {
+    const candidateTables = [
+      'Articulos', 'Categorias', 'Ventas', 'VentaDetalle', 'VentasCanal',
+      'MovimientosInventario', 'Empleados', 'Clientes', 'Proveedores',
+      'CortesTurno', 'Compras', 'CompraDetalle', 'RecepcionesProveedor',
+      'RecepcionProveedorDetalle', 'DevolucionesCliente', 'DevolucionClienteDetalle'
+    ];
+
+    let tables = candidateTables;
+    try {
+      const existingTablesRes = await db.query(
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
+      );
+      if (Array.isArray(existingTablesRes) && existingTablesRes.length > 0) {
+        const lowerMap = new Map(existingTablesRes.map((r) => [r.TABLE_NAME.toLowerCase(), r.TABLE_NAME]));
+        tables = candidateTables.filter((t) => lowerMap.has(t.toLowerCase())).map((t) => lowerMap.get(t.toLowerCase()));
+      }
+    } catch (_) {}
+
+    const results = [];
+    for (const t of tables) {
+      try {
+        const opt = await db.query(`OPTIMIZE TABLE ${t}`);
+        results.push({ table: t, status: opt[0]?.Msg_text || 'OK', success: true });
+      } catch (e) {
+        results.push({ table: t, status: e.message, success: false });
+      }
+    }
+    logSystemEvent('INFO', 'MAINT', 'Optimización y desfragmentación ejecutada para ' + tables.length + ' tablas.');
+    return { success: true, results };
+  });
+
+  // Generador de Copia de Seguridad JSON Snapshot
+  ipcMain.handle('programadorExportBackup', async (event) => {
+    const candidateTables = [
+      'Empleados', 'Clientes', 'Proveedores', 'Categorias', 'Articulos',
+      'Ventas', 'VentaDetalle', 'VentasCanal', 'MovimientosInventario',
+      'CortesTurno', 'Compras', 'CompraDetalle', 'RecepcionesProveedor',
+      'RecepcionProveedorDetalle', 'DevolucionesCliente', 'DevolucionClienteDetalle'
+    ];
+
+    let tables = candidateTables;
+    let activeDb = 'panaderia';
+    try {
+      const dbNameRes = await db.query('SELECT DATABASE() as dbName');
+      if (dbNameRes[0]?.dbName) activeDb = dbNameRes[0].dbName;
+
+      const existingTablesRes = await db.query(
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'
+      );
+      if (Array.isArray(existingTablesRes) && existingTablesRes.length > 0) {
+        const lowerMap = new Map(existingTablesRes.map((r) => [r.TABLE_NAME.toLowerCase(), r.TABLE_NAME]));
+        tables = candidateTables.filter((t) => lowerMap.has(t.toLowerCase())).map((t) => lowerMap.get(t.toLowerCase()));
+      }
+    } catch (_) {}
+
+    const backupData = {
+      app: 'Panadería Dulce Horno POS',
+      type: 'FULL_DATABASE_SNAPSHOT',
+      timestamp: new Date().toISOString(),
+      version: app && typeof app.getVersion === 'function' ? app.getVersion() : '1.1.0',
+      database: activeDb,
+      totalTables: tables.length,
+      tables: {}
+    };
+
+    for (const t of tables) {
+      try {
+        const rows = await db.query(`SELECT * FROM ${t}`);
+        backupData.tables[t] = rows;
+      } catch (err) {
+        backupData.tables[t] = [];
+      }
+    }
+
+    logSystemEvent('INFO', 'BACKUP', 'Snapshot completo de base de datos exportado.');
+    return { success: true, backup: backupData };
+  });
+
+  // Registro de Eventos del Sistema (Logs)
+  ipcMain.handle('programadorGetSystemLogs', async (event) => {
+    return systemLogs;
+  });
+
+  ipcMain.handle('programadorClearLogs', async (event) => {
+    systemLogs.length = 0;
+    systemLogs.push({
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      module: 'CONSOLE',
+      message: 'Historial de registros limpiado por el programador.'
+    });
+    return { success: true };
+  });
+
+  // Simulador de Lector de Código de Barras / Clave de Producto
+  ipcMain.handle('programadorTestBarcode', async (event, code) => {
+    if (!code || !String(code).trim()) {
+      throw new Error('Ingresa un código, ID o nombre de producto para buscar.');
+    }
+    const cleanCode = String(code).trim();
+    const isNum = !isNaN(Number(cleanCode)) && Number(cleanCode) > 0;
+    const query = `
+      SELECT a.*, c.Nombre AS NombreCategoria 
+      FROM Articulos a
+      LEFT JOIN Categorias c ON a.IdCategoria = c.IdCategoria
+      WHERE ${isNum ? 'a.IdArticulo = ? OR ' : ''}a.Nombre LIKE ?
+      LIMIT 1
+    `;
+    const params = isNum ? [Number(cleanCode), `%${cleanCode}%`] : [`%${cleanCode}%`];
+    const rows = await db.query(query, params);
+    if (!rows.length) {
+      logSystemEvent('WARN', 'BARCODE', `Búsqueda de código sin coincidencia: "${cleanCode}"`);
+      return { found: false, code: cleanCode, message: `No se encontró ningún artículo coincidente con "${cleanCode}".` };
+    }
+    logSystemEvent('INFO', 'BARCODE', `Artículo escaneado exitosamente: "${rows[0].Nombre}"`);
+    return { found: true, code: cleanCode, product: rows[0] };
+  });
+
+  // ============================================
+  // Soporte Remoto & Enlace al Hub Central
+  // ============================================
+  ipcMain.handle('getRemoteSupportStatus', async () => {
+    const remoteAgent = require('./remoteAgent.js');
+    return remoteAgent.getRemoteAgentStatus();
+  });
+
+  ipcMain.handle('updateRemoteSupportConfig', async (event, newSettings) => {
+    const remoteAgent = require('./remoteAgent.js');
+    return remoteAgent.updateRemoteAgentConfig(newSettings);
+  });
+
+  ipcMain.handle('regenerateSessionPin', async () => {
+    const remoteAgent = require('./remoteAgent.js');
+    return remoteAgent.regenerateSessionPin();
   });
 
   // ============================================
@@ -1377,7 +1689,7 @@ function registerIpcHandlers() {
       if (app && app.isPackaged) {
         return Boolean(app.getLoginItemSettings().openAtLogin);
       }
-      const startupFolder = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+      const startupFolder = path.join(process.env.APPDATA || app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
       const vbsPath = path.join(startupFolder, 'DulceHorno_AutoStart.vbs');
       return fs.existsSync(vbsPath);
     } catch (e) {
@@ -1396,38 +1708,74 @@ function registerIpcHandlers() {
         });
       }
 
-      const startupFolder = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
-      const vbsPath = path.join(startupFolder, 'DulceHorno_AutoStart.vbs');
-
-      if (shouldEnable) {
-        if (!fs.existsSync(startupFolder)) {
-          fs.mkdirSync(startupFolder, { recursive: true });
-        }
-        const projectDir = path.resolve(__dirname, '..', '..');
-        const vbsContent = [
-          'Set WshShell = CreateObject("WScript.Shell")',
-          `WshShell.CurrentDirectory = "${projectDir.replace(/\\/g, '\\\\')}"`,
-          'WshShell.Run "cmd /c npm start", 0, False',
-          ''
-        ].join('\r\n');
-        fs.writeFileSync(vbsPath, vbsContent, 'utf8');
-
-        // Levantar o verificar servicio MySQL si existe
-        try {
-          const { exec } = require('child_process');
-          exec('net start MySQL', () => {});
-        } catch (e) {}
-      } else {
-        if (fs.existsSync(vbsPath)) {
-          fs.unlinkSync(vbsPath);
-        }
-      }
-
-      return { success: true, enabled: shouldEnable };
+      const { setupAutostart } = require('../../scripts/setup-autostart.js');
+      const res = setupAutostart(shouldEnable);
+      return { success: true, enabled: res.enabled };
     } catch (err) {
       console.error('Error configurando autostart en IPC:', err);
       return { success: false, error: err.message };
     }
+  });
+
+  // Consultar estado de licenciamiento y activación comercial de la terminal
+  ipcMain.handle('getLicenseStatus', async () => {
+    try {
+      const { getLicenseDetails, getRemoteAgentStatus } = require('./remoteAgent.js');
+      const lic = await getLicenseDetails();
+      const agent = getRemoteAgentStatus();
+      return {
+        ...lic,
+        terminalId: agent.branchId,
+        sessionPin: agent.sessionPin,
+        relayConnected: agent.connected
+      };
+    } catch (err) {
+      return {
+        isActivated: false,
+        error: err.message
+      };
+    }
+  });
+
+  // Activación manual desde pantalla del POS con token y datos de Gerente
+  ipcMain.handle('activateLicenseManual', async (event, data) => {
+    const { token, nombreNegocio, nombreGerente, usuarioGerente, passwordGerente, tipoLicencia } = data || {};
+    if (!token || !usuarioGerente || !passwordGerente) {
+      throw new Error('Faltan datos obligatorios (Token, Usuario o Contraseña).');
+    }
+
+    const passHash = db.hashPassword(passwordGerente);
+
+    await db.query(`
+      INSERT INTO LicenciaSistema (TokenActivacion, NombreNegocio, Propietario, TipoLicencia, Estado, FechaActivacion, ActivadoPor)
+      VALUES (?, ?, ?, ?, 'Activa', NOW(), 'Ingreso Manual en Terminal')
+      ON DUPLICATE KEY UPDATE
+        NombreNegocio = VALUES(NombreNegocio),
+        Propietario = VALUES(Propietario),
+        TipoLicencia = VALUES(TipoLicencia),
+        Estado = 'Activa',
+        FechaActivacion = NOW(),
+        ActivadoPor = 'Ingreso Manual en Terminal'
+    `, [token, nombreNegocio || 'Panadería Dulce Horno', nombreGerente || usuarioGerente, tipoLicencia || 'Comercial Pro']);
+
+    const userExists = await db.query('SELECT IdEmpleado FROM Empleados WHERE NombreUsuario = ?', [usuarioGerente]);
+    if (userExists.length > 0) {
+      await db.query(`
+        UPDATE Empleados 
+        SET Password = ?, Rol = 'Gerente', NombreCompleto = ?, Puesto = 'Gerente General', Activo = TRUE
+        WHERE IdEmpleado = ?
+      `, [passHash, nombreGerente || usuarioGerente, userExists[0].IdEmpleado]);
+    } else {
+      await db.query(`
+        INSERT INTO Empleados (NombreUsuario, Password, Rol, Puesto, Turno, Salario, NombreCompleto, Activo)
+        VALUES (?, ?, 'Gerente', 'Gerente General', 'Matutino', 0, ?, TRUE)
+      `, [usuarioGerente, passHash, nombreGerente || usuarioGerente]);
+    }
+
+    return {
+      success: true,
+      message: `Terminal activada exitosamente para "${nombreNegocio}". Gerente "${usuarioGerente}" registrado.`
+    };
   });
 }
 

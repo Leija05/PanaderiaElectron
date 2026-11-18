@@ -64,7 +64,7 @@ export const SettingsProvider = ({ children }) => {
     }
   });
 
-  // Configuración de Desarrollador (Programador)
+  // Configuración Técnica de Respaldo
   const [devSettings, setDevSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('dulcehorno_dev_settings');
@@ -118,10 +118,10 @@ export const SettingsProvider = ({ children }) => {
     });
   };
 
-  // Actualizar parámetros de tienda (Solo Gerente y Programador)
+  // Actualizar parámetros de tienda (Gerente)
   const updateGlobalSettings = (newValues) => {
     if (role !== 'Gerente' && role !== 'Programador') {
-      throw new Error('Solo el Gerente o Programador pueden modificar parámetros de tienda.');
+      throw new Error('Solo el Gerente puede modificar parámetros de tienda.');
     }
     setGlobalSettings((prev) => {
       const updated = { ...prev, ...newValues };
@@ -130,11 +130,8 @@ export const SettingsProvider = ({ children }) => {
     });
   };
 
-  // Actualizar parámetros técnicos (Exclusivo Programador)
+  // Actualizar parámetros técnicos
   const updateDevSettings = (newValues) => {
-    if (role !== 'Programador') {
-      throw new Error('Solo el Programador tiene acceso a la configuración técnica de desarrollo.');
-    }
     setDevSettings((prev) => {
       const updated = { ...prev, ...newValues };
       localStorage.setItem('dulcehorno_dev_settings', JSON.stringify(updated));
@@ -149,8 +146,8 @@ export const SettingsProvider = ({ children }) => {
   };
 
   const resetAllSettings = () => {
-    if (role !== 'Programador') {
-      throw new Error('Solo el Programador puede restablecer la configuración global.');
+    if (role !== 'Gerente' && role !== 'Programador') {
+      throw new Error('Solo el Gerente puede restablecer la configuración global.');
     }
     setGlobalSettings(DEFAULT_GLOBAL_SETTINGS);
     setDevSettings(DEFAULT_DEV_SETTINGS);
@@ -168,8 +165,8 @@ export const SettingsProvider = ({ children }) => {
   };
 
   const importSettingsJSON = (jsonStr) => {
-    if (role !== 'Programador') {
-      throw new Error('Solo el Programador puede importar configuraciones del sistema.');
+    if (role !== 'Gerente' && role !== 'Programador') {
+      throw new Error('Solo el Gerente puede importar configuraciones del sistema.');
     }
     try {
       const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;

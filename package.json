@@ -1,13 +1,18 @@
 {
   "name": "dulcehorno",
   "productName": "DulceHorno",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Punto de Venta Panaderia",
   "main": "src/main.js",
   "scripts": {
     "build:ui": "node scripts/build.js",
     "prestart": "npm run build:ui",
     "start": "electron .",
+    "relay": "node server/relay-server.js",
+    "build:hub": "node scripts/build-hub.js",
+    "hub": "node scripts/start-hub.js",
+    "autostart": "node scripts/setup-autostart.js",
+    "autostart:disable": "node scripts/setup-autostart.js disable",
     "test": "node tests/runner.js",
     "clean": "rimraf dist",
     "prebuild": "npm run clean && npm run build:ui",
@@ -61,7 +66,8 @@
     "mysql": "^2.18.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "ws": "^8.23.0"
   },
   "repository": {
     "type": "git",
