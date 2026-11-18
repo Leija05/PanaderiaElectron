@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const net = require('net');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
+const path = require('path');
 
 /**
  * Comprueba si MySQL está respondiendo en el puerto 3306.
@@ -10,7 +11,10 @@ const fs = require('fs');
  * de Windows o el ejecutable mysqld de XAMPP de forma silenciosa para que la
  * computadora esté 100% lista para cobrar desde el encendido.
  */
-async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
+async function ensureMySQLRunning(maxRetries = 10, retryDelayMs = 1000) {
+  const targetPort = Number(process.env.DB_PORT || 3306);
+  const targetHost = process.env.DB_HOST || '127.0.0.1';
+
   const checkPort = () => {
     return new Promise((resolve) => {
       const socket = new net.Socket();
@@ -27,33 +31,66 @@ async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
         socket.destroy();
         resolve(false);
       });
-      socket.connect(Number(process.env.DB_PORT || 3306), process.env.DB_HOST || '127.0.0.1');
+      socket.connect(targetPort, targetHost);
     });
   };
 
   const isAlreadyRunning = await checkPort();
   if (isAlreadyRunning) return true;
 
-  console.log('[DulceHorno AutoStart] MySQL no responde en puerto 3306. Iniciando servicio automáticamente...');
+  console.log(`[DulceHorno AutoStart] Base de datos no responde en ${targetHost}:${targetPort}. Iniciando automáticamente...`);
 
-  // 1. Intentar iniciar servicio Windows 'mysql' si existe
-  try {
-    exec('net start mysql', () => {});
-  } catch (e) {}
-
-  // 2. Si no es servicio, buscar binario de XAMPP
-  const xamppMysqld = 'C:\\xampp\\mysql\\bin\\mysqld.exe';
-  const xamppIni = 'C:\\xampp\\mysql\\bin\\my.ini';
-  if (fs.existsSync(xamppMysqld)) {
+  // 1. Intentar servicios de Windows comunes
+  const winServices = ['mysql', 'MySQL80', 'MySQL', 'mariadb', 'wampmysqld', 'wampmysqld64'];
+  for (const srv of winServices) {
     try {
-      const child = spawn(xamppMysqld, [`--defaults-file=${xamppIni}`, '--standalone'], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
-      });
-      child.unref();
-    } catch (e) {
-      console.warn('[DulceHorno AutoStart] No se pudo lanzar mysqld de XAMPP:', e.message);
+      exec(`net start ${srv}`, { windowsHide: true }, () => {});
+    } catch (_) {}
+  }
+
+  // 2. Buscar rutas de XAMPP / MariaDB / Laragon
+  const xamppCandidates = ['C:\\xampp', 'D:\\xampp', 'E:\\xampp'];
+  for (const root of xamppCandidates) {
+    const xamppMysqld = path.join(root, 'mysql', 'bin', 'mysqld.exe');
+    const xamppIni = path.join(root, 'mysql', 'bin', 'my.ini');
+    const xamppStartBat = path.join(root, 'mysql_start.bat');
+
+    if (fs.existsSync(xamppMysqld)) {
+      // Limpieza preventiva si aria_log está corrompido y bloquea el inicio
+      const ariaLog = path.join(root, 'mysql', 'data', 'aria_log.00000001');
+      if (fs.existsSync(ariaLog)) {
+        try {
+          const ariaChk = path.join(root, 'mysql', 'bin', 'aria_chk.exe');
+          if (fs.existsSync(ariaChk)) {
+            exec(`"${ariaChk}" -o "${path.join(root, 'mysql', 'data', 'mysql', '*.MAI')}"`, { windowsHide: true }, () => {});
+          }
+        } catch (_) {}
+      }
+
+      try {
+        const child = spawn(xamppMysqld, [`--defaults-file=${xamppIni}`, '--standalone'], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true,
+          cwd: root
+        });
+        child.unref();
+      } catch (e) {
+        console.warn('[DulceHorno AutoStart] Lanzador XAMPP mysqld:', e.message);
+      }
+
+      if (fs.existsSync(xamppStartBat)) {
+        try {
+          const batChild = spawn('cmd.exe', ['/c', 'mysql_start.bat'], {
+            detached: true,
+            stdio: 'ignore',
+            windowsHide: true,
+            cwd: root
+          });
+          batChild.unref();
+        } catch (_) {}
+      }
+      break;
     }
   }
 
@@ -62,12 +99,12 @@ async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
     await new Promise((r) => setTimeout(r, retryDelayMs));
     const ok = await checkPort();
     if (ok) {
-      console.log(`[DulceHorno AutoStart] MySQL conectado y listo tras intento ${i + 1}.`);
+      console.log(`[DulceHorno AutoStart] Base de datos conectada y operativa tras intento ${i + 1}.`);
       return true;
     }
   }
 
-  console.warn('[DulceHorno AutoStart] MySQL no abrió el puerto a tiempo.');
+  console.warn('[DulceHorno AutoStart] La base de datos no abrió el puerto a tiempo.');
   return false;
 }
 
@@ -78,7 +115,7 @@ async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
 async function ensureDatabaseExists() {
   return new Promise((resolve) => {
     const rawConn = mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST || '127.0.0.1',
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       port: Number(process.env.DB_PORT || 3306)
@@ -106,7 +143,7 @@ async function ensureDatabaseExists() {
 // Pool de conexiones seguro con reconexión automática
 const pool = mysql.createPool({
   connectionLimit: 10,
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'panaderia',
@@ -122,14 +159,24 @@ let currentTxConn = null;
 
 function query(sql, params = []) {
   return new Promise((resolve, reject) => {
-    const executor = currentTxConn || pool;
-    executor.query(sql, params, (error, results) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
-      }
-    });
+    const execute = (isRetry = false) => {
+      const executor = currentTxConn || pool;
+      executor.query(sql, params, async (error, results) => {
+        if (error) {
+          if (!isRetry && (error.code === 'ECONNREFUSED' || error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ETIMEDOUT')) {
+            console.warn(`[DulceHorno DB] Conexión MySQL perdida (${error.code}). Reactivando motor automáticamente...`);
+            const recovered = await ensureMySQLRunning(8, 800);
+            if (recovered) {
+              return execute(true);
+            }
+          }
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      });
+    };
+    execute(false);
   });
 }
 

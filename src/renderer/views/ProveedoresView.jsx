@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { Modal } from '../components/common/Modal';
 import { TruckIcon, BoxIcon, RefreshIcon, PlusIcon, TrashIcon } from '../components/common/Icons';
 import { formatMoney } from '../components/pos/ProductCard';
@@ -8,6 +9,7 @@ import { formatMoney } from '../components/pos/ProductCard';
 export const ProveedoresView = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [activeTab, setActiveTab] = useState('proveedores');
   const [proveedores, setProveedores] = useState([]);
@@ -154,7 +156,17 @@ export const ProveedoresView = () => {
   };
 
   const handleReturnReception = async (rec) => {
-    if (!window.confirm('¿Confirmas devolver esta recepción? Se descontarán del inventario los productos ingresados.')) {
+    const ok = await confirm({
+      title: 'Devolución de Recepción',
+      subtitle: `Recepción #${rec.NumeroRecepcion || rec.IdRecepcion}`,
+      message: '¿Confirmas devolver esta recepción? Se descontarán del inventario los productos que fueron ingresados en este movimiento.',
+      confirmText: 'Sí, Devolver Recepción',
+      cancelText: 'Cancelar',
+      type: 'warning',
+      confirmButtonClass: 'btn-danger'
+    });
+
+    if (!ok) {
       return;
     }
 

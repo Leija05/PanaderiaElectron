@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('hubApi', {
   reconnectBroker: () => ipcRenderer.invoke('hubReconnectBroker'),
   getBranches: () => ipcRenderer.invoke('hubGetBranches'),
   getNetworkInfo: () => ipcRenderer.invoke('hubGetNetworkInfo'),
+  getAppVersion: () => ipcRenderer.invoke('hubGetAppVersion'),
   setRelayUrl: (url) => ipcRenderer.invoke('hubSetRelayUrl', url),
 
   // Ejecución Remota de Acciones hacia Sucursales

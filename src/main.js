@@ -9,19 +9,31 @@ const { registerIpcHandlers } = require('./main/ipc.js');
 // Eliminar el menú genérico superior de Electron (File, Edit, View, Window, Help)
 Menu.setApplicationMenu(null);
 
+try {
+  const pkg = require('../package.json');
+  if (pkg && pkg.version) {
+    if (typeof app.setVersion === 'function') app.setVersion(pkg.version);
+    if (typeof app.setName === 'function') app.setName(pkg.productName || 'DulceHorno');
+  }
+} catch (_) {}
+
 let mainWindow = null;
 
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  console.log('[DulceHorno] Ya existe una instancia activa. Cerrando proceso duplicado.');
-  app.quit();
+if (process.env.DEMO_EMULATE === '1') {
+  app.setPath('userData', path.join(app.getPath('temp'), 'dulcehorno_demo_' + Date.now()));
 } else {
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    console.log('[DulceHorno] Ya existe una instancia activa. Cerrando proceso duplicado.');
+    app.quit();
+  } else {
+    app.on('second-instance', () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+  }
 }
 
 function createWindow() {
@@ -74,6 +86,9 @@ function createWindow() {
 updater.setMainWindowGetter(() => mainWindow);
 
 app.whenReady().then(async () => {
+  if (process.env.DEMO_EMULATE === '1') {
+    return require('./main/demoEmulation.js').runDemoEmulation();
+  }
   Menu.setApplicationMenu(null);
   // 1. Registrar handlers IPC prioritariamente para que siempre respondan al preload
   registerIpcHandlers();

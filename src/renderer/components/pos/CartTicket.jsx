@@ -2,6 +2,7 @@ import React from 'react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { useConfirm } from '../../context/ConfirmContext';
 import { CartIcon, TrashIcon } from '../common/Icons';
 import { formatMoney } from './ProductCard';
 
@@ -9,12 +10,22 @@ export const CartTicket = ({ onCheckout, isClientMode = false }) => {
   const { cart, updateQuantity, removeFromCart, clearCart, totals } = useCart();
   const { user } = useAuth();
   const { userSettings } = useSettings() || {};
+  const { confirm } = useConfirm();
 
   const isSelfCheckout = isClientMode || user?.Rol === 'Cliente';
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (userSettings?.confirmClearCart) {
-      if (window.confirm('¿Deseas vaciar todos los productos del ticket?')) {
+      const ok = await confirm({
+        title: 'Vaciar Ticket de Venta',
+        subtitle: 'Canasta de productos',
+        message: '¿Estás seguro de vaciar todos los productos del ticket actual? Esta acción no se puede deshacer.',
+        confirmText: 'Sí, Vaciar Todo',
+        cancelText: 'Cancelar',
+        type: 'warning',
+        confirmButtonClass: 'btn-danger'
+      });
+      if (ok) {
         clearCart();
       }
     } else {

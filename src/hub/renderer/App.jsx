@@ -272,7 +272,7 @@ const getWhatsAppBranchSummary = (branch) => {
     `⚡ *Estado:* ${estadoStr}\n` +
     `📶 *IP / Red:* ${branch.ip || '127.0.0.1'}\n` +
     `🔐 *PIN de Asistencia Remota:* ${branch.sessionPin || 'N/A'}\n\n` +
-    `Emitido desde DulceHorno Central Hub v1.1.0`;
+    `Emitido desde DulceHorno Central Hub v${branch.version || '1.1.2'}`;
 };
 
 export const HubApp = () => {
@@ -280,7 +280,8 @@ export const HubApp = () => {
   const [brokerStatus, setBrokerStatus] = useState({ connected: false });
   const [branches, setBranches] = useState([]);
   const [selectedTarget, setSelectedTarget] = useState('__local__');
-  const [networkInfo, setNetworkInfo] = useState({ ips: [], port: 4800, relayUrl: '' });
+  const [networkInfo, setNetworkInfo] = useState({ ips: [], port: 4800, relayUrl: '', appVersion: '1.1.2' });
+  const [appVersion, setAppVersion] = useState('1.1.2');
   const [customRelayInput, setCustomRelayInput] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -641,9 +642,15 @@ export const HubApp = () => {
         }
       });
       window.hubApi.getBranches().then((list) => setBranches(list || []));
+      if (typeof window.hubApi.getAppVersion === 'function') {
+        window.hubApi.getAppVersion().then((ver) => {
+          if (ver) setAppVersion(ver);
+        });
+      }
       window.hubApi.getNetworkInfo().then((info) => {
         if (info) {
           setNetworkInfo(info);
+          if (info.appVersion) setAppVersion(info.appVersion);
           if (info.relayUrl && !customRelayInput) {
             setCustomRelayInput(info.relayUrl);
           }
@@ -862,7 +869,7 @@ export const HubApp = () => {
           <div>
             <div className="hub-brand-title">
               <span>DulceHorno Central Hub</span>
-              <span className="hub-badge-pill hub-badge-pro">Mission Control</span>
+              <span className="hub-badge-pill hub-badge-pro">v{appVersion} PRO</span>
             </div>
             <div className="hub-brand-subtitle">
               Consola Maestra de Teleasistencia, Diagnóstico y Respaldo Remoto
@@ -1516,7 +1523,7 @@ export const HubApp = () => {
                     <Icons.Server />
                   </div>
                 </div>
-                <div className="bento-stat-number">v1.1.0</div>
+                <div className="bento-stat-number">v{appVersion}</div>
                 <div className="bento-stat-footnote">DulceHorno POS Production</div>
               </div>
             </div>
@@ -1625,7 +1632,7 @@ export const HubApp = () => {
                         <div className="branch-data-cluster">
                           <div>
                             <div className="data-metric-label">Versión POS</div>
-                            <div className="data-metric-val">{b.version || '1.1.0'}</div>
+                            <div className="data-metric-val">{b.version ? `v${b.version}` : `v${appVersion}`}</div>
                           </div>
                           <div>
                             <div className="data-metric-label">IP Remota</div>

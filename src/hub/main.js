@@ -16,6 +16,13 @@ process.on('unhandledRejection', (reason) => {
   console.warn('[Hub Main] Rechazo no interceptado capturado de forma segura:', reason?.message || reason);
 });
 
+// Suprimir diálogos emergentes nativos de Electron por errores de red transitorios
+if (dialog && typeof dialog.showErrorBox === 'function') {
+  dialog.showErrorBox = (title, content) => {
+    console.warn(`[Hub Main Intercepted ErrorBox] ${title}: ${content}`);
+  };
+}
+
 Menu.setApplicationMenu(null);
 
 let hubWindow = null;
@@ -181,6 +188,14 @@ let hubConfig = {
   devSecret: process.env.DEV_SECRET || 'dulcehorno_master_key_2026'
 };
 
+function getSystemAppVersion() {
+  try {
+    const pkg = require('../../package.json');
+    if (pkg && pkg.version) return pkg.version;
+  } catch (_) {}
+  return '1.1.2';
+}
+
 function loadHubConfig() {
   try {
     const p = getHubConfigPath();
@@ -214,6 +229,19 @@ function getMachineIps() {
   return ips;
 }
 
+function safeWsSend(targetSocket, data) {
+  try {
+    if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+      const payload = typeof data === 'string' ? data : JSON.stringify(data);
+      targetSocket.send(payload);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Hub Main] Error protegido en safeWsSend:', err.message);
+  }
+  return false;
+}
+
 function connectToRelayBroker() {
   if (brokerWs && (brokerWs.readyState === WebSocket.OPEN || brokerWs.readyState === WebSocket.CONNECTING)) {
     return;
@@ -234,14 +262,14 @@ function connectToRelayBroker() {
 
     currentSocket.on('open', () => {
       try {
-        if (brokerWs !== currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+        if (!currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
           return;
         }
         console.log('[Hub Main] Conexión establecida. Autenticando Hub...');
-        currentSocket.send(JSON.stringify({
+        safeWsSend(currentSocket, {
           type: 'auth_hub',
           secretKey: hubConfig.devSecret || 'dulcehorno_master_key_2026'
-        }));
+        });
       } catch (err) {
         console.warn('[Hub Main] Error al autenticar con broker:', err.message);
       }
@@ -254,8 +282,10 @@ function connectToRelayBroker() {
         if (data.type === 'auth_ok') {
           isBrokerConnected = true;
           console.log('[Hub Main] Broker autenticado exitosamente.');
-          if (hubWindow && !hubWindow.isDestroyed()) {
-            hubWindow.webContents.send('hub-broker-status', { connected: true, url: targetUrl });
+          if (hubWindow && !hubWindow.isDestroyed() && hubWindow.webContents && !hubWindow.webContents.isDestroyed()) {
+            try {
+              hubWindow.webContents.send('hub-broker-status', { connected: true, url: targetUrl });
+            } catch (_) {}
           }
           return;
         }
@@ -263,8 +293,10 @@ function connectToRelayBroker() {
         if (data.type === 'auth_error') {
           isBrokerConnected = false;
           console.error('[Hub Main] Error de autenticación con el broker:', data.message);
-          if (hubWindow && !hubWindow.isDestroyed()) {
-            hubWindow.webContents.send('hub-broker-status', { connected: false, error: data.message });
+          if (hubWindow && !hubWindow.isDestroyed() && hubWindow.webContents && !hubWindow.webContents.isDestroyed()) {
+            try {
+              hubWindow.webContents.send('hub-broker-status', { connected: false, error: data.message });
+            } catch (_) {}
           }
           return;
         }
@@ -272,8 +304,10 @@ function connectToRelayBroker() {
         if (data.type === 'branch_list') {
           branchList = data.branches || [];
           console.log(`[Hub Main] Lista de sucursales actualizada (${branchList.length} en línea).`);
-          if (hubWindow && !hubWindow.isDestroyed()) {
-            hubWindow.webContents.send('hub-branch-list', branchList);
+          if (hubWindow && !hubWindow.isDestroyed() && hubWindow.webContents && !hubWindow.webContents.isDestroyed()) {
+            try {
+              hubWindow.webContents.send('hub-branch-list', branchList);
+            } catch (_) {}
           }
           return;
         }
@@ -302,9 +336,11 @@ function connectToRelayBroker() {
         isBrokerConnected = false;
         branchList = [];
         brokerWs = null;
-        if (hubWindow && !hubWindow.isDestroyed()) {
-          hubWindow.webContents.send('hub-broker-status', { connected: false, url: targetUrl });
-          hubWindow.webContents.send('hub-branch-list', []);
+        if (hubWindow && !hubWindow.isDestroyed() && hubWindow.webContents && !hubWindow.webContents.isDestroyed()) {
+          try {
+            hubWindow.webContents.send('hub-broker-status', { connected: false, url: targetUrl });
+            hubWindow.webContents.send('hub-branch-list', []);
+          } catch (_) {}
         }
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectToRelayBroker, 3000);
@@ -315,10 +351,12 @@ function connectToRelayBroker() {
       console.warn('[Hub Main] Aviso de conexión WebSocket con el broker:', err.message);
       if (brokerWs === currentSocket) {
         isBrokerConnected = false;
-        try { currentSocket.terminate(); } catch (_) {}
+        try { currentSocket.close(); } catch (_) {}
         brokerWs = null;
-        if (hubWindow && !hubWindow.isDestroyed()) {
-          hubWindow.webContents.send('hub-broker-status', { connected: false, url: targetUrl });
+        if (hubWindow && !hubWindow.isDestroyed() && hubWindow.webContents && !hubWindow.webContents.isDestroyed()) {
+          try {
+            hubWindow.webContents.send('hub-broker-status', { connected: false, url: targetUrl });
+          } catch (_) {}
         }
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connectToRelayBroker, 3000);
@@ -347,18 +385,18 @@ function sendActionToRemoteBranch(targetBranchId, action, payload) {
 
     pendingHubRequests.set(commandId, { resolve, reject, timeoutId });
 
-    try {
-      brokerWs.send(JSON.stringify({
-        type: 'remote_command',
-        targetBranchId,
-        commandId,
-        action,
-        payload
-      }));
-    } catch (err) {
+    const sent = safeWsSend(brokerWs, {
+      type: 'remote_command',
+      targetBranchId,
+      commandId,
+      action,
+      payload
+    });
+
+    if (!sent) {
       clearTimeout(timeoutId);
       pendingHubRequests.delete(commandId);
-      reject(new Error(`Fallo al enviar comando a la sucursal: ${err.message}`));
+      reject(new Error('No se pudo enviar el comando: la conexión WebSocket no está lista.'));
     }
   });
 }
@@ -386,8 +424,13 @@ function registerHubIpcHandlers() {
     port: 4800,
     relayUrl: hubConfig.relayUrl || 'ws://127.0.0.1:4800',
     connected: isBrokerConnected,
-    totalBranches: branchList.length
+    totalBranches: branchList.length,
+    appVersion: getSystemAppVersion()
   }));
+
+  ipcMain.handle('hubGetAppVersion', () => {
+    return getSystemAppVersion();
+  });
 
   ipcMain.handle('hubSetRelayUrl', (event, newUrl) => {
     const trimmed = String(newUrl || '').trim();
@@ -631,9 +674,23 @@ function createHubWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (typeof app.setVersion === 'function') {
+    app.setVersion(getSystemAppVersion());
+  }
+  if (typeof app.setName === 'function') {
+    app.setName('DulceHorno Central Hub');
+  }
   Menu.setApplicationMenu(null);
   loadHubConfig();
   registerHubIpcHandlers();
+
+  // Asegurar que MySQL esté iniciado y la base de datos lista para consultas locales
+  try {
+    await db.ensureMySQLRunning();
+    await db.ensureDatabaseExists();
+  } catch (err) {
+    console.warn('[Hub Main] Aviso comprobando MySQL local:', err.message);
+  }
 
   // Asegurar compilación del bundle del Hub si falta
   const bundlePath = path.join(__dirname, 'views', 'bundle.js');

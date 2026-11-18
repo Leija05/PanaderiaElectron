@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { Modal } from '../components/common/Modal';
 import { UsersIcon, PlusIcon, UserIcon, TrashIcon, SearchIcon } from '../components/common/Icons';
 import { formatMoney } from '../components/pos/ProductCard';
@@ -8,6 +9,7 @@ import { formatMoney } from '../components/pos/ProductCard';
 export const PersonalView = () => {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,11 +71,17 @@ export const PersonalView = () => {
   };
 
   const handleDelete = async (emp) => {
-    if (
-      !window.confirm(
-        `¿Confirmas desactivar/eliminar a ${emp.NombreCompleto || emp.NombreUsuario}? Si cuenta con ventas u operaciones previas, se desactivará de forma segura.`
-      )
-    ) {
+    const confirmed = await confirm({
+      title: 'Desactivar Empleado',
+      subtitle: `Acción sobre "${emp.NombreCompleto || emp.NombreUsuario}"`,
+      message: `¿Confirmas desactivar a ${emp.NombreCompleto || emp.NombreUsuario}? Si cuenta con ventas u operaciones previas, se desactivará de forma segura sin borrar su historial contable.`,
+      confirmText: 'Sí, Desactivar',
+      cancelText: 'Cancelar',
+      type: 'warning',
+      confirmButtonClass: 'btn-danger'
+    });
+
+    if (!confirmed) {
       return;
     }
 

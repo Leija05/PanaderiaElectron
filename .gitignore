@@ -64,6 +64,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 electron-debug.log*
+assets/promo_video
+
 
 # Temporales, Caché y Scratch
 .cache/

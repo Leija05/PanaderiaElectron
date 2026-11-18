@@ -11,10 +11,26 @@ let reconnectTimeout = null;
 let isConnected = false;
 let config = null;
 
+function safeWsSend(socket, data) {
+  try {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const payload = typeof data === 'string' ? data : JSON.stringify(data);
+      socket.send(payload);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[RemoteAgent] Error protegido enviando por WebSocket:', err.message);
+  }
+  return false;
+}
+
 function getConfigPath() {
-  const rootCfg = path.join(__dirname, '..', '..', 'remote-support-config.json');
-  if (fs.existsSync(rootCfg)) {
-    return rootCfg;
+  const isPackaged = app && app.isPackaged;
+  if (!isPackaged) {
+    const rootCfg = path.join(__dirname, '..', '..', 'remote-support-config.json');
+    if (fs.existsSync(rootCfg)) {
+      return rootCfg;
+    }
   }
   const baseDir = app && typeof app.getPath === 'function'
     ? app.getPath('userData')
@@ -401,7 +417,7 @@ async function handleRemoteAction(action, payload) {
       // 5. Re-notificar al broker con la información de activación actualizada
       if (ws && ws.readyState === WebSocket.OPEN) {
         const version = app && typeof app.getVersion === 'function' ? app.getVersion() : '1.1.0';
-        ws.send(JSON.stringify({
+        safeWsSend(ws, {
           type: 'register_branch',
           branchId: config.branchId,
           branchName: config.branchName,
@@ -422,7 +438,7 @@ async function handleRemoteAction(action, payload) {
             uptime: Math.floor(process.uptime()),
             isActivated: true
           }
-        }));
+        });
       }
 
       console.log(`[RemoteAgent] ¡Licencia activada con éxito! Token: ${token} - Negocio: ${nombreNegocio} - Gerente: ${usuarioGerente}`);
@@ -687,14 +703,14 @@ function connectToRelay() {
 
     currentWs.on('open', async () => {
       try {
-        if (ws !== currentWs || currentWs.readyState !== WebSocket.OPEN) return;
+        if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
         isConnected = true;
         console.log('[RemoteAgent] Conectado al broker. Registrando sucursal...');
 
         const version = app && typeof app.getVersion === 'function' ? app.getVersion() : '1.1.0';
         const lic = await getLicenseDetails();
 
-        currentWs.send(JSON.stringify({
+        safeWsSend(currentWs, {
           type: 'register_branch',
           branchId: config.branchId,
           branchName: lic.nombreNegocio || config.branchName,
@@ -721,14 +737,14 @@ function connectToRelay() {
             isActivated: lic.isActivated,
             estadoLicencia: lic.estado
           }
-        }));
+        });
 
         // Iniciar heartbeat cada 15 segundos
         clearInterval(pingInterval);
         pingInterval = setInterval(() => {
           try {
             if (ws === currentWs && currentWs.readyState === WebSocket.OPEN) {
-              currentWs.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+              safeWsSend(currentWs, { type: 'ping', timestamp: Date.now() });
             }
           } catch (_) {}
         }, 15000);
@@ -755,24 +771,20 @@ function connectToRelay() {
 
           try {
             const result = await handleRemoteAction(action, payload);
-            if (currentWs.readyState === WebSocket.OPEN) {
-              currentWs.send(JSON.stringify({
-                type: 'action_result',
-                commandId,
-                success: true,
-                result
-              }));
-            }
+            safeWsSend(currentWs, {
+              type: 'action_result',
+              commandId,
+              success: true,
+              result
+            });
           } catch (execErr) {
             console.error(`[RemoteAgent] Error ejecutando acción remota "${action}":`, execErr.message);
-            if (currentWs.readyState === WebSocket.OPEN) {
-              currentWs.send(JSON.stringify({
-                type: 'action_result',
-                commandId,
-                success: false,
-                error: execErr.message
-              }));
-            }
+            safeWsSend(currentWs, {
+              type: 'action_result',
+              commandId,
+              success: false,
+              error: execErr.message
+            });
           }
         }
       } catch (parseErr) {
@@ -794,7 +806,7 @@ function connectToRelay() {
       if (ws === currentWs) {
         isConnected = false;
         clearInterval(pingInterval);
-        try { currentWs.terminate(); } catch (_) {}
+        try { currentWs.close(); } catch (_) {}
         ws = null;
         scheduleReconnect();
       }
@@ -862,13 +874,13 @@ function regenerateSessionPin() {
   saveConfig(current);
   if (ws && ws.readyState === WebSocket.OPEN) {
     // Re-registrar con el nuevo pin
-    ws.send(JSON.stringify({
+    safeWsSend(ws, {
       type: 'register_branch',
       branchId: current.branchId,
       branchName: current.branchName,
       sessionPin: current.sessionPin,
       version: app && typeof app.getVersion === 'function' ? app.getVersion() : '1.1.0'
-    }));
+    });
   }
   return current.sessionPin;
 }

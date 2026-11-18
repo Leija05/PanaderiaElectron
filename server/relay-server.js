@@ -78,6 +78,19 @@ wss.on('error', (err) => {
   console.warn('[Relay WebSocket] Error en servidor WebSocket:', err.message);
 });
 
+function safeSend(socket, data) {
+  try {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const payload = typeof data === 'string' ? data : JSON.stringify(data);
+      socket.send(payload);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Relay] Error protegido al enviar socket:', err.message);
+  }
+  return false;
+}
+
 function broadcastClientListToHubs() {
   if (hubs.size === 0) return;
   const branchList = Array.from(clients.values()).map((c) => ({
@@ -95,9 +108,7 @@ function broadcastClientListToHubs() {
   });
 
   for (const hubSocket of hubs) {
-    if (hubSocket.readyState === WebSocket.OPEN) {
-      hubSocket.send(payload);
-    }
+    safeSend(hubSocket, payload);
   }
 }
 
@@ -143,12 +154,12 @@ wss.on('connection', (ws, req) => {
 
         console.log(`[Relay] Sucursal registrada: "${clientInfo.branchName}" (ID: ${registeredClientId})`);
 
-        ws.send(JSON.stringify({
+        safeSend(ws, {
           type: 'registered_ack',
           branchId: registeredClientId,
           status: 'CONNECTED',
           message: 'Conectado exitosamente al broker de soporte DulceHorno.'
-        }));
+        });
 
         broadcastClientListToHubs();
         return;
@@ -157,11 +168,11 @@ wss.on('connection', (ws, req) => {
       // 2. Autenticación de App Master del Programador (Hub)
       if (data.type === 'auth_hub') {
         if (data.secretKey !== DEV_SECRET) {
-          ws.send(JSON.stringify({
+          safeSend(ws, {
             type: 'auth_error',
             message: 'Clave de seguridad del Hub incorrecta.'
-          }));
-          ws.close();
+          });
+          try { ws.close(); } catch (_) {}
           return;
         }
 
@@ -169,10 +180,10 @@ wss.on('connection', (ws, req) => {
         hubs.add(ws);
         console.log(`[Relay] DulceHorno Hub Central autenticado exitosamente.`);
 
-        ws.send(JSON.stringify({
+        safeSend(ws, {
           type: 'auth_ok',
           message: 'Autenticación exitosa. Canal de control remoto activo.'
-        }));
+        });
 
         broadcastClientListToHubs();
         return;
@@ -183,14 +194,14 @@ wss.on('connection', (ws, req) => {
         if (registeredClientId && clients.has(registeredClientId)) {
           clients.get(registeredClientId).lastPing = Date.now();
         }
-        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+        safeSend(ws, { type: 'pong', timestamp: Date.now() });
         return;
       }
 
       // 4. El Hub envía un comando a una Sucursal
       if (data.type === 'remote_command') {
         if (clientRole !== 'hub') {
-          ws.send(JSON.stringify({ type: 'error', message: 'Solo el Hub puede enviar comandos remotos.' }));
+          safeSend(ws, { type: 'error', message: 'Solo el Hub puede enviar comandos remotos.' });
           return;
         }
 
@@ -198,12 +209,12 @@ wss.on('connection', (ws, req) => {
         const targetClient = clients.get(targetBranchId);
 
         if (!targetClient || targetClient.socket.readyState !== WebSocket.OPEN) {
-          ws.send(JSON.stringify({
+          safeSend(ws, {
             type: 'command_response',
             commandId,
             success: false,
             error: `La sucursal destino (${targetBranchId}) no está en línea en este momento.`
-          }));
+          });
           return;
         }
 
@@ -211,26 +222,24 @@ wss.on('connection', (ws, req) => {
         const timeoutId = setTimeout(() => {
           if (pendingCommands.has(commandId)) {
             pendingCommands.delete(commandId);
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({
-                type: 'command_response',
-                commandId,
-                success: false,
-                error: 'Tiempo de espera agotado (timeout de 35s) esperando respuesta de la sucursal.'
-              }));
-            }
+            safeSend(ws, {
+              type: 'command_response',
+              commandId,
+              success: false,
+              error: 'Tiempo de espera agotado (timeout de 35s) esperando respuesta de la sucursal.'
+            });
           }
         }, 35000);
 
         pendingCommands.set(commandId, { hubSocket: ws, timeoutId });
 
         // Enviar a la sucursal cliente
-        targetClient.socket.send(JSON.stringify({
+        safeSend(targetClient.socket, {
           type: 'execute_action',
           commandId,
           action,
           payload
-        }));
+        });
         return;
       }
 
@@ -242,15 +251,13 @@ wss.on('connection', (ws, req) => {
           clearTimeout(pending.timeoutId);
           pendingCommands.delete(commandId);
 
-          if (pending.hubSocket.readyState === WebSocket.OPEN) {
-            pending.hubSocket.send(JSON.stringify({
-              type: 'command_response',
-              commandId,
-              success,
-              result,
-              error
-            }));
-          }
+          safeSend(pending.hubSocket, {
+            type: 'command_response',
+            commandId,
+            success,
+            result,
+            error
+          });
         }
         return;
       }

@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { Navbar } from './components/common/Navbar';
 import { SettingsModal } from './components/common/SettingsModal';
 import { UpdateModal } from './components/common/UpdateModal';
@@ -170,11 +171,13 @@ export const App = () => {
     <ThemeProvider>
       <AuthProvider>
         <SettingsProvider>
-          <ToastProvider>
-            <CartProvider>
-              <AppContent />
-            </CartProvider>
-          </ToastProvider>
+          <ConfirmProvider>
+            <ToastProvider>
+              <CartProvider>
+                <AppContent />
+              </CartProvider>
+            </ToastProvider>
+          </ConfirmProvider>
         </SettingsProvider>
       </AuthProvider>
     </ThemeProvider>
