@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
+import { useSettings } from '../context/SettingsContext';
 import { ChartIcon, BoxIcon, CashIcon, CartIcon, BreadIcon, AlertIcon, DownloadIcon } from '../components/common/Icons';
+import { SpreadsheetViewer } from '../components/reports/SpreadsheetViewer';
 import { formatMoney } from '../components/pos/ProductCard';
 
 export const ReportesView = () => {
   const { showToast } = useToast();
+  const { globalSettings } = useSettings();
   const [mode, setMode] = useState('weekly');
-  const [activeSubtab, setActiveSubtab] = useState('resumen');
+  const [activeSubtab, setActiveSubtab] = useState('resumen'); // 'resumen' | 'excel' | 'kardex'
   const [reportData, setReportData] = useState(null);
   const [auxiliarData, setAuxiliarData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,39 +43,47 @@ export const ReportesView = () => {
     loadReport();
   }, [loadReport]);
 
-  const handleExportCSV = () => {
-    if (!reportData || !reportData.ventas) return;
-    const { ventas, range } = reportData;
-
-    const headers = ['ID Venta', 'Fecha', 'Canal', 'Empleado', 'Cliente', 'Subtotal', 'IVA', 'Total'];
-    const rows = ventas.map((v) => [
-      v.IdVenta,
-      v.FechaVenta,
-      v.Canal,
-      v.EmpleadoNombre || 'Autocobro',
-      v.ClienteNombre || 'Público General',
-      v.Subtotal,
-      v.Iva,
-      v.Total
-    ]);
-
-    const escapeCell = (val) => {
-      const s = String(val ?? '').replace(/"/g, '""');
-      return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s}"` : s;
-    };
-
-    const headerLine = headers.map(escapeCell).join(',');
-    const dataLines = rows.map((r) => r.map(escapeCell).join(',')).join('\n');
-    const content = `\uFEFF${headerLine}\n${dataLines}`;
-
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Reporte_Panaderia_${range.start.slice(0, 10)}_al_${range.end.slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Reporte exportado como archivo CSV.', 'success');
+  const handleExportExcel = async () => {
+    if (!reportData || !reportData.ventas) {
+      showToast('No hay datos disponibles para exportar a Excel', 'warning');
+      return;
+    }
+    try {
+      showToast('Generando reporte único en Excel con fórmulas y logo...', 'info');
+      const res = await window.api.exportarReporteExcel({
+        reportData,
+        auxiliarData,
+        storeInfo: globalSettings,
+        saveToFile: true
+      });
+      if (res && res.success) {
+        if (res.canceled) {
+          showToast('Guardado de Excel cancelado por el usuario', 'info');
+        } else if (res.filePath) {
+          showToast(`Reporte Excel guardado exitosamente en: ${res.filePath}`, 'success');
+        } else if (res.base64) {
+          // Descarga directa vía navegador como alternativa
+          const byteCharacters = atob(res.base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = res.defaultFilename || `Reporte_Dulce_Horno_${new Date().toISOString().slice(0, 10)}.xlsx`;
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast('Archivo Excel descargado con éxito', 'success');
+        }
+      } else {
+        showToast(`Error al exportar Excel: ${res?.error || 'Desconocido'}`, 'error');
+      }
+    } catch (err) {
+      showToast(`Error al exportar Excel: ${err.message}`, 'error');
+    }
   };
 
   return (
@@ -84,14 +95,30 @@ export const ReportesView = () => {
             <span>Reportes y Métricas Operativas</span>
           </h1>
           <p className="view-page-sub">
-            Analiza ingresos por periodo, productos con mayor demanda y kardex de movimientos.
+            Analiza ingresos por periodo, productos con mayor demanda y desglose de ventas.
           </p>
         </div>
 
-        <button className="btn btn-outline" onClick={handleExportCSV}>
-          <DownloadIcon style={{ width: 16, height: 16 }} />
-          <span>Exportar Reporte CSV</span>
-        </button>
+        <div>
+          <button
+            className="btn btn-primary"
+            onClick={handleExportExcel}
+            style={{
+              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+              color: '#FFFFFF',
+              boxShadow: '0 4px 12px rgba(198, 127, 67, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              fontSize: '14px',
+              fontWeight: 600
+            }}
+          >
+            <DownloadIcon style={{ width: 18, height: 18 }} />
+            <span>Descargar Reporte en Excel (.xlsx)</span>
+          </button>
+        </div>
       </div>
 
       {/* Selector de Periodo */}
@@ -155,6 +182,14 @@ export const ReportesView = () => {
           <span>Resumen Ejecutivo</span>
         </button>
         <button
+          className={`tab-btn ${activeSubtab === 'excel' ? 'active' : ''}`}
+          onClick={() => setActiveSubtab('excel')}
+        >
+          <BoxIcon style={{ width: 18, height: 18 }} />
+          <span>Hoja de Cálculo (Vista Excel)</span>
+          <span className="tab-pill-badge badge-gerente" style={{ fontSize: '10px', padding: '2px 7px', marginLeft: '6px' }}>En vivo</span>
+        </button>
+        <button
           className={`tab-btn ${activeSubtab === 'kardex' ? 'active' : ''}`}
           onClick={() => setActiveSubtab('kardex')}
         >
@@ -168,8 +203,15 @@ export const ReportesView = () => {
           <span className="spinner"></span>
           <p>Generando estadísticas...</p>
         </div>
+      ) : activeSubtab === 'excel' && reportData ? (
+        <div className="mt-4 animate-fade-in">
+          <SpreadsheetViewer
+            reportData={reportData}
+            onExportExcel={handleExportExcel}
+          />
+        </div>
       ) : activeSubtab === 'resumen' && reportData ? (
-        <div className="mt-4">
+        <div className="mt-4 animate-fade-in">
           {/* Tarjetas KPI */}
           <div className="kpi-grid">
             <div className="kpi-card">

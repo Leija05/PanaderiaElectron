@@ -1,13 +1,14 @@
 {
   "name": "dulcehorno",
   "productName": "DulceHorno",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Punto de Venta Panaderia",
   "main": "src/main.js",
   "scripts": {
     "build:ui": "node scripts/build.js",
     "prestart": "npm run build:ui",
     "start": "electron .",
+    "test": "node tests/runner.js",
     "clean": "rimraf dist",
     "prebuild": "npm run clean && npm run build:ui",
     "predist": "npm run clean && npm run build:ui",
@@ -32,6 +33,19 @@
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "scripts/post-install.bat",
+        "to": "scripts/post-install.bat"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "include": "scripts/installer.nsh"
     }
   },
   "devDependencies": {
@@ -43,6 +57,7 @@
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
     "esbuild": "^0.28.2",
+    "exceljs": "^4.4.0",
     "mysql": "^2.18.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

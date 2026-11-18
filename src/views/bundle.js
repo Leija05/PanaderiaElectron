@@ -782,7 +782,7 @@
   var require_react_dom_production = __commonJS({
     "node_modules/react-dom/cjs/react-dom.production.js"(exports) {
       "use strict";
-      var React25 = require_react();
+      var React27 = require_react();
       function formatProdErrorMessage(code) {
         var url = "https://react.dev/errors/" + code;
         if (1 < arguments.length) {
@@ -824,7 +824,7 @@
           implementation
         };
       }
-      var ReactSharedInternals = React25.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      var ReactSharedInternals = React27.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       function getCrossOriginStringAs(as, input) {
         if ("font" === as) return "";
         if ("string" === typeof input)
@@ -966,7 +966,7 @@
     "node_modules/react-dom/cjs/react-dom-client.production.js"(exports) {
       "use strict";
       var Scheduler = require_scheduler();
-      var React25 = require_react();
+      var React27 = require_react();
       var ReactDOM = require_react_dom();
       function formatProdErrorMessage(code) {
         var url = "https://react.dev/errors/" + code;
@@ -1257,7 +1257,7 @@
         return null;
       }
       var isArrayImpl = Array.isArray;
-      var ReactSharedInternals = React25.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      var ReactSharedInternals = React27.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       var ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       var sharedNotPendingObject = {
         pending: false,
@@ -14406,7 +14406,7 @@
           0 === i && attemptExplicitHydrationTarget(target);
         }
       };
-      var isomorphicReactPackageVersion$jscomp$inline_2043 = React25.version;
+      var isomorphicReactPackageVersion$jscomp$inline_2043 = React27.version;
       if ("19.3.1" !== isomorphicReactPackageVersion$jscomp$inline_2043)
         throw Error(
           formatProdErrorMessage(
@@ -14532,11 +14532,11 @@
   });
 
   // src/renderer/index.jsx
-  var import_react24 = __toESM(require_react());
+  var import_react26 = __toESM(require_react());
   var import_client = __toESM(require_client());
 
   // src/renderer/App.jsx
-  var import_react23 = __toESM(require_react());
+  var import_react25 = __toESM(require_react());
 
   // src/renderer/context/AuthContext.jsx
   var import_react = __toESM(require_react());
@@ -15051,7 +15051,7 @@
   };
 
   // src/renderer/components/common/SettingsModal.jsx
-  var import_react9 = __toESM(require_react());
+  var import_react10 = __toESM(require_react());
 
   // src/renderer/components/common/Modal.jsx
   var import_react8 = __toESM(require_react());
@@ -15093,6 +15093,28 @@
       /* @__PURE__ */ import_react8.default.createElement("div", { className: "modal-body" }, children),
       footer && /* @__PURE__ */ import_react8.default.createElement("div", { className: "modal-footer" }, footer)
     ));
+  };
+
+  // src/renderer/components/common/ToggleSwitch.jsx
+  var import_react9 = __toESM(require_react());
+  var ToggleSwitch = ({
+    checked,
+    onChange,
+    disabled = false,
+    label,
+    id
+  }) => {
+    return /* @__PURE__ */ import_react9.default.createElement("label", { className: `toggle-switch-label ${disabled ? "disabled" : ""}`, htmlFor: id }, /* @__PURE__ */ import_react9.default.createElement(
+      "input",
+      {
+        id,
+        type: "checkbox",
+        checked: Boolean(checked),
+        onChange,
+        disabled,
+        className: "toggle-switch-input"
+      }
+    ), /* @__PURE__ */ import_react9.default.createElement("span", { className: "toggle-switch-slider" }), label && /* @__PURE__ */ import_react9.default.createElement("span", { className: "toggle-switch-text" }, label));
   };
 
   // src/renderer/utils/audio.js
@@ -15196,13 +15218,44 @@
     const role = user?.Rol || "Empleado";
     const isGerente = role === "Gerente" || role === "Programador";
     const isProgramador = role === "Programador";
-    const [activeTab, setActiveTab] = (0, import_react9.useState)("perfil");
-    const [storeForm, setStoreForm] = (0, import_react9.useState)({ ...globalSettings });
-    const [devForm, setDevForm] = (0, import_react9.useState)({ ...devSettings });
-    const [dbPingStatus, setDbPingStatus] = (0, import_react9.useState)(null);
-    const [isPinging, setIsPinging] = (0, import_react9.useState)(false);
-    const [jsonInput, setJsonInput] = (0, import_react9.useState)("");
-    const [showJsonImportBox, setShowJsonImportBox] = (0, import_react9.useState)(false);
+    const [activeTab, setActiveTab] = (0, import_react10.useState)("perfil");
+    const [storeForm, setStoreForm] = (0, import_react10.useState)({ ...globalSettings });
+    const [devForm, setDevForm] = (0, import_react10.useState)({ ...devSettings });
+    const [dbPingStatus, setDbPingStatus] = (0, import_react10.useState)(null);
+    const [isPinging, setIsPinging] = (0, import_react10.useState)(false);
+    const [jsonInput, setJsonInput] = (0, import_react10.useState)("");
+    const [showJsonImportBox, setShowJsonImportBox] = (0, import_react10.useState)(false);
+    const [autostartActive, setAutostartActive] = (0, import_react10.useState)(false);
+    const [loadingAutostart, setLoadingAutostart] = (0, import_react10.useState)(false);
+    (0, import_react10.useEffect)(() => {
+      if (isOpen && window.api && window.api.getAutostartStatus) {
+        window.api.getAutostartStatus().then((status) => setAutostartActive(Boolean(status))).catch(() => {
+        });
+      }
+    }, [isOpen]);
+    const handleToggleAutostart = async (enable) => {
+      if (!isGerente) {
+        showToast("Acceso Restringido: Solo el Administrador o Gerente puede configurar el arranque de Windows.", "warning");
+        return;
+      }
+      try {
+        setLoadingAutostart(true);
+        const res = await window.api.setAutostart(enable);
+        if (res && res.success) {
+          setAutostartActive(res.enabled);
+          showToast(
+            res.enabled ? "Arranque autom\xE1tico activado: Dulce Horno y MySQL iniciar\xE1n al encender la computadora" : "Arranque autom\xE1tico desactivado",
+            "success"
+          );
+        } else {
+          showToast("No se pudo configurar el arranque autom\xE1tico: " + (res?.error || "Desconocido"), "error");
+        }
+      } catch (err) {
+        showToast("Error al modificar arranque de Windows: " + err.message, "error");
+      } finally {
+        setLoadingAutostart(false);
+      }
+    };
     if (!isOpen) return null;
     const handleSaveStore = (e) => {
       e.preventDefault();
@@ -15297,42 +15350,44 @@
         showToast(err.message, "error");
       }
     };
-    return /* @__PURE__ */ import_react9.default.createElement(
+    return /* @__PURE__ */ import_react10.default.createElement(
       Modal,
       {
         isOpen,
         onClose,
-        title: "Configuraci\xF3n del Sistema por Perfil",
-        subtitle: `Usuario activo: ${user?.NombreCompleto || user?.NombreUsuario} (${role})`,
-        maxWidth: "720px",
-        footer: /* @__PURE__ */ import_react9.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cerrar")
+        title: "Ajustes y Configuraci\xF3n del Sistema",
+        subtitle: `Perfil activo: ${user?.NombreCompleto || user?.NombreUsuario} \u2022 Nivel: ${role}`,
+        maxWidth: "800px",
+        footer: /* @__PURE__ */ import_react10.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cerrar")
       },
-      /* @__PURE__ */ import_react9.default.createElement("div", { className: "tabs-nav-bar mb-4" }, /* @__PURE__ */ import_react9.default.createElement(
+      /* @__PURE__ */ import_react10.default.createElement("div", { className: "tabs-nav-bar mb-3" }, /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           className: `tab-btn ${activeTab === "perfil" ? "active" : ""}`,
           onClick: () => setActiveTab("perfil")
         },
-        /* @__PURE__ */ import_react9.default.createElement(UserIcon, { style: { width: 16, height: 16 } }),
-        /* @__PURE__ */ import_react9.default.createElement("span", null, "Mi Perfil")
-      ), /* @__PURE__ */ import_react9.default.createElement(
+        /* @__PURE__ */ import_react10.default.createElement(UserIcon, { style: { width: 16, height: 16 } }),
+        /* @__PURE__ */ import_react10.default.createElement("span", null, "Mi Perfil")
+      ), /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           className: `tab-btn ${activeTab === "tienda" ? "active" : ""}`,
           onClick: () => setActiveTab("tienda")
         },
-        /* @__PURE__ */ import_react9.default.createElement(PosIcon, { style: { width: 16, height: 16 } }),
-        /* @__PURE__ */ import_react9.default.createElement("span", null, "Par\xE1metros de Tienda ", isGerente ? "" : "(Solo Lectura)")
-      ), /* @__PURE__ */ import_react9.default.createElement(
+        /* @__PURE__ */ import_react10.default.createElement(PosIcon, { style: { width: 16, height: 16 } }),
+        /* @__PURE__ */ import_react10.default.createElement("span", null, "Par\xE1metros de Tienda"),
+        /* @__PURE__ */ import_react10.default.createElement("span", { className: `tab-pill-badge ${isGerente ? "badge-gerente" : "badge-readonly"}` }, isGerente ? "Gerencia" : "Consulta")
+      ), /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           className: `tab-btn ${activeTab === "sistema" ? "active" : ""}`,
           onClick: () => setActiveTab("sistema")
         },
-        /* @__PURE__ */ import_react9.default.createElement(CodeIcon, { style: { width: 16, height: 16 } }),
-        /* @__PURE__ */ import_react9.default.createElement("span", null, "Sistema & Dev ", isProgramador ? "" : "(Restringido)")
+        /* @__PURE__ */ import_react10.default.createElement(CodeIcon, { style: { width: 16, height: 16 } }),
+        /* @__PURE__ */ import_react10.default.createElement("span", null, "Sistema & Dev"),
+        /* @__PURE__ */ import_react10.default.createElement("span", { className: `tab-pill-badge ${isProgramador ? "badge-dev" : "badge-lock"}` }, isProgramador ? "Desarrollo" : "Restringido")
       )),
-      activeTab === "perfil" && /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-panel animate-fade-in" }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Apariencia y Ergonom\xEDa Personal"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Tema Visual"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Elige entre la paleta artesanal c\xE1lida o modo cacao nocturno.")), /* @__PURE__ */ import_react9.default.createElement("button", { className: "btn btn-sm btn-outline", onClick: toggleTheme }, theme === "dark" ? /* @__PURE__ */ import_react9.default.createElement(import_react9.default.Fragment, null, /* @__PURE__ */ import_react9.default.createElement(SunIcon, { style: { width: 14, height: 14 } }), " ", /* @__PURE__ */ import_react9.default.createElement("span", null, "Cambiar a Modo Claro")) : /* @__PURE__ */ import_react9.default.createElement(import_react9.default.Fragment, null, /* @__PURE__ */ import_react9.default.createElement(MoonIcon, { style: { width: 14, height: 14 } }), " ", /* @__PURE__ */ import_react9.default.createElement("span", null, "Cambiar a Modo Oscuro")))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Densidad Visual en Pantalla"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Normal para pantallas est\xE1ndar; Compacto para vitrinas de alto volumen.")), /* @__PURE__ */ import_react9.default.createElement(
+      activeTab === "perfil" && /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-panel animate-fade-in" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Apariencia y Ergonom\xEDa Personal"), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Tema Visual"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Elige entre la paleta artesanal c\xE1lida o modo cacao nocturno.")), /* @__PURE__ */ import_react10.default.createElement("button", { className: "btn btn-sm btn-outline", onClick: toggleTheme }, theme === "dark" ? /* @__PURE__ */ import_react10.default.createElement(import_react10.default.Fragment, null, /* @__PURE__ */ import_react10.default.createElement(SunIcon, { style: { width: 14, height: 14 } }), " ", /* @__PURE__ */ import_react10.default.createElement("span", null, "Cambiar a Modo Claro")) : /* @__PURE__ */ import_react10.default.createElement(import_react10.default.Fragment, null, /* @__PURE__ */ import_react10.default.createElement(MoonIcon, { style: { width: 14, height: 14 } }), " ", /* @__PURE__ */ import_react10.default.createElement("span", null, "Cambiar a Modo Oscuro")))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Densidad Visual en Pantalla"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Normal para pantallas est\xE1ndar; Compacto para vitrinas de alto volumen.")), /* @__PURE__ */ import_react10.default.createElement(
         "select",
         {
           className: "form-control",
@@ -15340,9 +15395,9 @@
           value: userSettings.density,
           onChange: (e) => updateUserSettings({ density: e.target.value })
         },
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "normal" }, "Normal"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "compact" }, "Compacto")
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Tama\xF1o de Texto / Accesibilidad"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Ajusta el tama\xF1o tipogr\xE1fico para mayor legibilidad en terminales t\xE1ctiles.")), /* @__PURE__ */ import_react9.default.createElement(
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "normal" }, "Normal"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "compact" }, "Compacto")
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Tama\xF1o de Texto / Accesibilidad"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Ajusta el tama\xF1o tipogr\xE1fico para mayor legibilidad en terminales t\xE1ctiles.")), /* @__PURE__ */ import_react10.default.createElement(
         "select",
         {
           className: "form-control",
@@ -15350,18 +15405,16 @@
           value: userSettings.fontSize || "normal",
           onChange: (e) => updateUserSettings({ fontSize: e.target.value })
         },
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "small" }, "Compacto (13px)"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "normal" }, "Est\xE1ndar (15px)"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "large" }, "Grande / T\xE1ctil (17px)")
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Animaciones y Transiciones Suaves"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Desact\xEDvalas si trabajas en terminales con recursos de hardware limitados.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "small" }, "Compacto (13px)"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "normal" }, "Est\xE1ndar (15px)"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "large" }, "Grande / T\xE1ctil (17px)")
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Animaciones y Transiciones Suaves"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Desact\xEDvalas si trabajas en terminales con recursos de hardware limitados.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: userSettings.animationsEnabled !== false,
-          onChange: (e) => updateUserSettings({ animationsEnabled: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ animationsEnabled: e.target.checked })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Comportamiento en Caja y Punto de Venta"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Categor\xEDa inicial al abrir Caja"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Filtro que se seleccionar\xE1 autom\xE1ticamente al ingresar.")), /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(PosIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Comportamiento en Caja y Punto de Venta")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Categor\xEDa inicial al abrir Caja"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Filtro que se seleccionar\xE1 autom\xE1ticamente al ingresar.")), /* @__PURE__ */ import_react10.default.createElement(
         "select",
         {
           className: "form-control",
@@ -15369,27 +15422,23 @@
           value: userSettings.defaultPOSCategory,
           onChange: (e) => updateUserSettings({ defaultPOSCategory: e.target.value })
         },
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "todos" }, "Todos los Panes"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "Pan Dulce" }, "Pan Dulce"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "Blanco & Bolillos" }, "Blanco & Bolillos"),
-        /* @__PURE__ */ import_react9.default.createElement("option", { value: "Reposter\xEDa" }, "Reposter\xEDa")
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Confirmar antes de vaciar carrito"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Previene vaciados accidentales de tickets largos.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "todos" }, "Todos los Panes"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "Pan Dulce" }, "Pan Dulce"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "Blanco & Bolillos" }, "Blanco & Bolillos"),
+        /* @__PURE__ */ import_react10.default.createElement("option", { value: "Reposter\xEDa" }, "Reposter\xEDa")
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Confirmar antes de vaciar carrito"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Previene vaciados accidentales de tickets largos.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: userSettings.confirmClearCart,
-          onChange: (e) => updateUserSettings({ confirmClearCart: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ confirmClearCart: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Mostrar barra de atajos r\xE1pidos"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Muestra recordatorios de teclas (F2 para cobrar, F4 para b\xE1scula, Ctrl+F).")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Mostrar barra de atajos r\xE1pidos"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Muestra recordatorios de teclas (F2 para cobrar, F4 para b\xE1scula, Ctrl+F).")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: userSettings.showShortcuts,
-          onChange: (e) => updateUserSettings({ showShortcuts: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ showShortcuts: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Efectos Auditivos Panaderos"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Emite un tono suave al agregar piezas y acorde al finalizar venta."), /* @__PURE__ */ import_react9.default.createElement("div", { style: { marginTop: "6px", display: "flex", gap: "8px" } }, /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Efectos Auditivos Panaderos"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Emite un tono suave al agregar piezas y acorde al finalizar venta."), /* @__PURE__ */ import_react10.default.createElement("div", { style: { marginTop: "6px", display: "flex", gap: "8px" } }, /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           type: "button",
@@ -15397,10 +15446,10 @@
           onClick: () => soundFX.playBeep(),
           title: "Probar sonido de escaneo / agregar"
         },
-        /* @__PURE__ */ import_react9.default.createElement(SoundIcon, { style: { width: 14, height: 14 } }),
+        /* @__PURE__ */ import_react10.default.createElement(SoundIcon, { style: { width: 14, height: 14 } }),
         " ",
-        /* @__PURE__ */ import_react9.default.createElement("span", null, "Probar Beep")
-      ), /* @__PURE__ */ import_react9.default.createElement(
+        /* @__PURE__ */ import_react10.default.createElement("span", null, "Probar Beep")
+      ), /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           type: "button",
@@ -15408,32 +15457,26 @@
           onClick: () => soundFX.playSuccess(),
           title: "Probar sonido de cobro finalizado"
         },
-        /* @__PURE__ */ import_react9.default.createElement("span", null, "Probar Cobro")
-      ))), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+        /* @__PURE__ */ import_react10.default.createElement("span", null, "Probar Cobro")
+      ))), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: userSettings.soundEffects !== false,
-          onChange: (e) => updateUserSettings({ soundEffects: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ soundEffects: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Limpiar b\xFAsqueda al agregar pan"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Restaura el cat\xE1logo completo de inmediato al seleccionar una pieza.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Limpiar b\xFAsqueda al agregar pan"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Restaura el cat\xE1logo completo de inmediato al seleccionar una pieza.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: Boolean(userSettings.autoClearSearch),
-          onChange: (e) => updateUserSettings({ autoClearSearch: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ autoClearSearch: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Disparar impresi\xF3n autom\xE1tica al cobrar"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Abre directamente el cuadro de impresi\xF3n t\xE9rmica al registrar la venta.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Disparar impresi\xF3n autom\xE1tica al cobrar"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Abre directamente el cuadro de impresi\xF3n t\xE9rmica al registrar la venta.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: Boolean(userSettings.autoPrintReceipt),
-          onChange: (e) => updateUserSettings({ autoPrintReceipt: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => updateUserSettings({ autoPrintReceipt: e.target.checked })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           className: "btn btn-sm btn-outline btn-danger-outline",
@@ -15444,7 +15487,7 @@
         },
         "Restablecer mis preferencias personales"
       ))),
-      activeTab === "tienda" && /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-panel animate-fade-in" }, !isGerente && /* @__PURE__ */ import_react9.default.createElement("div", { className: "inv-alert-banner mb-3", style: { background: "#FFF3CD", color: "#856404", borderColor: "#FFEEBA" } }, /* @__PURE__ */ import_react9.default.createElement(LockIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Nivel de Acceso: Limitado para Empleado"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-xs mt-1", style: { margin: 0 } }, "Como empleado puedes consultar estos par\xE1metros de operaci\xF3n del negocio. Para modificarlos se requiere la cuenta del Gerente o Programador."))), /* @__PURE__ */ import_react9.default.createElement("form", { onSubmit: handleSaveStore }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Membrete e Identidad del Ticket T\xE9rmico"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Nombre del Establecimiento:"), /* @__PURE__ */ import_react9.default.createElement(
+      activeTab === "tienda" && /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-panel animate-fade-in" }, !isGerente ? /* @__PURE__ */ import_react10.default.createElement("div", { className: "access-level-banner access-warning mb-3" }, /* @__PURE__ */ import_react10.default.createElement(LockIcon, { style: { width: 18, height: 18, flexShrink: 0 } }), /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Nivel de Acceso: Modo Consulta (Solo Lectura)"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-xs mt-0.5" }, "Como empleado puedes revisar los par\xE1metros de operaci\xF3n, membretes y l\xEDmites. Para modificarlos se requiere la cuenta del Gerente o Programador."))) : /* @__PURE__ */ import_react10.default.createElement("div", { className: "access-level-banner access-success mb-3" }, /* @__PURE__ */ import_react10.default.createElement(CheckIcon, { style: { width: 18, height: 18, flexShrink: 0 } }), /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Modo Gerencia Habilitado"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-xs mt-0.5" }, "Tienes autorizaci\xF3n completa para ajustar los par\xE1metros comerciales, membretes de tickets, tasas de IVA y pol\xEDticas de negocio."))), /* @__PURE__ */ import_react10.default.createElement("form", { onSubmit: handleSaveStore }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(PosIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Membrete e Identidad del Ticket T\xE9rmico")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Nombre del Establecimiento:"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "text",
@@ -15454,7 +15497,7 @@
           onChange: (e) => setStoreForm({ ...storeForm, nombrePanaderia: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "RFC / Identificador Fiscal:"), /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "RFC / Identificador Fiscal:"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "text",
@@ -15464,7 +15507,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, rfcTienda: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Datos de Contacto y Direcci\xF3n:"), /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Datos de Contacto y Direcci\xF3n:"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "text",
@@ -15473,7 +15516,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, contactoTicket: e.target.value })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Mensaje al Pie del Ticket:"), /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Mensaje al Pie del Ticket:"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "text",
@@ -15482,7 +15525,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, pieTicket: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Par\xE1metros de C\xE1lculo, B\xE1scula e Impuestos"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Tasa de IVA (%):"), /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(DatabaseIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Par\xE1metros de C\xE1lculo, B\xE1scula e Impuestos")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Tasa de IVA (%):"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "number",
@@ -15494,7 +15537,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, ivaPorcentaje: e.target.value })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Peso Bolillo Ref (Kg):"), /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Peso Bolillo Ref (Kg):"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "number",
@@ -15506,7 +15549,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, pesoBolilloRefKg: e.target.value })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Alerta Stock M\xEDnimo:"), /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Alerta Stock M\xEDnimo:"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "number",
@@ -15517,7 +15560,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, stockMinimoAlerta: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group mt-2" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "L\xEDmite M\xE1ximo de Efectivo en Caja antes de Retiro ($):"), /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group mt-2" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "L\xEDmite M\xE1ximo de Efectivo en Caja antes de Retiro ($):"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "number",
@@ -15529,7 +15572,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, limiteEfectivoCaja: e.target.value })
         }
-      ), /* @__PURE__ */ import_react9.default.createElement("small", { className: "text-secondary text-xs" }, "Alerta de seguridad al cajero para depositar exceso de efectivo en b\xF3veda."))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Pol\xEDticas Comerciales y Pan Rezago"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Descuento Pan del D\xEDa Anterior (%):"), /* @__PURE__ */ import_react9.default.createElement(
+      ), /* @__PURE__ */ import_react10.default.createElement("small", { className: "text-secondary text-xs" }, "Alerta de seguridad al cajero para depositar exceso de efectivo en b\xF3veda."))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(AlertIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Pol\xEDticas Comerciales y Pan Rezago")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Descuento Pan del D\xEDa Anterior (%):"), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "number",
@@ -15540,7 +15583,7 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, descuentoPanAyer: e.target.value })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, 'Hora Inicio "Hora Feliz" de Pan:'), /* @__PURE__ */ import_react9.default.createElement(
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, 'Hora Inicio "Hora Feliz" de Pan:'), /* @__PURE__ */ import_react10.default.createElement(
         "input",
         {
           type: "time",
@@ -15549,35 +15592,36 @@
           disabled: !isGerente,
           onChange: (e) => setStoreForm({ ...storeForm, horaFelizPan: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-2" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Permitir Devoluciones sin Ticket F\xEDsico"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Habilita reintegros en caja con autorizaci\xF3n del cajero sin exigir folio previo.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-2" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Permitir Devoluciones sin Ticket F\xEDsico"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Habilita reintegros en caja con autorizaci\xF3n del cajero sin exigir folio previo.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
           checked: Boolean(storeForm.permitirDevolucionSinTicket),
           disabled: !isGerente,
-          onChange: (e) => setStoreForm({ ...storeForm, permitirDevolucionSinTicket: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => setStoreForm({ ...storeForm, permitirDevolucionSinTicket: e.target.checked })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Canales y Seguridad Operativa"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Habilitar M\xF3dulo de Autocobro a Clientes"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Permite a los clientes usar terminales de autoservicio para sus \xF3rdenes.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(LockIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Canales y Seguridad Operativa")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Habilitar M\xF3dulo de Autocobro a Clientes"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Permite a los clientes usar terminales de autoservicio para sus \xF3rdenes.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
-          checked: storeForm.autocobroHabilitado,
+          checked: Boolean(storeForm.autocobroHabilitado),
           disabled: !isGerente,
-          onChange: (e) => setStoreForm({ ...storeForm, autocobroHabilitado: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => setStoreForm({ ...storeForm, autocobroHabilitado: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Requerir Autorizaci\xF3n de Gerente para Cortes"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Exige credenciales de gerente antes de emitir y cerrar el arqueo de caja.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Requerir Autorizaci\xF3n de Gerente para Cortes"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Exige credenciales de gerente antes de emitir y cerrar el arqueo de caja.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
-          checked: storeForm.requiereAuthGerenteCorte,
+          checked: Boolean(storeForm.requiereAuthGerenteCorte),
           disabled: !isGerente,
-          onChange: (e) => setStoreForm({ ...storeForm, requiereAuthGerenteCorte: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          onChange: (e) => setStoreForm({ ...storeForm, requiereAuthGerenteCorte: e.target.checked })
         }
-      ))), isGerente && /* @__PURE__ */ import_react9.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react9.default.createElement("button", { type: "submit", className: "btn btn-primary" }, /* @__PURE__ */ import_react9.default.createElement(CheckIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react9.default.createElement("span", null, "Guardar Par\xE1metros de Tienda"))))),
-      activeTab === "sistema" && /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-panel animate-fade-in" }, !isProgramador ? /* @__PURE__ */ import_react9.default.createElement("div", { className: "inv-alert-banner mb-3", style: { background: "#F8D7DA", color: "#721C24", borderColor: "#F5C6CB" } }, /* @__PURE__ */ import_react9.default.createElement(LockIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Acceso Denegado: Exclusivo para Programador"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-xs mt-1", style: { margin: 0 } }, "Esta pesta\xF1a contiene herramientas de diagn\xF3stico, exportaci\xF3n de esquemas y par\xE1metros de bajo nivel. Solo el rol de Programador tiene autorizaci\xF3n."))) : /* @__PURE__ */ import_react9.default.createElement("form", { onSubmit: handleSaveDev }, /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" } }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary", style: { margin: 0 } }, /* @__PURE__ */ import_react9.default.createElement(DatabaseIcon, { style: { width: 16, height: 16, verticalAlign: "middle", marginRight: "6px" } }), /* @__PURE__ */ import_react9.default.createElement("span", null, "Monitor de Salud de Base de Datos y Red")), dbPingStatus && /* @__PURE__ */ import_react9.default.createElement("span", { className: `ping-indicator-badge ${dbPingStatus.ok ? dbPingStatus.latency < 50 ? "ping-fast" : "ping-slow" : "ping-error"}` }, dbPingStatus.ok ? `\u25CF ${dbPingStatus.latency}ms (${dbPingStatus.timestamp})` : "\u25CF Error")), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs mb-3" }, "Comprueba la latencia del pool de conexiones MySQL 8.0 y el tiempo de respuesta del motor de consultas."), /* @__PURE__ */ import_react9.default.createElement("div", { style: { display: "flex", gap: "10px", alignItems: "center" } }, /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(RefreshIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Arranque y Automatizaci\xF3n de la Terminal (Windows)"), /* @__PURE__ */ import_react10.default.createElement("span", { className: `tab-pill-badge ${isGerente ? "badge-gerente" : "badge-readonly"}`, style: { marginLeft: "auto", fontSize: "10px" } }, isGerente ? "Gerencia / Admin" : "Solo Lectura")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Iniciar Dulce Horno y MySQL autom\xE1ticamente al encender la PC"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Inicia el Punto de Venta en pantalla completa y asegura silenciosamente que MySQL de XAMPP est\xE9 listo al prender la computadora."), !isGerente && /* @__PURE__ */ import_react10.default.createElement("small", { className: "text-warning text-xs font-semibold", style: { display: "block", marginTop: "4px" } }, /* @__PURE__ */ import_react10.default.createElement(LockIcon, { style: { width: 12, height: 12, verticalAlign: "middle", marginRight: "4px" } }), "Configuraci\xF3n reservada exclusivamente para el Administrador o Gerente.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
+        {
+          checked: autostartActive,
+          disabled: !isGerente || loadingAutostart,
+          onChange: (e) => handleToggleAutostart(e.target.checked)
+        }
+      ))), isGerente && /* @__PURE__ */ import_react10.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react10.default.createElement("button", { type: "submit", className: "btn btn-primary" }, /* @__PURE__ */ import_react10.default.createElement(CheckIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react10.default.createElement("span", null, "Guardar Par\xE1metros de Tienda"))))),
+      activeTab === "sistema" && /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-panel animate-fade-in" }, !isProgramador ? /* @__PURE__ */ import_react10.default.createElement("div", { className: "access-level-banner access-danger mb-3" }, /* @__PURE__ */ import_react10.default.createElement(LockIcon, { style: { width: 18, height: 18, flexShrink: 0 } }), /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Acceso Denegado: Exclusivo para Programador"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-xs mt-0.5" }, "Esta pesta\xF1a contiene herramientas de bajo nivel, diagn\xF3sticos IPC y simulaci\xF3n de conectividad. Solo el rol de Programador tiene acceso t\xE9cnico."))) : /* @__PURE__ */ import_react10.default.createElement("div", { className: "access-level-banner access-info mb-3" }, /* @__PURE__ */ import_react10.default.createElement(CodeIcon, { style: { width: 18, height: 18, flexShrink: 0 } }), /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Entorno de Diagn\xF3stico e Ingenier\xEDa Activo"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-xs mt-0.5" }, "Herramientas de inspecci\xF3n de red MySQL, volcado de tr\xE1fico IPC y serializaci\xF3n de respaldos para depuraci\xF3n del sistema."))), isProgramador && /* @__PURE__ */ import_react10.default.createElement("form", { onSubmit: handleSaveDev }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" } }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header", style: { marginBottom: 0 } }, /* @__PURE__ */ import_react10.default.createElement(DatabaseIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Monitor de Salud de Base de Datos y Red")), dbPingStatus && /* @__PURE__ */ import_react10.default.createElement("span", { className: `ping-indicator-badge ${dbPingStatus.ok ? dbPingStatus.latency < 50 ? "ping-fast" : "ping-slow" : "ping-error"}` }, dbPingStatus.ok ? `\u25CF ${dbPingStatus.latency}ms (${dbPingStatus.timestamp})` : "\u25CF Error")), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs mb-3" }, "Comprueba la latencia del pool de conexiones MySQL 8.0 y el tiempo de respuesta del motor de consultas."), /* @__PURE__ */ import_react10.default.createElement("div", { style: { display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           type: "button",
@@ -15585,41 +15629,35 @@
           disabled: isPinging,
           onClick: handlePingDatabase
         },
-        /* @__PURE__ */ import_react9.default.createElement(RefreshIcon, { style: { width: 14, height: 14 } }),
-        /* @__PURE__ */ import_react9.default.createElement("span", null, isPinging ? "Midiendo latencia..." : "Probar Latencia de MySQL")
-      ), /* @__PURE__ */ import_react9.default.createElement("span", { className: "text-muted text-xs font-mono" }, "Host: localhost:3306 \u2022 DB: panaderia"))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Herramientas de Depuraci\xF3n y Diagn\xF3stico"), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Modo Desarrollador Activo"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Muestra tiempos de ejecuci\xF3n y detalles de cada comanda.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+        /* @__PURE__ */ import_react10.default.createElement(RefreshIcon, { style: { width: 14, height: 14 } }),
+        /* @__PURE__ */ import_react10.default.createElement("span", null, isPinging ? "Midiendo latencia..." : "Probar Latencia de MySQL")
+      ), /* @__PURE__ */ import_react10.default.createElement("span", { className: "text-muted text-xs font-mono" }, "Host: localhost:3306 \u2022 DB: panaderia"))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(CodeIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Herramientas de Depuraci\xF3n y Diagn\xF3stico")), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Modo Desarrollador Activo"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Muestra tiempos de ejecuci\xF3n y detalles de cada comanda.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
-          checked: devForm.modoDebug,
-          onChange: (e) => setDevForm({ ...devForm, modoDebug: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          checked: Boolean(devForm.modoDebug),
+          onChange: (e) => setDevForm({ ...devForm, modoDebug: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Registro de Tr\xE1fico IPC en Consola"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Imprime en la terminal de Electron cada canal y payload invocado.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Registro de Tr\xE1fico IPC en Consola"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Imprime en la terminal de Electron cada canal y payload invocado.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
-          checked: devForm.mostrarLogsIPC,
-          onChange: (e) => setDevForm({ ...devForm, mostrarLogsIPC: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          checked: Boolean(devForm.mostrarLogsIPC),
+          onChange: (e) => setDevForm({ ...devForm, mostrarLogsIPC: e.target.checked })
         }
-      )), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react9.default.createElement("div", null, /* @__PURE__ */ import_react9.default.createElement("strong", null, "Simular Modo Desconectado / Fallas de Red"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs" }, "Permite verificar el manejo de errores ante interrupci\xF3n de conexi\xF3n.")), /* @__PURE__ */ import_react9.default.createElement(
-        "input",
+      )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-row-item mt-3" }, /* @__PURE__ */ import_react10.default.createElement("div", null, /* @__PURE__ */ import_react10.default.createElement("strong", null, "Simular Modo Desconectado / Fallas de Red"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs" }, "Permite verificar el manejo de errores ante interrupci\xF3n de conexi\xF3n.")), /* @__PURE__ */ import_react10.default.createElement(
+        ToggleSwitch,
         {
-          type: "checkbox",
-          checked: devForm.simularModoOffline,
-          onChange: (e) => setDevForm({ ...devForm, simularModoOffline: e.target.checked }),
-          style: { width: "20px", height: "20px", accentColor: "var(--color-primary)" }
+          checked: Boolean(devForm.simularModoOffline),
+          onChange: (e) => setDevForm({ ...devForm, simularModoOffline: e.target.checked })
         }
-      ))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react9.default.createElement("h4", { className: "font-semibold text-primary mb-2" }, "Gesti\xF3n de Respaldos y Migraci\xF3n (.JSON)"), /* @__PURE__ */ import_react9.default.createElement("p", { className: "text-secondary text-xs mb-3" }, "Exporta e importa todas las reglas de negocio, membres\xEDas de tickets, pol\xEDticas e IVA en formato portable."), /* @__PURE__ */ import_react9.default.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" } }, /* @__PURE__ */ import_react9.default.createElement("button", { type: "button", className: "btn btn-outline", onClick: handleExportJSON }, /* @__PURE__ */ import_react9.default.createElement(DownloadIcon, { style: { width: 14, height: 14 } }), /* @__PURE__ */ import_react9.default.createElement("span", null, "Exportar Configuraci\xF3n (.JSON)")), /* @__PURE__ */ import_react9.default.createElement(
+      ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-card mb-3" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "settings-section-header" }, /* @__PURE__ */ import_react10.default.createElement(DownloadIcon, { style: { width: 18, height: 18, color: "var(--color-primary)" } }), /* @__PURE__ */ import_react10.default.createElement("h4", { className: "settings-section-title" }, "Gesti\xF3n de Respaldos y Migraci\xF3n (.JSON)")), /* @__PURE__ */ import_react10.default.createElement("p", { className: "text-secondary text-xs mb-3" }, "Exporta e importa todas las reglas de negocio, membres\xEDas de tickets, pol\xEDticas e IVA en formato portable."), /* @__PURE__ */ import_react10.default.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" } }, /* @__PURE__ */ import_react10.default.createElement("button", { type: "button", className: "btn btn-outline", onClick: handleExportJSON }, /* @__PURE__ */ import_react10.default.createElement(DownloadIcon, { style: { width: 14, height: 14 } }), /* @__PURE__ */ import_react10.default.createElement("span", null, "Exportar Configuraci\xF3n (.JSON)")), /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           type: "button",
           className: "btn btn-outline",
           onClick: () => setShowJsonImportBox(!showJsonImportBox)
         },
-        /* @__PURE__ */ import_react9.default.createElement("span", null, showJsonImportBox ? "Ocultar Importador" : "Importar Configuraci\xF3n (.JSON)")
-      ), /* @__PURE__ */ import_react9.default.createElement(
+        /* @__PURE__ */ import_react10.default.createElement("span", null, showJsonImportBox ? "Ocultar Importador" : "Importar Configuraci\xF3n (.JSON)")
+      ), /* @__PURE__ */ import_react10.default.createElement(
         "button",
         {
           type: "button",
@@ -15634,7 +15672,7 @@
           }
         },
         "Restablecer Todo a F\xE1brica"
-      )), showJsonImportBox && /* @__PURE__ */ import_react9.default.createElement("div", { className: "animate-fade-in mt-2", style: { background: "var(--bg-surface)", padding: "12px", borderRadius: "8px", border: "1px solid var(--border-color)" } }, /* @__PURE__ */ import_react9.default.createElement("label", { className: "form-label" }, "Pega el contenido JSON de configuraci\xF3n:"), /* @__PURE__ */ import_react9.default.createElement(
+      )), showJsonImportBox && /* @__PURE__ */ import_react10.default.createElement("div", { className: "animate-fade-in mt-2", style: { background: "var(--bg-surface)", padding: "12px", borderRadius: "8px", border: "1px solid var(--border-color)" } }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Pega el contenido JSON de configuraci\xF3n:"), /* @__PURE__ */ import_react10.default.createElement(
         "textarea",
         {
           className: "form-control font-mono text-xs",
@@ -15643,20 +15681,37 @@
           value: jsonInput,
           onChange: (e) => setJsonInput(e.target.value)
         }
-      ), /* @__PURE__ */ import_react9.default.createElement("div", { className: "text-right mt-2" }, /* @__PURE__ */ import_react9.default.createElement("button", { type: "button", className: "btn btn-sm btn-primary", onClick: handleImportJSONSubmit }, /* @__PURE__ */ import_react9.default.createElement(CheckIcon, { style: { width: 14, height: 14 } }), /* @__PURE__ */ import_react9.default.createElement("span", null, "Cargar y Aplicar JSON"))))), /* @__PURE__ */ import_react9.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react9.default.createElement("button", { type: "submit", className: "btn btn-primary" }, /* @__PURE__ */ import_react9.default.createElement(CheckIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react9.default.createElement("span", null, "Aplicar Par\xE1metros de Programador")))))
+      ), /* @__PURE__ */ import_react10.default.createElement("div", { className: "text-right mt-2" }, /* @__PURE__ */ import_react10.default.createElement("button", { type: "button", className: "btn btn-sm btn-primary", onClick: handleImportJSONSubmit }, /* @__PURE__ */ import_react10.default.createElement(CheckIcon, { style: { width: 14, height: 14 } }), /* @__PURE__ */ import_react10.default.createElement("span", null, "Cargar y Aplicar JSON"))))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react10.default.createElement("button", { type: "submit", className: "btn btn-primary" }, /* @__PURE__ */ import_react10.default.createElement(CheckIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react10.default.createElement("span", null, "Aplicar Par\xE1metros de Programador")))))
     );
   };
 
   // src/renderer/views/LoginView.jsx
-  var import_react10 = __toESM(require_react());
+  var import_react11 = __toESM(require_react());
   var LoginView = ({ onLoginSuccess }) => {
     const { login } = useAuth();
     const { showToast } = useToast();
     const { theme, toggleTheme } = useTheme();
-    const [username, setUsername] = (0, import_react10.useState)("");
-    const [password, setPassword] = (0, import_react10.useState)("");
-    const [loading, setLoading] = (0, import_react10.useState)(false);
-    const [errorMsg, setErrorMsg] = (0, import_react10.useState)("");
+    const [username, setUsername] = (0, import_react11.useState)("");
+    const [password, setPassword] = (0, import_react11.useState)("");
+    const [loading, setLoading] = (0, import_react11.useState)(false);
+    const [errorMsg, setErrorMsg] = (0, import_react11.useState)("");
+    const [isDev, setIsDev] = (0, import_react11.useState)(false);
+    (0, import_react11.useEffect)(() => {
+      let mounted = true;
+      if (window.api && typeof window.api.getAppInfo === "function") {
+        window.api.getAppInfo().then((info) => {
+          if (mounted && info && typeof info.isDev === "boolean") {
+            setIsDev(info.isDev);
+          }
+        }).catch((err) => {
+          console.warn("No se pudo obtener informaci\xF3n del entorno:", err);
+          if (mounted) setIsDev(false);
+        });
+      }
+      return () => {
+        mounted = false;
+      };
+    }, []);
     const handleSubmit = async (e) => {
       e.preventDefault();
       setErrorMsg("");
@@ -15680,7 +15735,7 @@
       setPassword(pass);
       setErrorMsg("");
     };
-    return /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-wrapper animate-fade-in" }, /* @__PURE__ */ import_react10.default.createElement(
+    return /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-wrapper animate-fade-in" }, /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "button",
@@ -15689,8 +15744,8 @@
         title: theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo nocturno",
         "aria-label": "Cambiar tema"
       },
-      theme === "dark" ? /* @__PURE__ */ import_react10.default.createElement(SunIcon, { style: { width: 20, height: 20 } }) : /* @__PURE__ */ import_react10.default.createElement(MoonIcon, { style: { width: 20, height: 20 } })
-    ), /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-card animate-pop-in" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-brand" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-logo-circle" }, /* @__PURE__ */ import_react10.default.createElement(BakeryLogo, { size: 56 })), /* @__PURE__ */ import_react10.default.createElement("h1", { className: "login-title" }, "Dulce Horno"), /* @__PURE__ */ import_react10.default.createElement("p", { className: "login-subtitle" }, "Punto de Venta & Panader\xEDa Artesanal")), /* @__PURE__ */ import_react10.default.createElement("form", { onSubmit: handleSubmit, className: "login-form", autoComplete: "off" }, /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Usuario:"), /* @__PURE__ */ import_react10.default.createElement("div", { className: "input-icon-wrapper" }, /* @__PURE__ */ import_react10.default.createElement("span", { className: "input-icon" }, /* @__PURE__ */ import_react10.default.createElement(UserIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react10.default.createElement(
+      theme === "dark" ? /* @__PURE__ */ import_react11.default.createElement(SunIcon, { style: { width: 20, height: 20 } }) : /* @__PURE__ */ import_react11.default.createElement(MoonIcon, { style: { width: 20, height: 20 } })
+    ), /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-card animate-pop-in" }, /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-brand" }, /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-logo-circle" }, /* @__PURE__ */ import_react11.default.createElement(BakeryLogo, { size: 56 })), /* @__PURE__ */ import_react11.default.createElement("h1", { className: "login-title" }, "Dulce Horno"), /* @__PURE__ */ import_react11.default.createElement("p", { className: "login-subtitle" }, "Punto de Venta & Panader\xEDa Artesanal")), /* @__PURE__ */ import_react11.default.createElement("form", { onSubmit: handleSubmit, className: "login-form", autoComplete: "off" }, /* @__PURE__ */ import_react11.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react11.default.createElement("label", { className: "form-label" }, "Usuario:"), /* @__PURE__ */ import_react11.default.createElement("div", { className: "input-icon-wrapper" }, /* @__PURE__ */ import_react11.default.createElement("span", { className: "input-icon" }, /* @__PURE__ */ import_react11.default.createElement(UserIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react11.default.createElement(
       "input",
       {
         type: "text",
@@ -15701,7 +15756,7 @@
         required: true,
         autoFocus: true
       }
-    ))), /* @__PURE__ */ import_react10.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react10.default.createElement("label", { className: "form-label" }, "Contrase\xF1a:"), /* @__PURE__ */ import_react10.default.createElement("div", { className: "input-icon-wrapper" }, /* @__PURE__ */ import_react10.default.createElement("span", { className: "input-icon" }, /* @__PURE__ */ import_react10.default.createElement(LockIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react10.default.createElement(
+    ))), /* @__PURE__ */ import_react11.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react11.default.createElement("label", { className: "form-label" }, "Contrase\xF1a:"), /* @__PURE__ */ import_react11.default.createElement("div", { className: "input-icon-wrapper" }, /* @__PURE__ */ import_react11.default.createElement("span", { className: "input-icon" }, /* @__PURE__ */ import_react11.default.createElement(LockIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react11.default.createElement(
       "input",
       {
         type: "password",
@@ -15711,16 +15766,16 @@
         onChange: (e) => setPassword(e.target.value),
         required: true
       }
-    ))), errorMsg && /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-error-alert" }, errorMsg), /* @__PURE__ */ import_react10.default.createElement(
+    ))), errorMsg && /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-error-alert" }, errorMsg), /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "submit",
         className: "btn btn-primary btn-block btn-lg",
         disabled: loading
       },
-      /* @__PURE__ */ import_react10.default.createElement("span", null, loading ? "Validando..." : "Iniciar Sesi\xF3n"),
-      /* @__PURE__ */ import_react10.default.createElement(CheckIcon, { style: { width: 18, height: 18 } })
-    )), /* @__PURE__ */ import_react10.default.createElement("div", { className: "login-demo-bar" }, /* @__PURE__ */ import_react10.default.createElement("span", { className: "demo-label" }, "Acceso r\xE1pido para demostraci\xF3n:"), /* @__PURE__ */ import_react10.default.createElement("div", { className: "demo-buttons-grid" }, /* @__PURE__ */ import_react10.default.createElement(
+      /* @__PURE__ */ import_react11.default.createElement("span", null, loading ? "Validando..." : "Iniciar Sesi\xF3n"),
+      /* @__PURE__ */ import_react11.default.createElement(CheckIcon, { style: { width: 18, height: 18 } })
+    )), isDev && /* @__PURE__ */ import_react11.default.createElement("div", { className: "login-demo-bar" }, /* @__PURE__ */ import_react11.default.createElement("span", { className: "demo-label" }, "Acceso r\xE1pido para demostraci\xF3n (Solo en Modo Desarrollo):"), /* @__PURE__ */ import_react11.default.createElement("div", { className: "demo-buttons-grid" }, /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "button",
@@ -15729,7 +15784,7 @@
         onClick: () => handleQuickDemo("admin", "admin123")
       },
       "Gerente"
-    ), /* @__PURE__ */ import_react10.default.createElement(
+    ), /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "button",
@@ -15738,7 +15793,7 @@
         onClick: () => handleQuickDemo("empleado1", "empleado123")
       },
       "Cajero"
-    ), /* @__PURE__ */ import_react10.default.createElement(
+    ), /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "button",
@@ -15747,7 +15802,7 @@
         onClick: () => handleQuickDemo("cliente1", "cliente123")
       },
       "Cliente"
-    ), /* @__PURE__ */ import_react10.default.createElement(
+    ), /* @__PURE__ */ import_react11.default.createElement(
       "button",
       {
         type: "button",
@@ -15756,14 +15811,14 @@
         onClick: () => handleQuickDemo("programador", "programador123")
       },
       "Programador"
-    )), /* @__PURE__ */ import_react10.default.createElement("div", { style: { textAlign: "center", marginTop: "10px", fontSize: "0.75rem", color: "var(--text-muted)" } }, "O cuentas demo: ", /* @__PURE__ */ import_react10.default.createElement("code", null, "gerente_demo"), " / ", /* @__PURE__ */ import_react10.default.createElement("code", null, "empleado_demo_1"), " / ", /* @__PURE__ */ import_react10.default.createElement("code", null, "cliente_demo_1"), " (pass: ", /* @__PURE__ */ import_react10.default.createElement("code", null, "demo123"), ")"))));
+    )), /* @__PURE__ */ import_react11.default.createElement("div", { style: { textAlign: "center", marginTop: "10px", fontSize: "0.75rem", color: "var(--text-muted)" } }, "O cuentas demo: ", /* @__PURE__ */ import_react11.default.createElement("code", null, "gerente_demo"), " / ", /* @__PURE__ */ import_react11.default.createElement("code", null, "empleado_demo_1"), " / ", /* @__PURE__ */ import_react11.default.createElement("code", null, "cliente_demo_1"), " (pass: ", /* @__PURE__ */ import_react11.default.createElement("code", null, "demo123"), ")"))));
   };
 
   // src/renderer/views/POSView.jsx
-  var import_react15 = __toESM(require_react());
+  var import_react16 = __toESM(require_react());
 
   // src/renderer/components/pos/ProductCard.jsx
-  var import_react11 = __toESM(require_react());
+  var import_react12 = __toESM(require_react());
   var formatMoney = (val) => {
     return new Intl.NumberFormat("es-MX", {
       style: "currency",
@@ -15774,7 +15829,7 @@
     const stock = Number(product.Cantidad || 0);
     const isOutOfStock = stock <= 0;
     const isLowStock = stock > 0 && stock <= Number(product.Minimo || 5);
-    return /* @__PURE__ */ import_react11.default.createElement(
+    return /* @__PURE__ */ import_react12.default.createElement(
       "div",
       {
         className: `pos-product-card ${isOutOfStock ? "out-of-stock" : ""}`,
@@ -15782,28 +15837,28 @@
           if (!isOutOfStock) onAdd(product);
         }
       },
-      /* @__PURE__ */ import_react11.default.createElement("div", { className: "pos-product-header" }, /* @__PURE__ */ import_react11.default.createElement(
+      /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-product-header" }, /* @__PURE__ */ import_react12.default.createElement(
         "span",
         {
           className: `stock-pill ${isOutOfStock ? "pill-danger" : isLowStock ? "pill-warning" : "pill-success"}`
         },
         isOutOfStock ? "Agotado" : `${stock} disponibles`
       )),
-      /* @__PURE__ */ import_react11.default.createElement("div", { className: "pos-product-body" }, /* @__PURE__ */ import_react11.default.createElement("h3", { className: "pos-product-name" }, product.Nombre), product.Descripcion && /* @__PURE__ */ import_react11.default.createElement("p", { className: "pos-product-desc" }, product.Descripcion)),
-      /* @__PURE__ */ import_react11.default.createElement("div", { className: "pos-product-footer" }, /* @__PURE__ */ import_react11.default.createElement("div", { className: "pos-product-price" }, formatMoney(product.PrecioVenta)), /* @__PURE__ */ import_react11.default.createElement(
+      /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-product-body" }, /* @__PURE__ */ import_react12.default.createElement("h3", { className: "pos-product-name" }, product.Nombre), product.Descripcion && /* @__PURE__ */ import_react12.default.createElement("p", { className: "pos-product-desc" }, product.Descripcion)),
+      /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-product-footer" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-product-price" }, formatMoney(product.PrecioVenta)), /* @__PURE__ */ import_react12.default.createElement(
         "button",
         {
           className: `pos-add-btn ${isOutOfStock ? "disabled" : ""}`,
           disabled: isOutOfStock,
           "aria-label": `Agregar ${product.Nombre}`
         },
-        /* @__PURE__ */ import_react11.default.createElement(PlusIcon, { style: { width: 16, height: 16 } })
+        /* @__PURE__ */ import_react12.default.createElement(PlusIcon, { style: { width: 16, height: 16 } })
       ))
     );
   };
 
   // src/renderer/components/pos/CartTicket.jsx
-  var import_react12 = __toESM(require_react());
+  var import_react13 = __toESM(require_react());
   var CartTicket = ({ onCheckout, isClientMode = false }) => {
     const { cart, updateQuantity, removeFromCart, clearCart, totals } = useCart();
     const { user } = useAuth();
@@ -15818,7 +15873,7 @@
         clearCart();
       }
     };
-    return /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-cart-column" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-cart-header" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-title-row" }, /* @__PURE__ */ import_react12.default.createElement("h2", { className: "pos-cart-title" }, /* @__PURE__ */ import_react12.default.createElement(CartIcon, { style: { width: 22, height: 22 } }), /* @__PURE__ */ import_react12.default.createElement("span", null, isSelfCheckout ? "Tu Canasta" : "Ticket de Venta")), cart.length > 0 && /* @__PURE__ */ import_react12.default.createElement("button", { className: "btn-text-danger", onClick: handleClear, title: "Vaciar canasta" }, "Vaciar")), /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-meta-info" }, /* @__PURE__ */ import_react12.default.createElement("span", { className: `cart-mode-badge ${isSelfCheckout ? "badge-client" : "badge-cashier"}` }, isSelfCheckout ? "Modo Autocobro" : `Cajero: ${user?.NombreCompleto || user?.NombreUsuario}`))), /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-cart-items-container" }, cart.length === 0 ? /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-empty-state" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-empty-icon" }, /* @__PURE__ */ import_react12.default.createElement(CartIcon, { style: { width: 44, height: 44, opacity: 0.3 } })), /* @__PURE__ */ import_react12.default.createElement("p", { className: "cart-empty-title" }, "Canasta vac\xEDa"), /* @__PURE__ */ import_react12.default.createElement("p", { className: "cart-empty-sub" }, "Selecciona panes artesanales para agregarlos al pedido.")) : cart.map((item) => /* @__PURE__ */ import_react12.default.createElement("div", { key: item.id, className: "pos-cart-item animate-slide-in" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-item-info" }, /* @__PURE__ */ import_react12.default.createElement("h4", { className: "cart-item-name" }, item.nombre), /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-item-unit-price" }, formatMoney(item.precio), " c/u")), /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-item-controls" }, /* @__PURE__ */ import_react12.default.createElement(
+    return /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-cart-column" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-cart-header" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-title-row" }, /* @__PURE__ */ import_react13.default.createElement("h2", { className: "pos-cart-title" }, /* @__PURE__ */ import_react13.default.createElement(CartIcon, { style: { width: 22, height: 22 } }), /* @__PURE__ */ import_react13.default.createElement("span", null, isSelfCheckout ? "Tu Canasta" : "Ticket de Venta")), cart.length > 0 && /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn-text-danger", onClick: handleClear, title: "Vaciar canasta" }, "Vaciar")), /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-meta-info" }, /* @__PURE__ */ import_react13.default.createElement("span", { className: `cart-mode-badge ${isSelfCheckout ? "badge-client" : "badge-cashier"}` }, isSelfCheckout ? "Modo Autocobro" : `Cajero: ${user?.NombreCompleto || user?.NombreUsuario}`))), /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-cart-items-container" }, cart.length === 0 ? /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-empty-state" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-empty-icon" }, /* @__PURE__ */ import_react13.default.createElement(CartIcon, { style: { width: 44, height: 44, opacity: 0.3 } })), /* @__PURE__ */ import_react13.default.createElement("p", { className: "cart-empty-title" }, "Canasta vac\xEDa"), /* @__PURE__ */ import_react13.default.createElement("p", { className: "cart-empty-sub" }, "Selecciona panes artesanales para agregarlos al pedido.")) : cart.map((item) => /* @__PURE__ */ import_react13.default.createElement("div", { key: item.id, className: "pos-cart-item animate-slide-in" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-item-info" }, /* @__PURE__ */ import_react13.default.createElement("h4", { className: "cart-item-name" }, item.nombre), /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-item-unit-price" }, formatMoney(item.precio), " c/u")), /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-item-controls" }, /* @__PURE__ */ import_react13.default.createElement(
       "button",
       {
         className: "cart-qty-btn",
@@ -15826,7 +15881,7 @@
         "aria-label": "Disminuir"
       },
       "-"
-    ), /* @__PURE__ */ import_react12.default.createElement("span", { className: "cart-qty-number" }, item.cantidad), /* @__PURE__ */ import_react12.default.createElement(
+    ), /* @__PURE__ */ import_react13.default.createElement("span", { className: "cart-qty-number" }, item.cantidad), /* @__PURE__ */ import_react13.default.createElement(
       "button",
       {
         className: "cart-qty-btn",
@@ -15834,31 +15889,31 @@
         "aria-label": "Aumentar"
       },
       "+"
-    )), /* @__PURE__ */ import_react12.default.createElement("div", { className: "cart-item-total" }, formatMoney(item.precio * item.cantidad)), /* @__PURE__ */ import_react12.default.createElement(
+    )), /* @__PURE__ */ import_react13.default.createElement("div", { className: "cart-item-total" }, formatMoney(item.precio * item.cantidad)), /* @__PURE__ */ import_react13.default.createElement(
       "button",
       {
         className: "cart-item-delete",
         onClick: () => removeFromCart(item.id),
         "aria-label": "Eliminar"
       },
-      /* @__PURE__ */ import_react12.default.createElement(TrashIcon, { style: { width: 16, height: 16 } })
-    )))), /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-cart-footer" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-summary-table" }, /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-summary-row" }, /* @__PURE__ */ import_react12.default.createElement("span", null, "Subtotal:"), /* @__PURE__ */ import_react12.default.createElement("span", null, formatMoney(totals.subtotal))), /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-summary-row" }, /* @__PURE__ */ import_react12.default.createElement("span", null, "IVA (16%):"), /* @__PURE__ */ import_react12.default.createElement("span", null, formatMoney(totals.iva))), /* @__PURE__ */ import_react12.default.createElement("div", { className: "pos-summary-row total-row" }, /* @__PURE__ */ import_react12.default.createElement("span", null, "TOTAL:"), /* @__PURE__ */ import_react12.default.createElement("span", null, formatMoney(totals.total)))), /* @__PURE__ */ import_react12.default.createElement(
+      /* @__PURE__ */ import_react13.default.createElement(TrashIcon, { style: { width: 16, height: 16 } })
+    )))), /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-cart-footer" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-summary-table" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-summary-row" }, /* @__PURE__ */ import_react13.default.createElement("span", null, "Subtotal:"), /* @__PURE__ */ import_react13.default.createElement("span", null, formatMoney(totals.subtotal))), /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-summary-row" }, /* @__PURE__ */ import_react13.default.createElement("span", null, "IVA (16%):"), /* @__PURE__ */ import_react13.default.createElement("span", null, formatMoney(totals.iva))), /* @__PURE__ */ import_react13.default.createElement("div", { className: "pos-summary-row total-row" }, /* @__PURE__ */ import_react13.default.createElement("span", null, "TOTAL:"), /* @__PURE__ */ import_react13.default.createElement("span", null, formatMoney(totals.total)))), /* @__PURE__ */ import_react13.default.createElement(
       "button",
       {
         className: "btn btn-success btn-block btn-checkout",
         disabled: cart.length === 0,
         onClick: onCheckout
       },
-      /* @__PURE__ */ import_react12.default.createElement("div", { className: "checkout-content" }, /* @__PURE__ */ import_react12.default.createElement("span", { className: "checkout-label" }, "COBRAR (F2)"), /* @__PURE__ */ import_react12.default.createElement("span", { className: "checkout-total" }, formatMoney(totals.total)))
+      /* @__PURE__ */ import_react13.default.createElement("div", { className: "checkout-content" }, /* @__PURE__ */ import_react13.default.createElement("span", { className: "checkout-label" }, "COBRAR (F2)"), /* @__PURE__ */ import_react13.default.createElement("span", { className: "checkout-total" }, formatMoney(totals.total)))
     )));
   };
 
   // src/renderer/components/pos/PaymentModal.jsx
-  var import_react13 = __toESM(require_react());
+  var import_react14 = __toESM(require_react());
   var PaymentModal = ({ isOpen, onClose, total, onConfirm, isClientMode }) => {
-    const [received, setReceived] = (0, import_react13.useState)("");
-    const [clientName, setClientName] = (0, import_react13.useState)("");
-    (0, import_react13.useEffect)(() => {
+    const [received, setReceived] = (0, import_react14.useState)("");
+    const [clientName, setClientName] = (0, import_react14.useState)("");
+    (0, import_react14.useEffect)(() => {
       if (isOpen) {
         setReceived(total.toFixed(2));
         setClientName("");
@@ -15878,7 +15933,7 @@
         clientName: clientName.trim() || null
       });
     };
-    return /* @__PURE__ */ import_react13.default.createElement(
+    return /* @__PURE__ */ import_react14.default.createElement(
       Modal,
       {
         isOpen,
@@ -15886,18 +15941,18 @@
         title: isClientMode ? "Confirmar Compra" : "Cobro de Venta en Caja",
         subtitle: `Total a pagar: ${formatMoney(total)}`,
         maxWidth: "480px",
-        footer: /* @__PURE__ */ import_react13.default.createElement(import_react13.default.Fragment, null, /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cancelar"), /* @__PURE__ */ import_react13.default.createElement(
+        footer: /* @__PURE__ */ import_react14.default.createElement(import_react14.default.Fragment, null, /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cancelar"), /* @__PURE__ */ import_react14.default.createElement(
           "button",
           {
             className: "btn btn-success btn-lg",
             disabled: !isSufficient && !isClientMode,
             onClick: handleFinalize
           },
-          /* @__PURE__ */ import_react13.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }),
-          /* @__PURE__ */ import_react13.default.createElement("span", null, "Finalizar y Cobrar")
+          /* @__PURE__ */ import_react14.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }),
+          /* @__PURE__ */ import_react14.default.createElement("span", null, "Finalizar y Cobrar")
         ))
       },
-      isClientMode ? /* @__PURE__ */ import_react13.default.createElement("div", { className: "self-checkout-info" }, /* @__PURE__ */ import_react13.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Revisa tus productos antes de finalizar la compra. Puedes agregar tu nombre para el ticket:"), /* @__PURE__ */ import_react13.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react13.default.createElement("label", { className: "form-label" }, "Nombre del Cliente (Opcional):"), /* @__PURE__ */ import_react13.default.createElement(
+      isClientMode ? /* @__PURE__ */ import_react14.default.createElement("div", { className: "self-checkout-info" }, /* @__PURE__ */ import_react14.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Revisa tus productos antes de finalizar la compra. Puedes agregar tu nombre para el ticket:"), /* @__PURE__ */ import_react14.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react14.default.createElement("label", { className: "form-label" }, "Nombre del Cliente (Opcional):"), /* @__PURE__ */ import_react14.default.createElement(
         "input",
         {
           type: "text",
@@ -15907,7 +15962,7 @@
           onChange: (e) => setClientName(e.target.value),
           autoFocus: true
         }
-      ))) : /* @__PURE__ */ import_react13.default.createElement("div", { className: "cashier-payment-grid" }, /* @__PURE__ */ import_react13.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react13.default.createElement("label", { className: "form-label" }, "Efectivo Recibido:"), /* @__PURE__ */ import_react13.default.createElement("div", { className: "input-with-symbol" }, /* @__PURE__ */ import_react13.default.createElement("span", { className: "currency-symbol" }, "$"), /* @__PURE__ */ import_react13.default.createElement(
+      ))) : /* @__PURE__ */ import_react14.default.createElement("div", { className: "cashier-payment-grid" }, /* @__PURE__ */ import_react14.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react14.default.createElement("label", { className: "form-label" }, "Efectivo Recibido:"), /* @__PURE__ */ import_react14.default.createElement("div", { className: "input-with-symbol" }, /* @__PURE__ */ import_react14.default.createElement("span", { className: "currency-symbol" }, "$"), /* @__PURE__ */ import_react14.default.createElement(
         "input",
         {
           type: "number",
@@ -15918,7 +15973,7 @@
           onChange: (e) => setReceived(e.target.value),
           autoFocus: true
         }
-      ))), /* @__PURE__ */ import_react13.default.createElement("div", { className: "quick-cash-buttons" }, /* @__PURE__ */ import_react13.default.createElement(
+      ))), /* @__PURE__ */ import_react14.default.createElement("div", { className: "quick-cash-buttons" }, /* @__PURE__ */ import_react14.default.createElement(
         "button",
         {
           className: "btn btn-outline quick-cash-btn",
@@ -15927,14 +15982,14 @@
         "Exacto ($",
         Math.ceil(total),
         ")"
-      ), /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(50) }, "$50"), /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(100) }, "$100"), /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(200) }, "$200"), /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(500) }, "$500"), /* @__PURE__ */ import_react13.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(1e3) }, "$1000")), /* @__PURE__ */ import_react13.default.createElement(
+      ), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(50) }, "$50"), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(100) }, "$100"), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(200) }, "$200"), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(500) }, "$500"), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-outline quick-cash-btn", onClick: () => handleQuickCash(1e3) }, "$1000")), /* @__PURE__ */ import_react14.default.createElement(
         "div",
         {
           className: `change-display-box ${isSufficient ? "sufficient-funds" : "insufficient-funds"}`
         },
-        /* @__PURE__ */ import_react13.default.createElement("span", { className: "change-label" }, "Cambio:"),
-        /* @__PURE__ */ import_react13.default.createElement("span", { className: "change-amount" }, isSufficient ? formatMoney(change) : `Faltan ${formatMoney(Math.abs(change))}`)
-      ), /* @__PURE__ */ import_react13.default.createElement("div", { className: "form-group mt-3" }, /* @__PURE__ */ import_react13.default.createElement("label", { className: "form-label" }, "Nombre del Cliente (Opcional):"), /* @__PURE__ */ import_react13.default.createElement(
+        /* @__PURE__ */ import_react14.default.createElement("span", { className: "change-label" }, "Cambio:"),
+        /* @__PURE__ */ import_react14.default.createElement("span", { className: "change-amount" }, isSufficient ? formatMoney(change) : `Faltan ${formatMoney(Math.abs(change))}`)
+      ), /* @__PURE__ */ import_react14.default.createElement("div", { className: "form-group mt-3" }, /* @__PURE__ */ import_react14.default.createElement("label", { className: "form-label" }, "Nombre del Cliente (Opcional):"), /* @__PURE__ */ import_react14.default.createElement(
         "input",
         {
           type: "text",
@@ -15948,7 +16003,7 @@
   };
 
   // src/renderer/components/pos/ReceiptModal.jsx
-  var import_react14 = __toESM(require_react());
+  var import_react15 = __toESM(require_react());
   var ReceiptModal = ({ isOpen, onClose, ticketData }) => {
     if (!isOpen || !ticketData) return null;
     const { globalSettings, userSettings } = useSettings() || {};
@@ -15961,7 +16016,7 @@
     const handlePrint = () => {
       window.print();
     };
-    (0, import_react14.useEffect)(() => {
+    (0, import_react15.useEffect)(() => {
       if (isOpen && userSettings?.autoPrintReceipt) {
         const timer = setTimeout(() => {
           window.print();
@@ -15969,16 +16024,16 @@
         return () => clearTimeout(timer);
       }
     }, [isOpen, userSettings?.autoPrintReceipt]);
-    return /* @__PURE__ */ import_react14.default.createElement(
+    return /* @__PURE__ */ import_react15.default.createElement(
       Modal,
       {
         isOpen,
         onClose,
         title: "Ticket de Venta Generado",
         maxWidth: "400px",
-        footer: /* @__PURE__ */ import_react14.default.createElement(import_react14.default.Fragment, null, /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cerrar"), /* @__PURE__ */ import_react14.default.createElement("button", { className: "btn btn-primary", onClick: handlePrint }, /* @__PURE__ */ import_react14.default.createElement(PrinterIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react14.default.createElement("span", null, "Imprimir Ticket")))
+        footer: /* @__PURE__ */ import_react15.default.createElement(import_react15.default.Fragment, null, /* @__PURE__ */ import_react15.default.createElement("button", { className: "btn btn-secondary", onClick: onClose }, "Cerrar"), /* @__PURE__ */ import_react15.default.createElement("button", { className: "btn btn-primary", onClick: handlePrint }, /* @__PURE__ */ import_react15.default.createElement(PrinterIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react15.default.createElement("span", null, "Imprimir Ticket")))
       },
-      /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-paper", id: "printable-ticket" }, /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-header" }, /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-logo" }, /* @__PURE__ */ import_react14.default.createElement(BakeryLogo, { size: 48 })), /* @__PURE__ */ import_react14.default.createElement("h2", { className: "receipt-store-name" }, nombreTienda.toUpperCase()), rfcTienda && /* @__PURE__ */ import_react14.default.createElement("p", { className: "receipt-meta-line", style: { fontWeight: 700 } }, "RFC: ", rfcTienda), /* @__PURE__ */ import_react14.default.createElement("p", { className: "receipt-store-sub" }, contactoTienda), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react14.default.createElement("p", { className: "receipt-meta-line" }, /* @__PURE__ */ import_react14.default.createElement("strong", null, isClient ? "TICKET DE COMPRA" : "COMPROBANTE DE VENTA")), /* @__PURE__ */ import_react14.default.createElement("p", { className: "receipt-meta-line" }, "Folio: #", idVenta, " \u2022 Canal: ", canal), /* @__PURE__ */ import_react14.default.createElement("p", { className: "receipt-meta-line" }, fecha), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-divider" }, "--------------------------------")), /* @__PURE__ */ import_react14.default.createElement("table", { className: "receipt-table" }, /* @__PURE__ */ import_react14.default.createElement("thead", null, /* @__PURE__ */ import_react14.default.createElement("tr", null, /* @__PURE__ */ import_react14.default.createElement("th", { className: "ticket-td-prod" }, "Art."), /* @__PURE__ */ import_react14.default.createElement("th", { className: "ticket-td-center" }, "Cant"), /* @__PURE__ */ import_react14.default.createElement("th", { className: "ticket-td-right" }, "P.U."), /* @__PURE__ */ import_react14.default.createElement("th", { className: "ticket-td-right" }, "Total"))), /* @__PURE__ */ import_react14.default.createElement("tbody", null, items.map((item, idx) => /* @__PURE__ */ import_react14.default.createElement("tr", { key: idx }, /* @__PURE__ */ import_react14.default.createElement("td", { className: "ticket-td-prod" }, item.nombre), /* @__PURE__ */ import_react14.default.createElement("td", { className: "ticket-td-center" }, item.cantidad), /* @__PURE__ */ import_react14.default.createElement("td", { className: "ticket-td-right" }, formatMoney(item.precio)), /* @__PURE__ */ import_react14.default.createElement("td", { className: "ticket-td-right font-semibold" }, formatMoney(item.cantidad * item.precio)))))), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-totals" }, /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-total-row final-total" }, /* @__PURE__ */ import_react14.default.createElement("span", null, "TOTAL:"), /* @__PURE__ */ import_react14.default.createElement("span", null, formatMoney(total)))), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react14.default.createElement("div", { className: "receipt-footer" }, /* @__PURE__ */ import_react14.default.createElement("p", null, pieTicket), /* @__PURE__ */ import_react14.default.createElement("p", null, "Conserve este comprobante para aclaraciones.")))
+      /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-paper", id: "printable-ticket" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-header" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-logo" }, /* @__PURE__ */ import_react15.default.createElement(BakeryLogo, { size: 48 })), /* @__PURE__ */ import_react15.default.createElement("h2", { className: "receipt-store-name" }, nombreTienda.toUpperCase()), rfcTienda && /* @__PURE__ */ import_react15.default.createElement("p", { className: "receipt-meta-line", style: { fontWeight: 700 } }, "RFC: ", rfcTienda), /* @__PURE__ */ import_react15.default.createElement("p", { className: "receipt-store-sub" }, contactoTienda), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react15.default.createElement("p", { className: "receipt-meta-line" }, /* @__PURE__ */ import_react15.default.createElement("strong", null, isClient ? "TICKET DE COMPRA" : "COMPROBANTE DE VENTA")), /* @__PURE__ */ import_react15.default.createElement("p", { className: "receipt-meta-line" }, "Folio: #", idVenta, " \u2022 Canal: ", canal), /* @__PURE__ */ import_react15.default.createElement("p", { className: "receipt-meta-line" }, fecha), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-divider" }, "--------------------------------")), /* @__PURE__ */ import_react15.default.createElement("table", { className: "receipt-table" }, /* @__PURE__ */ import_react15.default.createElement("thead", null, /* @__PURE__ */ import_react15.default.createElement("tr", null, /* @__PURE__ */ import_react15.default.createElement("th", { className: "ticket-td-prod" }, "Art."), /* @__PURE__ */ import_react15.default.createElement("th", { className: "ticket-td-center" }, "Cant"), /* @__PURE__ */ import_react15.default.createElement("th", { className: "ticket-td-right" }, "P.U."), /* @__PURE__ */ import_react15.default.createElement("th", { className: "ticket-td-right" }, "Total"))), /* @__PURE__ */ import_react15.default.createElement("tbody", null, items.map((item, idx) => /* @__PURE__ */ import_react15.default.createElement("tr", { key: idx }, /* @__PURE__ */ import_react15.default.createElement("td", { className: "ticket-td-prod" }, item.nombre), /* @__PURE__ */ import_react15.default.createElement("td", { className: "ticket-td-center" }, item.cantidad), /* @__PURE__ */ import_react15.default.createElement("td", { className: "ticket-td-right" }, formatMoney(item.precio)), /* @__PURE__ */ import_react15.default.createElement("td", { className: "ticket-td-right font-semibold" }, formatMoney(item.cantidad * item.precio)))))), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-totals" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-total-row final-total" }, /* @__PURE__ */ import_react15.default.createElement("span", null, "TOTAL:"), /* @__PURE__ */ import_react15.default.createElement("span", null, formatMoney(total)))), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-divider" }, "--------------------------------"), /* @__PURE__ */ import_react15.default.createElement("div", { className: "receipt-footer" }, /* @__PURE__ */ import_react15.default.createElement("p", null, pieTicket), /* @__PURE__ */ import_react15.default.createElement("p", null, "Conserve este comprobante para aclaraciones.")))
     );
   };
 
@@ -15988,22 +16043,22 @@
     const { cart, addToCart, clearCart, totals, BOLILLO_WEIGHT_KG } = useCart();
     const { showToast } = useToast();
     const { userSettings } = useSettings() || {};
-    const [products, setProducts] = (0, import_react15.useState)([]);
-    const [loading, setLoading] = (0, import_react15.useState)(true);
-    const [search, setSearch] = (0, import_react15.useState)("");
-    const [category, setCategory] = (0, import_react15.useState)(() => {
+    const [products, setProducts] = (0, import_react16.useState)([]);
+    const [loading, setLoading] = (0, import_react16.useState)(true);
+    const [search, setSearch] = (0, import_react16.useState)("");
+    const [category, setCategory] = (0, import_react16.useState)(() => {
       const defaultCat = userSettings?.defaultPOSCategory;
       if (defaultCat === "Pan Dulce") return "pan-dulce";
       if (defaultCat === "Blanco & Bolillos") return "pan-blanco";
       if (defaultCat === "Reposter\xEDa") return "reposteria";
       return "all";
     });
-    const [isPaymentOpen, setIsPaymentOpen] = (0, import_react15.useState)(false);
-    const [isReceiptOpen, setIsReceiptOpen] = (0, import_react15.useState)(false);
-    const [isScaleOpen, setIsScaleOpen] = (0, import_react15.useState)(false);
-    const [lastTicket, setLastTicket] = (0, import_react15.useState)(null);
-    const [scaleKg, setScaleKg] = (0, import_react15.useState)("");
-    const loadProducts = (0, import_react15.useCallback)(async () => {
+    const [isPaymentOpen, setIsPaymentOpen] = (0, import_react16.useState)(false);
+    const [isReceiptOpen, setIsReceiptOpen] = (0, import_react16.useState)(false);
+    const [isScaleOpen, setIsScaleOpen] = (0, import_react16.useState)(false);
+    const [lastTicket, setLastTicket] = (0, import_react16.useState)(null);
+    const [scaleKg, setScaleKg] = (0, import_react16.useState)("");
+    const loadProducts = (0, import_react16.useCallback)(async () => {
       try {
         setLoading(true);
         const data = await window.api.getProductos();
@@ -16015,10 +16070,10 @@
         setLoading(false);
       }
     }, [showToast]);
-    (0, import_react15.useEffect)(() => {
+    (0, import_react16.useEffect)(() => {
       loadProducts();
     }, [loadProducts]);
-    (0, import_react15.useEffect)(() => {
+    (0, import_react16.useEffect)(() => {
       const handleKeyDown = (e) => {
         if (e.key === "F2") {
           e.preventDefault();
@@ -16037,20 +16092,26 @@
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [cart]);
-    const filteredProducts = (0, import_react15.useMemo)(() => {
+    const filteredProducts = (0, import_react16.useMemo)(() => {
       const q = search.toLowerCase().trim();
       return products.filter((p) => {
         if (!p.Activo) return false;
         const matchesSearch = !q || p.Nombre.toLowerCase().includes(q) || p.Descripcion && p.Descripcion.toLowerCase().includes(q);
         if (!matchesSearch) return false;
         if (category === "pan-blanco") {
-          return /bolillo|telera|baguette|francés|virote/i.test(p.Nombre);
+          return p.IdCategoria === 1 || /bolillo|telera|baguette|hogaza|integral|francés|virote/i.test(p.Nombre);
         }
         if (category === "pan-dulce") {
-          return /concha|cuerno|dona|oreja|margarita|rebanada|choux/i.test(p.Nombre);
+          return p.IdCategoria === 2 || /concha|cuerno|cuernito|dona|oreja|margarita|rebanada|rol|choux/i.test(p.Nombre);
         }
         if (category === "reposteria") {
-          return /pastel|muffin|panqué|tarta|cheesecake/i.test(p.Nombre);
+          return p.IdCategoria === 3 || /pastel|muffin|panqué|tarta|cheesecake/i.test(p.Nombre);
+        }
+        if (category === "galletas-hojaldres") {
+          return p.IdCategoria === 4 || /galleta|polvorón|beso|hojaldra/i.test(p.Nombre);
+        }
+        if (category === "cafeteria") {
+          return p.IdCategoria === 5 || /café|capuchino|chocolate|té|leche|bebida/i.test(p.Nombre);
         }
         return true;
       });
@@ -16081,6 +16142,7 @@
         idCliente: user?.Rol === "Cliente" ? user.IdEmpleado : null,
         canal,
         carrito: cart,
+        tasaIva: totals?.subtotal > 0 ? totals.iva / totals.subtotal : 0.16,
         datosCliente: clientName ? { nombre: clientName, genero: "Prefiero no decir" } : null
       };
       try {
@@ -16106,11 +16168,11 @@
         showToast(err.message || "Error al guardar la venta", "error");
       }
     };
-    const bolilloProduct = (0, import_react15.useMemo)(
+    const bolilloProduct = (0, import_react16.useMemo)(
       () => products.find((p) => /bolillo/i.test(p.Nombre)),
       [products]
     );
-    const calculatedBolilloPieces = (0, import_react15.useMemo)(() => {
+    const calculatedBolilloPieces = (0, import_react16.useMemo)(() => {
       const kg = parseFloat(scaleKg) || 0;
       return Math.round(kg / BOLILLO_WEIGHT_KG);
     }, [scaleKg, BOLILLO_WEIGHT_KG]);
@@ -16128,7 +16190,7 @@
       setIsScaleOpen(false);
       setScaleKg("");
     };
-    return /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-layout animate-fade-in" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-catalog-column" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-toolbar" }, /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-search-wrapper" }, /* @__PURE__ */ import_react15.default.createElement("span", { className: "pos-search-icon" }, /* @__PURE__ */ import_react15.default.createElement(SearchIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react15.default.createElement(
+    return /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-layout animate-fade-in" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-catalog-column" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-toolbar" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-search-wrapper" }, /* @__PURE__ */ import_react16.default.createElement("span", { className: "pos-search-icon" }, /* @__PURE__ */ import_react16.default.createElement(SearchIcon, { style: { width: 18, height: 18 } })), /* @__PURE__ */ import_react16.default.createElement(
       "input",
       {
         id: "pos-search-input",
@@ -16139,7 +16201,7 @@
         onChange: (e) => setSearch(e.target.value),
         autoFocus: true
       }
-    ), search && /* @__PURE__ */ import_react15.default.createElement(
+    ), search && /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: "btn-clear-search",
@@ -16147,50 +16209,64 @@
         "aria-label": "Borrar b\xFAsqueda"
       },
       "\xD7"
-    )), /* @__PURE__ */ import_react15.default.createElement(
+    )), /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: "btn btn-outline btn-sm tool-btn",
         onClick: () => setIsScaleOpen(true),
         title: "Calcular piezas de bolillo por peso (F4)"
       },
-      /* @__PURE__ */ import_react15.default.createElement(ScaleIcon, { style: { width: 16, height: 16 } }),
-      /* @__PURE__ */ import_react15.default.createElement("span", null, "B\xE1scula Bolillo (F4)")
-    )), /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-categories-scroll" }, /* @__PURE__ */ import_react15.default.createElement(
+      /* @__PURE__ */ import_react16.default.createElement(ScaleIcon, { style: { width: 16, height: 16 } }),
+      /* @__PURE__ */ import_react16.default.createElement("span", null, "B\xE1scula Bolillo (F4)")
+    )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-categories-scroll" }, /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: `pos-category-pill ${category === "all" ? "active" : ""}`,
         onClick: () => setCategory("all")
       },
       "Todos los Panes"
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: `pos-category-pill ${category === "pan-dulce" ? "active" : ""}`,
         onClick: () => setCategory("pan-dulce")
       },
       "Pan Dulce"
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: `pos-category-pill ${category === "pan-blanco" ? "active" : ""}`,
         onClick: () => setCategory("pan-blanco")
       },
       "Pan Blanco & Bolillos"
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       "button",
       {
         className: `pos-category-pill ${category === "reposteria" ? "active" : ""}`,
         onClick: () => setCategory("reposteria")
       },
       "Reposter\xEDa"
-    )), loading ? /* @__PURE__ */ import_react15.default.createElement("div", { className: "loading-state" }, /* @__PURE__ */ import_react15.default.createElement("span", { className: "spinner" }), /* @__PURE__ */ import_react15.default.createElement("p", null, "Cargando cat\xE1logo...")) : filteredProducts.length === 0 ? /* @__PURE__ */ import_react15.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react15.default.createElement(BreadIcon, { style: { width: 48, height: 48, opacity: 0.4 } }), /* @__PURE__ */ import_react15.default.createElement("p", null, "No se encontraron panes con ese nombre.")) : /* @__PURE__ */ import_react15.default.createElement("div", { className: "pos-products-grid" }, filteredProducts.map((p) => /* @__PURE__ */ import_react15.default.createElement(ProductCard, { key: p.IdArticulo, product: p, onAdd: handleAddToCart })))), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
+      "button",
+      {
+        className: `pos-category-pill ${category === "galletas-hojaldres" ? "active" : ""}`,
+        onClick: () => setCategory("galletas-hojaldres")
+      },
+      "Galletas & Hojaldres"
+    ), /* @__PURE__ */ import_react16.default.createElement(
+      "button",
+      {
+        className: `pos-category-pill ${category === "cafeteria" ? "active" : ""}`,
+        onClick: () => setCategory("cafeteria")
+      },
+      "Cafeter\xEDa & Bebidas"
+    )), loading ? /* @__PURE__ */ import_react16.default.createElement("div", { className: "loading-state" }, /* @__PURE__ */ import_react16.default.createElement("span", { className: "spinner" }), /* @__PURE__ */ import_react16.default.createElement("p", null, "Cargando cat\xE1logo...")) : filteredProducts.length === 0 ? /* @__PURE__ */ import_react16.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react16.default.createElement(BreadIcon, { style: { width: 48, height: 48, opacity: 0.4 } }), /* @__PURE__ */ import_react16.default.createElement("p", null, "No se encontraron panes con ese nombre.")) : /* @__PURE__ */ import_react16.default.createElement("div", { className: "pos-products-grid" }, filteredProducts.map((p) => /* @__PURE__ */ import_react16.default.createElement(ProductCard, { key: p.IdArticulo, product: p, onAdd: handleAddToCart })))), /* @__PURE__ */ import_react16.default.createElement(
       CartTicket,
       {
         onCheckout: () => setIsPaymentOpen(true),
         isClientMode
       }
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       PaymentModal,
       {
         isOpen: isPaymentOpen,
@@ -16199,23 +16275,23 @@
         onConfirm: handleConfirmPayment,
         isClientMode: isClientMode || user?.Rol === "Cliente"
       }
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       ReceiptModal,
       {
         isOpen: isReceiptOpen,
         onClose: () => setIsReceiptOpen(false),
         ticketData: lastTicket
       }
-    ), /* @__PURE__ */ import_react15.default.createElement(
+    ), /* @__PURE__ */ import_react16.default.createElement(
       Modal,
       {
         isOpen: isScaleOpen,
         onClose: () => setIsScaleOpen(false),
         title: "B\xE1scula de Bolillo",
         subtitle: "Calcula piezas autom\xE1ticamente a partir del peso registrado.",
-        footer: /* @__PURE__ */ import_react15.default.createElement(import_react15.default.Fragment, null, /* @__PURE__ */ import_react15.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsScaleOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react15.default.createElement("button", { className: "btn btn-primary", onClick: handleAddBolilloFromScale }, "Agregar al Carrito"))
+        footer: /* @__PURE__ */ import_react16.default.createElement(import_react16.default.Fragment, null, /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsScaleOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-primary", onClick: handleAddBolilloFromScale }, "Agregar al Carrito"))
       },
-      /* @__PURE__ */ import_react15.default.createElement("div", { className: "bolillo-calc-box" }, /* @__PURE__ */ import_react15.default.createElement("p", { className: "calc-hint" }, "Peso promedio est\xE1ndar de referencia: ", /* @__PURE__ */ import_react15.default.createElement("strong", null, "65g"), " por pieza."), /* @__PURE__ */ import_react15.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react15.default.createElement("label", { className: "form-label" }, "Peso total registrado en la b\xE1scula (Kilogramos):"), /* @__PURE__ */ import_react15.default.createElement("div", { className: "input-with-suffix" }, /* @__PURE__ */ import_react15.default.createElement(
+      /* @__PURE__ */ import_react16.default.createElement("div", { className: "bolillo-calc-box" }, /* @__PURE__ */ import_react16.default.createElement("p", { className: "calc-hint" }, "Peso promedio est\xE1ndar de referencia: ", /* @__PURE__ */ import_react16.default.createElement("strong", null, "65g"), " por pieza."), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Peso total registrado en la b\xE1scula (Kilogramos):"), /* @__PURE__ */ import_react16.default.createElement("div", { className: "input-with-suffix" }, /* @__PURE__ */ import_react16.default.createElement(
         "input",
         {
           type: "number",
@@ -16227,22 +16303,22 @@
           onChange: (e) => setScaleKg(e.target.value),
           autoFocus: true
         }
-      ), /* @__PURE__ */ import_react15.default.createElement("span", { className: "input-suffix-badge" }, "kg"))), /* @__PURE__ */ import_react15.default.createElement("div", { className: "calc-result-badge" }, /* @__PURE__ */ import_react15.default.createElement("span", { className: "calc-pieces" }, calculatedBolilloPieces), /* @__PURE__ */ import_react15.default.createElement("span", { className: "calc-label" }, "piezas calculadas")))
+      ), /* @__PURE__ */ import_react16.default.createElement("span", { className: "input-suffix-badge" }, "kg"))), /* @__PURE__ */ import_react16.default.createElement("div", { className: "calc-result-badge" }, /* @__PURE__ */ import_react16.default.createElement("span", { className: "calc-pieces" }, calculatedBolilloPieces), /* @__PURE__ */ import_react16.default.createElement("span", { className: "calc-label" }, "piezas calculadas")))
     ));
   };
 
   // src/renderer/views/InventarioView.jsx
-  var import_react16 = __toESM(require_react());
+  var import_react17 = __toESM(require_react());
   var InventarioView = () => {
     const { showToast } = useToast();
     const { globalSettings } = useSettings() || {};
-    const [products, setProducts] = (0, import_react16.useState)([]);
-    const [loading, setLoading] = (0, import_react16.useState)(true);
-    const [search, setSearch] = (0, import_react16.useState)("");
-    const [isAddModalOpen, setIsAddModalOpen] = (0, import_react16.useState)(false);
-    const [isAddStockOpen, setIsAddStockOpen] = (0, import_react16.useState)(false);
-    const [isDeductStockOpen, setIsDeductStockOpen] = (0, import_react16.useState)(false);
-    const [newProd, setNewProd] = (0, import_react16.useState)({
+    const [products, setProducts] = (0, import_react17.useState)([]);
+    const [loading, setLoading] = (0, import_react17.useState)(true);
+    const [search, setSearch] = (0, import_react17.useState)("");
+    const [isAddModalOpen, setIsAddModalOpen] = (0, import_react17.useState)(false);
+    const [isAddStockOpen, setIsAddStockOpen] = (0, import_react17.useState)(false);
+    const [isDeductStockOpen, setIsDeductStockOpen] = (0, import_react17.useState)(false);
+    const [newProd, setNewProd] = (0, import_react17.useState)({
       nombre: "",
       descripcion: "",
       cantidad: 20,
@@ -16250,11 +16326,11 @@
       precioCompra: 8,
       precioVenta: 18
     });
-    const [stockOp, setStockOp] = (0, import_react16.useState)({
+    const [stockOp, setStockOp] = (0, import_react17.useState)({
       idArticulo: "",
       cantidad: 10
     });
-    const loadData = (0, import_react16.useCallback)(async () => {
+    const loadData = (0, import_react17.useCallback)(async () => {
       try {
         setLoading(true);
         const data = await window.api.getProductos();
@@ -16268,17 +16344,17 @@
         setLoading(false);
       }
     }, [showToast, stockOp.idArticulo]);
-    (0, import_react16.useEffect)(() => {
+    (0, import_react17.useEffect)(() => {
       loadData();
     }, [loadData]);
-    const filtered = (0, import_react16.useMemo)(() => {
+    const filtered = (0, import_react17.useMemo)(() => {
       const q = search.toLowerCase().trim();
       return products.filter((p) => {
         if (!q) return true;
         return p.Nombre.toLowerCase().includes(q) || p.Descripcion && p.Descripcion.toLowerCase().includes(q);
       });
     }, [products, search]);
-    const lowStockProducts = (0, import_react16.useMemo)(() => {
+    const lowStockProducts = (0, import_react17.useMemo)(() => {
       const threshold = Number(globalSettings?.stockMinimoAlerta || 5);
       return products.filter(
         (p) => p.Activo && Number(p.Cantidad || 0) <= Math.max(Number(p.Minimo || 0), threshold)
@@ -16346,15 +16422,15 @@
         showToast(err.message, "error");
       }
     };
-    return /* @__PURE__ */ import_react16.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react16.default.createElement("div", null, /* @__PURE__ */ import_react16.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react16.default.createElement(BoxIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react16.default.createElement("span", null, "Control de Inventario")), /* @__PURE__ */ import_react16.default.createElement("p", { className: "view-page-sub" }, "Administra piezas horneadas, existencias en vitrina, costos y alertas de reorden.")), /* @__PURE__ */ import_react16.default.createElement("div", { className: "view-actions-group" }, /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-outline", onClick: () => setIsAddStockOpen(true) }, /* @__PURE__ */ import_react16.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react16.default.createElement("span", null, "Agregar Stock")), /* @__PURE__ */ import_react16.default.createElement(
+    return /* @__PURE__ */ import_react17.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react17.default.createElement("div", null, /* @__PURE__ */ import_react17.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react17.default.createElement(BoxIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react17.default.createElement("span", null, "Control de Inventario")), /* @__PURE__ */ import_react17.default.createElement("p", { className: "view-page-sub" }, "Administra piezas horneadas, existencias en vitrina, costos y alertas de reorden.")), /* @__PURE__ */ import_react17.default.createElement("div", { className: "view-actions-group" }, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-outline", onClick: () => setIsAddStockOpen(true) }, /* @__PURE__ */ import_react17.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react17.default.createElement("span", null, "Agregar Stock")), /* @__PURE__ */ import_react17.default.createElement(
       "button",
       {
         className: "btn btn-outline btn-danger-outline",
         onClick: () => setIsDeductStockOpen(true)
       },
-      /* @__PURE__ */ import_react16.default.createElement(MinusIcon, { style: { width: 16, height: 16 } }),
-      /* @__PURE__ */ import_react16.default.createElement("span", null, "Retirar Stock")
-    ), /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddModalOpen(true) }, /* @__PURE__ */ import_react16.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react16.default.createElement("span", null, "Nuevo Pan")))), lowStockProducts.length > 0 && /* @__PURE__ */ import_react16.default.createElement("div", { className: "inv-alert-banner" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ import_react16.default.createElement(AlertIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react16.default.createElement("div", { className: "alert-banner-content" }, /* @__PURE__ */ import_react16.default.createElement("strong", null, "\xA1Alerta de Reorden!"), /* @__PURE__ */ import_react16.default.createElement("span", null, " ", "Hay ", /* @__PURE__ */ import_react16.default.createElement("strong", null, lowStockProducts.length), " producto(s) por debajo o al l\xEDmite del stock m\xEDnimo (", lowStockProducts.slice(0, 4).map((p) => p.Nombre).join(", "), lowStockProducts.length > 4 ? "..." : "", ")."))), /* @__PURE__ */ import_react16.default.createElement("div", { className: "card inv-card" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react16.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react16.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react16.default.createElement(
+      /* @__PURE__ */ import_react17.default.createElement(MinusIcon, { style: { width: 16, height: 16 } }),
+      /* @__PURE__ */ import_react17.default.createElement("span", null, "Retirar Stock")
+    ), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddModalOpen(true) }, /* @__PURE__ */ import_react17.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react17.default.createElement("span", null, "Nuevo Pan")))), lowStockProducts.length > 0 && /* @__PURE__ */ import_react17.default.createElement("div", { className: "inv-alert-banner" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "alert-banner-icon" }, /* @__PURE__ */ import_react17.default.createElement(AlertIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react17.default.createElement("div", { className: "alert-banner-content" }, /* @__PURE__ */ import_react17.default.createElement("strong", null, "\xA1Alerta de Reorden!"), /* @__PURE__ */ import_react17.default.createElement("span", null, " ", "Hay ", /* @__PURE__ */ import_react17.default.createElement("strong", null, lowStockProducts.length), " producto(s) por debajo o al l\xEDmite del stock m\xEDnimo (", lowStockProducts.slice(0, 4).map((p) => p.Nombre).join(", "), lowStockProducts.length > 4 ? "..." : "", ")."))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "card inv-card" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react17.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react17.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react17.default.createElement(
       "input",
       {
         type: "text",
@@ -16363,27 +16439,27 @@
         value: search,
         onChange: (e) => setSearch(e.target.value)
       }
-    )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "table-counts" }, filtered.length, " de ", products.length, " productos")), /* @__PURE__ */ import_react16.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react16.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react16.default.createElement("thead", null, /* @__PURE__ */ import_react16.default.createElement("tr", null, /* @__PURE__ */ import_react16.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react16.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react16.default.createElement("th", null, "Descripci\xF3n"), /* @__PURE__ */ import_react16.default.createElement("th", null, "Stock Actual"), /* @__PURE__ */ import_react16.default.createElement("th", null, "M\xEDnimo"), /* @__PURE__ */ import_react16.default.createElement("th", null, "P. Compra"), /* @__PURE__ */ import_react16.default.createElement("th", null, "P. Venta"), /* @__PURE__ */ import_react16.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react16.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react16.default.createElement("tr", null, /* @__PURE__ */ import_react16.default.createElement("td", { colSpan: "8", className: "text-center py-4" }, "Cargando cat\xE1logo...")) : filtered.length === 0 ? /* @__PURE__ */ import_react16.default.createElement("tr", null, /* @__PURE__ */ import_react16.default.createElement("td", { colSpan: "8", className: "empty-table-cell" }, "No se encontraron productos en el inventario.")) : filtered.map((prod) => {
+    )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-counts" }, filtered.length, " de ", products.length, " productos")), /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react17.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react17.default.createElement("thead", null, /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Descripci\xF3n"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Stock Actual"), /* @__PURE__ */ import_react17.default.createElement("th", null, "M\xEDnimo"), /* @__PURE__ */ import_react17.default.createElement("th", null, "P. Compra"), /* @__PURE__ */ import_react17.default.createElement("th", null, "P. Venta"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react17.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("td", { colSpan: "8", className: "text-center py-4" }, "Cargando cat\xE1logo...")) : filtered.length === 0 ? /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("td", { colSpan: "8", className: "empty-table-cell" }, "No se encontraron productos en el inventario.")) : filtered.map((prod) => {
       const stock = Number(prod.Cantidad || 0);
       const min = Number(prod.Minimo || 5);
       const isOutOfStock = stock <= 0;
       const isLowStock = stock > 0 && stock <= min;
-      return /* @__PURE__ */ import_react16.default.createElement("tr", { key: prod.IdArticulo }, /* @__PURE__ */ import_react16.default.createElement("td", { className: "font-mono text-muted" }, "#", prod.IdArticulo), /* @__PURE__ */ import_react16.default.createElement("td", { className: "font-semibold" }, prod.Nombre), /* @__PURE__ */ import_react16.default.createElement("td", { className: "text-secondary" }, prod.Descripcion || "-"), /* @__PURE__ */ import_react16.default.createElement("td", null, /* @__PURE__ */ import_react16.default.createElement(
+      return /* @__PURE__ */ import_react17.default.createElement("tr", { key: prod.IdArticulo }, /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-mono text-muted" }, "#", prod.IdArticulo), /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-semibold" }, prod.Nombre), /* @__PURE__ */ import_react17.default.createElement("td", { className: "text-secondary" }, prod.Descripcion || "-"), /* @__PURE__ */ import_react17.default.createElement("td", null, /* @__PURE__ */ import_react17.default.createElement(
         "strong",
         {
           className: isOutOfStock ? "text-danger" : isLowStock ? "text-warning" : "text-success"
         },
         stock
-      )), /* @__PURE__ */ import_react16.default.createElement("td", { className: "text-muted" }, min), /* @__PURE__ */ import_react16.default.createElement("td", null, formatMoney(prod.PrecioCompra || 0)), /* @__PURE__ */ import_react16.default.createElement("td", { className: "font-semibold" }, formatMoney(prod.PrecioVenta || 0)), /* @__PURE__ */ import_react16.default.createElement("td", null, isOutOfStock ? /* @__PURE__ */ import_react16.default.createElement("span", { className: "badge badge-danger" }, "Agotado") : isLowStock ? /* @__PURE__ */ import_react16.default.createElement("span", { className: "badge badge-warning" }, "Reorden (", stock, "/", min, ")") : /* @__PURE__ */ import_react16.default.createElement("span", { className: "badge badge-success" }, "\xD3ptimo")));
-    }))))), /* @__PURE__ */ import_react16.default.createElement(
+      )), /* @__PURE__ */ import_react17.default.createElement("td", { className: "text-muted" }, min), /* @__PURE__ */ import_react17.default.createElement("td", null, formatMoney(prod.PrecioCompra || 0)), /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-semibold" }, formatMoney(prod.PrecioVenta || 0)), /* @__PURE__ */ import_react17.default.createElement("td", null, isOutOfStock ? /* @__PURE__ */ import_react17.default.createElement("span", { className: "badge badge-danger" }, "Agotado") : isLowStock ? /* @__PURE__ */ import_react17.default.createElement("span", { className: "badge badge-warning" }, "Reorden (", stock, "/", min, ")") : /* @__PURE__ */ import_react17.default.createElement("span", { className: "badge badge-success" }, "\xD3ptimo")));
+    }))))), /* @__PURE__ */ import_react17.default.createElement(
       Modal,
       {
         isOpen: isAddModalOpen,
         onClose: () => setIsAddModalOpen(false),
         title: "Registrar Nuevo Producto",
-        footer: /* @__PURE__ */ import_react16.default.createElement(import_react16.default.Fragment, null, /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddModalOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateProduct }, "Guardar Pan"))
+        footer: /* @__PURE__ */ import_react17.default.createElement(import_react17.default.Fragment, null, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddModalOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateProduct }, "Guardar Pan"))
       },
-      /* @__PURE__ */ import_react16.default.createElement("form", { onSubmit: handleCreateProduct, className: "modal-form" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Nombre del Pan:"), /* @__PURE__ */ import_react16.default.createElement(
+      /* @__PURE__ */ import_react17.default.createElement("form", { onSubmit: handleCreateProduct, className: "modal-form" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Nombre del Pan:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "text",
@@ -16394,7 +16470,7 @@
           required: true,
           autoFocus: true
         }
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Descripci\xF3n:"), /* @__PURE__ */ import_react16.default.createElement(
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Descripci\xF3n:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "text",
@@ -16404,7 +16480,7 @@
           onChange: (e) => setNewProd({ ...newProd, descripcion: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Cantidad Inicial:"), /* @__PURE__ */ import_react16.default.createElement(
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Cantidad Inicial:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16414,7 +16490,7 @@
           onChange: (e) => setNewProd({ ...newProd, cantidad: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "M\xEDnimo para Alerta:"), /* @__PURE__ */ import_react16.default.createElement(
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "M\xEDnimo para Alerta:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16424,7 +16500,7 @@
           onChange: (e) => setNewProd({ ...newProd, minimo: e.target.value }),
           required: true
         }
-      ))), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Precio Compra/Costo ($):"), /* @__PURE__ */ import_react16.default.createElement(
+      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Precio Compra/Costo ($):"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16435,7 +16511,7 @@
           onChange: (e) => setNewProd({ ...newProd, precioCompra: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Precio Venta ($):"), /* @__PURE__ */ import_react16.default.createElement(
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Precio Venta ($):"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16447,23 +16523,23 @@
           required: true
         }
       ))))
-    ), /* @__PURE__ */ import_react16.default.createElement(
+    ), /* @__PURE__ */ import_react17.default.createElement(
       Modal,
       {
         isOpen: isAddStockOpen,
         onClose: () => setIsAddStockOpen(false),
         title: "A\xF1adir Existencias a Inventario",
-        footer: /* @__PURE__ */ import_react16.default.createElement(import_react16.default.Fragment, null, /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddStockOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-primary", onClick: handleAddStock }, "A\xF1adir Unidades"))
+        footer: /* @__PURE__ */ import_react17.default.createElement(import_react17.default.Fragment, null, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddStockOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: handleAddStock }, "A\xF1adir Unidades"))
       },
-      /* @__PURE__ */ import_react16.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Selecciona el Producto:"), /* @__PURE__ */ import_react16.default.createElement(
+      /* @__PURE__ */ import_react17.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Selecciona el Producto:"), /* @__PURE__ */ import_react17.default.createElement(
         "select",
         {
           className: "form-control",
           value: stockOp.idArticulo,
           onChange: (e) => setStockOp({ ...stockOp, idArticulo: e.target.value })
         },
-        products.map((p) => /* @__PURE__ */ import_react16.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre, " (Stock actual: ", p.Cantidad, ")"))
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Cantidad a A\xF1adir:"), /* @__PURE__ */ import_react16.default.createElement(
+        products.map((p) => /* @__PURE__ */ import_react17.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre, " (Stock actual: ", p.Cantidad, ")"))
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Cantidad a A\xF1adir:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16474,24 +16550,24 @@
           autoFocus: true
         }
       )))
-    ), /* @__PURE__ */ import_react16.default.createElement(
+    ), /* @__PURE__ */ import_react17.default.createElement(
       Modal,
       {
         isOpen: isDeductStockOpen,
         onClose: () => setIsDeductStockOpen(false),
         title: "Retirar Stock (Merma / Ajuste)",
         type: "warning",
-        footer: /* @__PURE__ */ import_react16.default.createElement(import_react16.default.Fragment, null, /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsDeductStockOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react16.default.createElement("button", { className: "btn btn-danger", onClick: handleDeductStock }, "Confirmar Retiro"))
+        footer: /* @__PURE__ */ import_react17.default.createElement(import_react17.default.Fragment, null, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsDeductStockOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-danger", onClick: handleDeductStock }, "Confirmar Retiro"))
       },
-      /* @__PURE__ */ import_react16.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Selecciona el Producto:"), /* @__PURE__ */ import_react16.default.createElement(
+      /* @__PURE__ */ import_react17.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Selecciona el Producto:"), /* @__PURE__ */ import_react17.default.createElement(
         "select",
         {
           className: "form-control",
           value: stockOp.idArticulo,
           onChange: (e) => setStockOp({ ...stockOp, idArticulo: e.target.value })
         },
-        products.map((p) => /* @__PURE__ */ import_react16.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre, " (Stock actual: ", p.Cantidad, ")"))
-      )), /* @__PURE__ */ import_react16.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react16.default.createElement("label", { className: "form-label" }, "Cantidad a Descontar:"), /* @__PURE__ */ import_react16.default.createElement(
+        products.map((p) => /* @__PURE__ */ import_react17.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre, " (Stock actual: ", p.Cantidad, ")"))
+      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Cantidad a Descontar:"), /* @__PURE__ */ import_react17.default.createElement(
         "input",
         {
           type: "number",
@@ -16501,22 +16577,22 @@
           onChange: (e) => setStockOp({ ...stockOp, cantidad: e.target.value }),
           autoFocus: true
         }
-      ), /* @__PURE__ */ import_react16.default.createElement("small", { className: "text-muted" }, "Descuento f\xEDsico por merma o error de conteo.")))
+      ), /* @__PURE__ */ import_react17.default.createElement("small", { className: "text-muted" }, "Descuento f\xEDsico por merma o error de conteo.")))
     ));
   };
 
   // src/renderer/views/PersonalView.jsx
-  var import_react17 = __toESM(require_react());
+  var import_react18 = __toESM(require_react());
   var PersonalView = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
-    const [employees, setEmployees] = (0, import_react17.useState)([]);
-    const [loading, setLoading] = (0, import_react17.useState)(true);
-    const [search, setSearch] = (0, import_react17.useState)("");
-    const [isAddOpen, setIsAddOpen] = (0, import_react17.useState)(false);
-    const [isEditOpen, setIsEditOpen] = (0, import_react17.useState)(false);
-    const [selectedEmp, setSelectedEmp] = (0, import_react17.useState)(null);
-    const [empForm, setEmpForm] = (0, import_react17.useState)({
+    const [employees, setEmployees] = (0, import_react18.useState)([]);
+    const [loading, setLoading] = (0, import_react18.useState)(true);
+    const [search, setSearch] = (0, import_react18.useState)("");
+    const [isAddOpen, setIsAddOpen] = (0, import_react18.useState)(false);
+    const [isEditOpen, setIsEditOpen] = (0, import_react18.useState)(false);
+    const [selectedEmp, setSelectedEmp] = (0, import_react18.useState)(null);
+    const [empForm, setEmpForm] = (0, import_react18.useState)({
       nombre: "",
       apellidoPaterno: "",
       apellidoMaterno: "",
@@ -16527,7 +16603,7 @@
       turno: "Any",
       salario: 8500
     });
-    const loadData = (0, import_react17.useCallback)(async () => {
+    const loadData = (0, import_react18.useCallback)(async () => {
       try {
         setLoading(true);
         const data = await window.api.getEmpleados();
@@ -16538,10 +16614,10 @@
         setLoading(false);
       }
     }, [showToast]);
-    (0, import_react17.useEffect)(() => {
+    (0, import_react18.useEffect)(() => {
       loadData();
     }, [loadData]);
-    const filtered = (0, import_react17.useMemo)(() => {
+    const filtered = (0, import_react18.useMemo)(() => {
       const q = search.toLowerCase().trim();
       return employees.filter((e) => ["Empleado", "Gerente", "Programador"].includes(e.Rol)).filter((e) => {
         if (!q) return true;
@@ -16624,7 +16700,7 @@
         showToast(err.message, "error");
       }
     };
-    return /* @__PURE__ */ import_react17.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react17.default.createElement("div", null, /* @__PURE__ */ import_react17.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react17.default.createElement(UsersIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react17.default.createElement("span", null, "Directorio de Personal")), /* @__PURE__ */ import_react17.default.createElement("p", { className: "view-page-sub" }, "Gestiona permisos de gerentes, cajeros, turnos de panader\xEDa y estados de cuenta.")), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddOpen(true) }, /* @__PURE__ */ import_react17.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react17.default.createElement("span", null, "Registrar Empleado"))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react17.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react17.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react17.default.createElement(
+    return /* @__PURE__ */ import_react18.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react18.default.createElement("div", null, /* @__PURE__ */ import_react18.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react18.default.createElement(UsersIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react18.default.createElement("span", null, "Directorio de Personal")), /* @__PURE__ */ import_react18.default.createElement("p", { className: "view-page-sub" }, "Gestiona permisos de gerentes, cajeros, turnos de panader\xEDa y estados de cuenta.")), /* @__PURE__ */ import_react18.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddOpen(true) }, /* @__PURE__ */ import_react18.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react18.default.createElement("span", null, "Registrar Empleado"))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react18.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react18.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react18.default.createElement(
       "input",
       {
         type: "text",
@@ -16633,21 +16709,21 @@
         value: search,
         onChange: (e) => setSearch(e.target.value)
       }
-    )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-counts" }, filtered.length, " miembros del equipo")), /* @__PURE__ */ import_react17.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react17.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react17.default.createElement("thead", null, /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Nombre Completo"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Usuario"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Rol"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Puesto"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Turno"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Salario"), /* @__PURE__ */ import_react17.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react17.default.createElement("th", { className: "text-right" }, "Acciones"))), /* @__PURE__ */ import_react17.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("td", { colSpan: "9", className: "text-center py-4" }, "Cargando empleados...")) : filtered.length === 0 ? /* @__PURE__ */ import_react17.default.createElement("tr", null, /* @__PURE__ */ import_react17.default.createElement("td", { colSpan: "9", className: "empty-table-cell" }, "No se encontr\xF3 personal registrado.")) : filtered.map((emp) => {
+    )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-counts" }, filtered.length, " miembros del equipo")), /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react18.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react18.default.createElement("thead", null, /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Nombre Completo"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Usuario"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Rol"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Puesto"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Turno"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Salario"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react18.default.createElement("th", { className: "text-right" }, "Acciones"))), /* @__PURE__ */ import_react18.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("td", { colSpan: "9", className: "text-center py-4" }, "Cargando empleados...")) : filtered.length === 0 ? /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("td", { colSpan: "9", className: "empty-table-cell" }, "No se encontr\xF3 personal registrado.")) : filtered.map((emp) => {
       const isActivo = Boolean(emp.Activo);
       const roleBadges = {
         Gerente: "badge-primary",
         Empleado: "badge-secondary",
         Programador: "badge-dark"
       };
-      return /* @__PURE__ */ import_react17.default.createElement("tr", { key: emp.IdEmpleado, className: !isActivo ? "row-inactive" : "" }, /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-mono text-muted" }, "#", emp.IdEmpleado), /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-semibold" }, emp.NombreCompleto || emp.NombreUsuario), /* @__PURE__ */ import_react17.default.createElement("td", { className: "font-mono text-secondary" }, emp.NombreUsuario), /* @__PURE__ */ import_react17.default.createElement("td", null, /* @__PURE__ */ import_react17.default.createElement("span", { className: `badge ${roleBadges[emp.Rol] || "badge-secondary"}` }, emp.Rol)), /* @__PURE__ */ import_react17.default.createElement("td", null, emp.Puesto || "-"), /* @__PURE__ */ import_react17.default.createElement("td", null, emp.Turno || "Any"), /* @__PURE__ */ import_react17.default.createElement("td", null, formatMoney(emp.Salario || 0)), /* @__PURE__ */ import_react17.default.createElement("td", null, /* @__PURE__ */ import_react17.default.createElement(
+      return /* @__PURE__ */ import_react18.default.createElement("tr", { key: emp.IdEmpleado, className: !isActivo ? "row-inactive" : "" }, /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-mono text-muted" }, "#", emp.IdEmpleado), /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-semibold" }, emp.NombreCompleto || emp.NombreUsuario), /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-mono text-secondary" }, emp.NombreUsuario), /* @__PURE__ */ import_react18.default.createElement("td", null, /* @__PURE__ */ import_react18.default.createElement("span", { className: `badge ${roleBadges[emp.Rol] || "badge-secondary"}` }, emp.Rol)), /* @__PURE__ */ import_react18.default.createElement("td", null, emp.Puesto || "-"), /* @__PURE__ */ import_react18.default.createElement("td", null, emp.Turno || "Any"), /* @__PURE__ */ import_react18.default.createElement("td", null, formatMoney(emp.Salario || 0)), /* @__PURE__ */ import_react18.default.createElement("td", null, /* @__PURE__ */ import_react18.default.createElement(
         "button",
         {
           className: `status-toggle-btn ${isActivo ? "btn-active" : "btn-inactive"}`,
           onClick: () => handleToggleStatus(emp)
         },
         isActivo ? "Activo" : "Inactivo"
-      )), /* @__PURE__ */ import_react17.default.createElement("td", { className: "text-right" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "action-btn-group" }, /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("td", { className: "text-right" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "action-btn-group" }, /* @__PURE__ */ import_react18.default.createElement(
         "button",
         {
           className: "btn btn-icon btn-sm",
@@ -16657,25 +16733,25 @@
           },
           title: "Editar Empleado"
         },
-        /* @__PURE__ */ import_react17.default.createElement(UserIcon, { style: { width: 16, height: 16 } })
-      ), /* @__PURE__ */ import_react17.default.createElement(
+        /* @__PURE__ */ import_react18.default.createElement(UserIcon, { style: { width: 16, height: 16 } })
+      ), /* @__PURE__ */ import_react18.default.createElement(
         "button",
         {
           className: "btn btn-icon btn-sm text-danger",
           onClick: () => handleDelete(emp),
           title: "Desactivar/Eliminar"
         },
-        /* @__PURE__ */ import_react17.default.createElement(TrashIcon, { style: { width: 16, height: 16 } })
+        /* @__PURE__ */ import_react18.default.createElement(TrashIcon, { style: { width: 16, height: 16 } })
       ))));
-    }))))), /* @__PURE__ */ import_react17.default.createElement(
+    }))))), /* @__PURE__ */ import_react18.default.createElement(
       Modal,
       {
         isOpen: isAddOpen,
         onClose: () => setIsAddOpen(false),
         title: "Registrar Nuevo Empleado",
-        footer: /* @__PURE__ */ import_react17.default.createElement(import_react17.default.Fragment, null, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateEmployee }, "Registrar Empleado"))
+        footer: /* @__PURE__ */ import_react18.default.createElement(import_react18.default.Fragment, null, /* @__PURE__ */ import_react18.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react18.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateEmployee }, "Registrar Empleado"))
       },
-      /* @__PURE__ */ import_react17.default.createElement("form", { onSubmit: handleCreateEmployee, className: "modal-form" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Nombre(s):"), /* @__PURE__ */ import_react17.default.createElement(
+      /* @__PURE__ */ import_react18.default.createElement("form", { onSubmit: handleCreateEmployee, className: "modal-form" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Nombre(s):"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16685,7 +16761,7 @@
           required: true,
           autoFocus: true
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16694,7 +16770,7 @@
           onChange: (e) => setEmpForm({ ...empForm, apellidoPaterno: e.target.value }),
           required: true
         }
-      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Apellido Materno:"), /* @__PURE__ */ import_react17.default.createElement(
+      ))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Apellido Materno:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16702,7 +16778,7 @@
           value: empForm.apellidoMaterno,
           onChange: (e) => setEmpForm({ ...empForm, apellidoMaterno: e.target.value })
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Nombre de Usuario:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Nombre de Usuario:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16711,7 +16787,7 @@
           onChange: (e) => setEmpForm({ ...empForm, username: e.target.value }),
           required: true
         }
-      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Inicial:"), /* @__PURE__ */ import_react17.default.createElement(
+      ))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Inicial:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "password",
@@ -16720,16 +16796,16 @@
           onChange: (e) => setEmpForm({ ...empForm, password: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Rol:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Rol:"), /* @__PURE__ */ import_react18.default.createElement(
         "select",
         {
           className: "form-control",
           value: empForm.rol,
           onChange: (e) => setEmpForm({ ...empForm, rol: e.target.value })
         },
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Empleado" }, "Empleado"),
-        user?.Rol === "Programador" && /* @__PURE__ */ import_react17.default.createElement("option", { value: "Gerente" }, "Gerente")
-      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react17.default.createElement(
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Empleado" }, "Empleado"),
+        user?.Rol === "Programador" && /* @__PURE__ */ import_react18.default.createElement("option", { value: "Gerente" }, "Gerente")
+      ))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16737,18 +16813,18 @@
           value: empForm.puesto,
           onChange: (e) => setEmpForm({ ...empForm, puesto: e.target.value })
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Turno:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Turno:"), /* @__PURE__ */ import_react18.default.createElement(
         "select",
         {
           className: "form-control",
           value: empForm.turno,
           onChange: (e) => setEmpForm({ ...empForm, turno: e.target.value })
         },
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Matutino" }, "Matutino"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Vespertino" }, "Vespertino"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Nocturno" }, "Nocturno"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Any" }, "Any")
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Salario ($):"), /* @__PURE__ */ import_react17.default.createElement(
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Matutino" }, "Matutino"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Vespertino" }, "Vespertino"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Nocturno" }, "Nocturno"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Any" }, "Any")
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Salario ($):"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "number",
@@ -16757,15 +16833,15 @@
           onChange: (e) => setEmpForm({ ...empForm, salario: parseFloat(e.target.value) || 0 })
         }
       ))))
-    ), /* @__PURE__ */ import_react17.default.createElement(
+    ), /* @__PURE__ */ import_react18.default.createElement(
       Modal,
       {
         isOpen: isEditOpen,
         onClose: () => setIsEditOpen(false),
         title: `Editar a ${selectedEmp?.NombreCompleto || selectedEmp?.NombreUsuario}`,
-        footer: /* @__PURE__ */ import_react17.default.createElement(import_react17.default.Fragment, null, /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsEditOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react17.default.createElement("button", { className: "btn btn-primary", onClick: handleEditEmployee }, "Guardar Cambios"))
+        footer: /* @__PURE__ */ import_react18.default.createElement(import_react18.default.Fragment, null, /* @__PURE__ */ import_react18.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsEditOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react18.default.createElement("button", { className: "btn btn-primary", onClick: handleEditEmployee }, "Guardar Cambios"))
       },
-      selectedEmp && /* @__PURE__ */ import_react17.default.createElement("form", { onSubmit: handleEditEmployee, className: "modal-form" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Nombre(s):"), /* @__PURE__ */ import_react17.default.createElement(
+      selectedEmp && /* @__PURE__ */ import_react18.default.createElement("form", { onSubmit: handleEditEmployee, className: "modal-form" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Nombre(s):"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16774,7 +16850,7 @@
           onChange: (e) => setSelectedEmp({ ...selectedEmp, Nombre: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16783,7 +16859,7 @@
           onChange: (e) => setSelectedEmp({ ...selectedEmp, ApellidoPaterno: e.target.value }),
           required: true
         }
-      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Usuario:"), /* @__PURE__ */ import_react17.default.createElement(
+      ))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Usuario:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16792,7 +16868,7 @@
           onChange: (e) => setSelectedEmp({ ...selectedEmp, NombreUsuario: e.target.value }),
           required: true
         }
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react17.default.createElement(
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "text",
@@ -16800,18 +16876,18 @@
           value: selectedEmp.Puesto || "",
           onChange: (e) => setSelectedEmp({ ...selectedEmp, Puesto: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Turno:"), /* @__PURE__ */ import_react17.default.createElement(
+      ))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Turno:"), /* @__PURE__ */ import_react18.default.createElement(
         "select",
         {
           className: "form-control",
           value: selectedEmp.Turno || "Any",
           onChange: (e) => setSelectedEmp({ ...selectedEmp, Turno: e.target.value })
         },
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Matutino" }, "Matutino"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Vespertino" }, "Vespertino"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Nocturno" }, "Nocturno"),
-        /* @__PURE__ */ import_react17.default.createElement("option", { value: "Any" }, "Any")
-      )), /* @__PURE__ */ import_react17.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react17.default.createElement("label", { className: "form-label" }, "Salario Mensual ($):"), /* @__PURE__ */ import_react17.default.createElement(
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Matutino" }, "Matutino"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Vespertino" }, "Vespertino"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Nocturno" }, "Nocturno"),
+        /* @__PURE__ */ import_react18.default.createElement("option", { value: "Any" }, "Any")
+      )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react18.default.createElement("label", { className: "form-label" }, "Salario Mensual ($):"), /* @__PURE__ */ import_react18.default.createElement(
         "input",
         {
           type: "number",
@@ -16824,13 +16900,13 @@
   };
 
   // src/renderer/views/ClientesView.jsx
-  var import_react18 = __toESM(require_react());
+  var import_react19 = __toESM(require_react());
   var ClientesView = () => {
     const { showToast } = useToast();
-    const [clientes, setClientes] = (0, import_react18.useState)([]);
-    const [loading, setLoading] = (0, import_react18.useState)(true);
-    const [search, setSearch] = (0, import_react18.useState)("");
-    const loadData = (0, import_react18.useCallback)(async () => {
+    const [clientes, setClientes] = (0, import_react19.useState)([]);
+    const [loading, setLoading] = (0, import_react19.useState)(true);
+    const [search, setSearch] = (0, import_react19.useState)("");
+    const loadData = (0, import_react19.useCallback)(async () => {
       try {
         setLoading(true);
         const data = await window.api.getClientes();
@@ -16841,10 +16917,10 @@
         setLoading(false);
       }
     }, [showToast]);
-    (0, import_react18.useEffect)(() => {
+    (0, import_react19.useEffect)(() => {
       loadData();
     }, [loadData]);
-    const filtered = (0, import_react18.useMemo)(() => {
+    const filtered = (0, import_react19.useMemo)(() => {
       const q = search.toLowerCase().trim();
       return clientes.filter((c) => {
         if (!q) return true;
@@ -16852,7 +16928,7 @@
         return full.includes(q);
       });
     }, [clientes, search]);
-    return /* @__PURE__ */ import_react18.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react18.default.createElement("div", null, /* @__PURE__ */ import_react18.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react18.default.createElement(UserIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react18.default.createElement("span", null, "Directorio de Clientes")), /* @__PURE__ */ import_react18.default.createElement("p", { className: "view-page-sub" }, "Consulta frecuencia de compra, productos preferidos e historial de clientes registrados."))), /* @__PURE__ */ import_react18.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react18.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react18.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react18.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react18.default.createElement(
+    return /* @__PURE__ */ import_react19.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react19.default.createElement("div", null, /* @__PURE__ */ import_react19.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react19.default.createElement(UserIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react19.default.createElement("span", null, "Directorio de Clientes")), /* @__PURE__ */ import_react19.default.createElement("p", { className: "view-page-sub" }, "Consulta frecuencia de compra, productos preferidos e historial de clientes registrados."))), /* @__PURE__ */ import_react19.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-toolbar" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "search-box" }, /* @__PURE__ */ import_react19.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react19.default.createElement(SearchIcon, { style: { width: 16, height: 16 } })), /* @__PURE__ */ import_react19.default.createElement(
       "input",
       {
         type: "text",
@@ -16861,42 +16937,42 @@
         value: search,
         onChange: (e) => setSearch(e.target.value)
       }
-    )), /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-counts" }, filtered.length, " clientes registrados")), /* @__PURE__ */ import_react18.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react18.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react18.default.createElement("thead", null, /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Nombre del Cliente"), /* @__PURE__ */ import_react18.default.createElement("th", null, "G\xE9nero"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Fecha de Registro"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Compras Realizadas"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Productos Consumidos"), /* @__PURE__ */ import_react18.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react18.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("td", { colSpan: "7", className: "text-center py-4" }, "Cargando clientes...")) : filtered.length === 0 ? /* @__PURE__ */ import_react18.default.createElement("tr", null, /* @__PURE__ */ import_react18.default.createElement("td", { colSpan: "7", className: "empty-table-cell" }, "No se encontraron clientes registrados.")) : filtered.map((c) => /* @__PURE__ */ import_react18.default.createElement("tr", { key: c.IdCliente }, /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-mono text-muted" }, "#", c.IdCliente), /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-semibold" }, c.NombreCompleto || c.Nombre || "Cliente"), /* @__PURE__ */ import_react18.default.createElement("td", null, c.Genero || "-"), /* @__PURE__ */ import_react18.default.createElement("td", { className: "text-secondary" }, c.FechaRegistro ? new Date(c.FechaRegistro).toLocaleDateString("es-MX") : "-"), /* @__PURE__ */ import_react18.default.createElement("td", { className: "font-mono text-xs" }, c.Ventas || "Sin compras"), /* @__PURE__ */ import_react18.default.createElement("td", { className: "text-xs text-secondary max-w-sm truncate", title: c.ProductosComprados || "" }, c.ProductosComprados || "Ninguno a\xFAn"), /* @__PURE__ */ import_react18.default.createElement("td", null, /* @__PURE__ */ import_react18.default.createElement("span", { className: `badge ${c.Activo ? "badge-success" : "badge-danger"}` }, c.Activo ? "Activo" : "Inactivo")))))))));
+    )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-counts" }, filtered.length, " clientes registrados")), /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Nombre del Cliente"), /* @__PURE__ */ import_react19.default.createElement("th", null, "G\xE9nero"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Fecha de Registro"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Compras Realizadas"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Productos Consumidos"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, loading ? /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("td", { colSpan: "7", className: "text-center py-4" }, "Cargando clientes...")) : filtered.length === 0 ? /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("td", { colSpan: "7", className: "empty-table-cell" }, "No se encontraron clientes registrados.")) : filtered.map((c) => /* @__PURE__ */ import_react19.default.createElement("tr", { key: c.IdCliente }, /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono text-muted" }, "#", c.IdCliente), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-semibold" }, c.NombreCompleto || c.Nombre || "Cliente"), /* @__PURE__ */ import_react19.default.createElement("td", null, c.Genero || "-"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-secondary" }, c.FechaRegistro ? new Date(c.FechaRegistro).toLocaleDateString("es-MX") : "-"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono text-xs" }, c.Ventas || "Sin compras"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-xs text-secondary max-w-sm truncate", title: c.ProductosComprados || "" }, c.ProductosComprados || "Ninguno a\xFAn"), /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement("span", { className: `badge ${c.Activo ? "badge-success" : "badge-danger"}` }, c.Activo ? "Activo" : "Inactivo")))))))));
   };
 
   // src/renderer/views/ProveedoresView.jsx
-  var import_react19 = __toESM(require_react());
+  var import_react20 = __toESM(require_react());
   var ProveedoresView = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = (0, import_react19.useState)("proveedores");
-    const [proveedores, setProveedores] = (0, import_react19.useState)([]);
-    const [recepciones, setRecepciones] = (0, import_react19.useState)([]);
-    const [devoluciones, setDevoluciones] = (0, import_react19.useState)([]);
-    const [loading, setLoading] = (0, import_react19.useState)(true);
-    const [isAddProvOpen, setIsAddProvOpen] = (0, import_react19.useState)(false);
-    const [isAddRecOpen, setIsAddRecOpen] = (0, import_react19.useState)(false);
-    const [isAddDevOpen, setIsAddDevOpen] = (0, import_react19.useState)(false);
-    const [newProv, setNewProv] = (0, import_react19.useState)({
+    const [activeTab, setActiveTab] = (0, import_react20.useState)("proveedores");
+    const [proveedores, setProveedores] = (0, import_react20.useState)([]);
+    const [recepciones, setRecepciones] = (0, import_react20.useState)([]);
+    const [devoluciones, setDevoluciones] = (0, import_react20.useState)([]);
+    const [loading, setLoading] = (0, import_react20.useState)(true);
+    const [isAddProvOpen, setIsAddProvOpen] = (0, import_react20.useState)(false);
+    const [isAddRecOpen, setIsAddRecOpen] = (0, import_react20.useState)(false);
+    const [isAddDevOpen, setIsAddDevOpen] = (0, import_react20.useState)(false);
+    const [newProv, setNewProv] = (0, import_react20.useState)({
       name: "",
       contacto: "",
       telefono: "",
       mail: "",
       ciudad: ""
     });
-    const [products, setProducts] = (0, import_react19.useState)([]);
-    const [recLines, setRecLines] = (0, import_react19.useState)([]);
-    const [recProvId, setRecProvId] = (0, import_react19.useState)("");
-    const [recLineForm, setRecLineForm] = (0, import_react19.useState)({
+    const [products, setProducts] = (0, import_react20.useState)([]);
+    const [recLines, setRecLines] = (0, import_react20.useState)([]);
+    const [recProvId, setRecProvId] = (0, import_react20.useState)("");
+    const [recLineForm, setRecLineForm] = (0, import_react20.useState)({
       idArticulo: "",
       cantidad: 20,
       costoUnitario: 10
     });
-    const [ventas, setVentas] = (0, import_react19.useState)([]);
-    const [devVentaId, setDevVentaId] = (0, import_react19.useState)("");
-    const [devItems, setDevItems] = (0, import_react19.useState)([]);
-    const [devMotivo, setDevMotivo] = (0, import_react19.useState)("Devoluci\xF3n en mostrador");
-    const loadAllData = (0, import_react19.useCallback)(async () => {
+    const [ventas, setVentas] = (0, import_react20.useState)([]);
+    const [devVentaId, setDevVentaId] = (0, import_react20.useState)("");
+    const [devItems, setDevItems] = (0, import_react20.useState)([]);
+    const [devMotivo, setDevMotivo] = (0, import_react20.useState)("Devoluci\xF3n en mostrador");
+    const loadAllData = (0, import_react20.useCallback)(async () => {
       try {
         setLoading(true);
         const [provs, recs, devs, prods, vtas] = await Promise.all([
@@ -16926,7 +17002,7 @@
         setLoading(false);
       }
     }, [showToast, recProvId, recLineForm.idArticulo, devVentaId]);
-    (0, import_react19.useEffect)(() => {
+    (0, import_react20.useEffect)(() => {
       loadAllData();
     }, [loadAllData]);
     const handleToggleProveedor = async (p) => {
@@ -17009,7 +17085,7 @@
         showToast(err.message, "error");
       }
     };
-    (0, import_react19.useEffect)(() => {
+    (0, import_react20.useEffect)(() => {
       if (!devVentaId) return;
       const fetchDetalles = async () => {
         try {
@@ -17050,41 +17126,41 @@
         showToast(err.message, "error");
       }
     };
-    return /* @__PURE__ */ import_react19.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react19.default.createElement("div", null, /* @__PURE__ */ import_react19.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react19.default.createElement(TruckIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react19.default.createElement("span", null, "Cadena de Suministro")), /* @__PURE__ */ import_react19.default.createElement("p", { className: "view-page-sub" }, "Gesti\xF3n de proveedores, ingresos de materia prima/mercanc\xEDa y devoluciones de clientes.")), /* @__PURE__ */ import_react19.default.createElement("div", { className: "view-actions-group" }, /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-outline", onClick: () => setIsAddProvOpen(true) }, /* @__PURE__ */ import_react19.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react19.default.createElement("span", null, "Nuevo Proveedor")), /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddRecOpen(true) }, /* @__PURE__ */ import_react19.default.createElement(BoxIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react19.default.createElement("span", null, "Recibir Mercanc\xEDa")), /* @__PURE__ */ import_react19.default.createElement(
+    return /* @__PURE__ */ import_react20.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react20.default.createElement("div", null, /* @__PURE__ */ import_react20.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react20.default.createElement(TruckIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Cadena de Suministro")), /* @__PURE__ */ import_react20.default.createElement("p", { className: "view-page-sub" }, "Gesti\xF3n de proveedores, ingresos de materia prima/mercanc\xEDa y devoluciones de clientes.")), /* @__PURE__ */ import_react20.default.createElement("div", { className: "view-actions-group" }, /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-outline", onClick: () => setIsAddProvOpen(true) }, /* @__PURE__ */ import_react20.default.createElement(PlusIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Nuevo Proveedor")), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-primary", onClick: () => setIsAddRecOpen(true) }, /* @__PURE__ */ import_react20.default.createElement(BoxIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Recibir Mercanc\xEDa")), /* @__PURE__ */ import_react20.default.createElement(
       "button",
       {
         className: "btn btn-outline btn-warning-outline",
         onClick: () => setIsAddDevOpen(true)
       },
-      /* @__PURE__ */ import_react19.default.createElement(RefreshIcon, { style: { width: 16, height: 16 } }),
-      /* @__PURE__ */ import_react19.default.createElement("span", null, "Devoluci\xF3n Cliente")
-    ))), /* @__PURE__ */ import_react19.default.createElement("div", { className: "tabs-nav-bar" }, /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement(RefreshIcon, { style: { width: 16, height: 16 } }),
+      /* @__PURE__ */ import_react20.default.createElement("span", null, "Devoluci\xF3n Cliente")
+    ))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "tabs-nav-bar" }, /* @__PURE__ */ import_react20.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "proveedores" ? "active" : ""}`,
         onClick: () => setActiveTab("proveedores")
       },
-      /* @__PURE__ */ import_react19.default.createElement(TruckIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react19.default.createElement("span", null, "Proveedores")
-    ), /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement(TruckIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react20.default.createElement("span", null, "Proveedores")
+    ), /* @__PURE__ */ import_react20.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "recepciones" ? "active" : ""}`,
         onClick: () => setActiveTab("recepciones")
       },
-      /* @__PURE__ */ import_react19.default.createElement(BoxIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react19.default.createElement("span", null, "Recepciones de Mercanc\xEDa")
-    ), /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement(BoxIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react20.default.createElement("span", null, "Recepciones de Mercanc\xEDa")
+    ), /* @__PURE__ */ import_react20.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "devoluciones" ? "active" : ""}`,
         onClick: () => setActiveTab("devoluciones")
       },
-      /* @__PURE__ */ import_react19.default.createElement(RefreshIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react19.default.createElement("span", null, "Devoluciones de Clientes")
-    )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "mt-4" }, loading ? /* @__PURE__ */ import_react19.default.createElement("div", { className: "loading-state" }, /* @__PURE__ */ import_react19.default.createElement("span", { className: "spinner" })) : activeTab === "proveedores" ? /* @__PURE__ */ import_react19.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Proveedor / Empresa"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Contacto"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Tel\xE9fono"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Correo"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Ciudad"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react19.default.createElement("th", { className: "text-right" }, "Acci\xF3n"))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, proveedores.map((p) => {
+      /* @__PURE__ */ import_react20.default.createElement(RefreshIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react20.default.createElement("span", null, "Devoluciones de Clientes")
+    )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "mt-4" }, loading ? /* @__PURE__ */ import_react20.default.createElement("div", { className: "loading-state" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "spinner" })) : activeTab === "proveedores" ? /* @__PURE__ */ import_react20.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Proveedor / Empresa"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Contacto"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Tel\xE9fono"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Correo"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Ciudad"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react20.default.createElement("th", { className: "text-right" }, "Acci\xF3n"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, proveedores.map((p) => {
       const isActivo = p.Activo !== 0 && p.Activo !== false;
-      return /* @__PURE__ */ import_react19.default.createElement("tr", { key: p.IdProveedor, className: !isActivo ? "row-inactive" : "" }, /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono text-muted" }, "#", p.IdProveedor), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-semibold" }, p.NombreEmpresa || p.Nombre), /* @__PURE__ */ import_react19.default.createElement("td", null, p.Contacto || p.ContactoNombre || "-"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono" }, p.Telefono || "-"), /* @__PURE__ */ import_react19.default.createElement("td", null, p.Correo || "-"), /* @__PURE__ */ import_react19.default.createElement("td", null, p.Ciudad || "-"), /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement("span", { className: `badge ${isActivo ? "badge-success" : "badge-danger"}` }, isActivo ? "Activo" : "Inactivo")), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-right" }, /* @__PURE__ */ import_react19.default.createElement(
+      return /* @__PURE__ */ import_react20.default.createElement("tr", { key: p.IdProveedor, className: !isActivo ? "row-inactive" : "" }, /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono text-muted" }, "#", p.IdProveedor), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-semibold" }, p.NombreEmpresa || p.Nombre), /* @__PURE__ */ import_react20.default.createElement("td", null, p.Contacto || p.ContactoNombre || "-"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono" }, p.Telefono || "-"), /* @__PURE__ */ import_react20.default.createElement("td", null, p.Correo || "-"), /* @__PURE__ */ import_react20.default.createElement("td", null, p.Ciudad || "-"), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement("span", { className: `badge ${isActivo ? "badge-success" : "badge-danger"}` }, isActivo ? "Activo" : "Inactivo")), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-right" }, /* @__PURE__ */ import_react20.default.createElement(
         "button",
         {
           className: "btn btn-outline btn-sm",
@@ -17092,28 +17168,28 @@
         },
         isActivo ? "Desactivar" : "Reactivar"
       )));
-    }))))) : activeTab === "recepciones" ? /* @__PURE__ */ import_react19.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "Folio / Recepci\xF3n"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Proveedor"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Productos Recibidos"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Total ($)"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react19.default.createElement("th", { className: "text-right" }, "Acciones"))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, recepciones.map((r) => /* @__PURE__ */ import_react19.default.createElement("tr", { key: r.IdRecepcion }, /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement("span", { className: "font-mono font-semibold" }, r.NumeroRecepcion), /* @__PURE__ */ import_react19.default.createElement("div", { className: "text-xs text-muted" }, r.Folio)), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-secondary text-xs" }, new Date(r.FechaRecepcion).toLocaleString("es-MX")), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-semibold" }, r.NombreProveedor), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-xs text-secondary max-w-sm truncate" }, r.ProductosIngresados || "-"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-bold text-success" }, formatMoney(r.Total)), /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement(
+    }))))) : activeTab === "recepciones" ? /* @__PURE__ */ import_react20.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Folio / Recepci\xF3n"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Proveedor"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Productos Recibidos"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Total ($)"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Estado"), /* @__PURE__ */ import_react20.default.createElement("th", { className: "text-right" }, "Acciones"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, recepciones.map((r) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: r.IdRecepcion }, /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement("span", { className: "font-mono font-semibold" }, r.NumeroRecepcion), /* @__PURE__ */ import_react20.default.createElement("div", { className: "text-xs text-muted" }, r.Folio)), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-secondary text-xs" }, new Date(r.FechaRecepcion).toLocaleString("es-MX")), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-semibold" }, r.NombreProveedor), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-xs text-secondary max-w-sm truncate" }, r.ProductosIngresados || "-"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-bold text-success" }, formatMoney(r.Total)), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement(
       "span",
       {
         className: `badge ${r.Estado === "Recibida" ? "badge-success" : r.Estado === "Modificada" ? "badge-primary" : "badge-danger"}`
       },
       r.Estado
-    )), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-right" }, r.Estado !== "Devuelta" ? /* @__PURE__ */ import_react19.default.createElement(
+    )), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-right" }, r.Estado !== "Devuelta" ? /* @__PURE__ */ import_react20.default.createElement(
       "button",
       {
         className: "btn btn-outline btn-sm btn-danger-outline",
         onClick: () => handleReturnReception(r)
       },
       "Devolver"
-    ) : /* @__PURE__ */ import_react19.default.createElement("span", { className: "text-muted text-xs" }, "Devuelto")))))))) : /* @__PURE__ */ import_react19.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "Folio Devoluci\xF3n"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Venta Origen"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Atendi\xF3"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Productos Reintegrados"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Monto Reintegrado"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Motivo"))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, devoluciones.map((d) => /* @__PURE__ */ import_react19.default.createElement("tr", { key: d.IdDevolucion }, /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono font-semibold" }, d.FolioDevolucion), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-secondary text-xs" }, new Date(d.FechaDevolucion).toLocaleString("es-MX")), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-mono font-bold" }, "#", d.IdVenta), /* @__PURE__ */ import_react19.default.createElement("td", null, d.Empleado || "Sistema"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-xs text-secondary" }, d.Productos || "-"), /* @__PURE__ */ import_react19.default.createElement("td", { className: "font-bold text-danger" }, formatMoney(d.TotalReintegrado)), /* @__PURE__ */ import_react19.default.createElement("td", { className: "text-xs text-muted" }, d.Motivo || "-")))))))), /* @__PURE__ */ import_react19.default.createElement(
+    ) : /* @__PURE__ */ import_react20.default.createElement("span", { className: "text-muted text-xs" }, "Devuelto")))))))) : /* @__PURE__ */ import_react20.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Folio Devoluci\xF3n"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Venta Origen"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Atendi\xF3"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Productos Reintegrados"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Monto Reintegrado"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Motivo"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, devoluciones.map((d) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: d.IdDevolucion }, /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono font-semibold" }, d.FolioDevolucion), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-secondary text-xs" }, new Date(d.FechaDevolucion).toLocaleString("es-MX")), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono font-bold" }, "#", d.IdVenta), /* @__PURE__ */ import_react20.default.createElement("td", null, d.Empleado || "Sistema"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-xs text-secondary" }, d.Productos || "-"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-bold text-danger" }, formatMoney(d.TotalReintegrado)), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-xs text-muted" }, d.Motivo || "-")))))))), /* @__PURE__ */ import_react20.default.createElement(
       Modal,
       {
         isOpen: isAddProvOpen,
         onClose: () => setIsAddProvOpen(false),
         title: "Registrar Nuevo Proveedor",
-        footer: /* @__PURE__ */ import_react19.default.createElement(import_react19.default.Fragment, null, /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddProvOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateProveedor }, "Guardar Proveedor"))
+        footer: /* @__PURE__ */ import_react20.default.createElement(import_react20.default.Fragment, null, /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddProvOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-primary", onClick: handleCreateProveedor }, "Guardar Proveedor"))
       },
-      /* @__PURE__ */ import_react19.default.createElement("form", { onSubmit: handleCreateProveedor, className: "modal-form" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Nombre del Proveedor / Raz\xF3n Social:"), /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement("form", { onSubmit: handleCreateProveedor, className: "modal-form" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Nombre del Proveedor / Raz\xF3n Social:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "text",
@@ -17124,7 +17200,7 @@
           required: true,
           autoFocus: true
         }
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Persona de Contacto:"), /* @__PURE__ */ import_react19.default.createElement(
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Persona de Contacto:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "text",
@@ -17133,7 +17209,7 @@
           value: newProv.contacto,
           onChange: (e) => setNewProv({ ...newProv, contacto: e.target.value })
         }
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Tel\xE9fono:"), /* @__PURE__ */ import_react19.default.createElement(
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Tel\xE9fono:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "tel",
@@ -17142,7 +17218,7 @@
           value: newProv.telefono,
           onChange: (e) => setNewProv({ ...newProv, telefono: e.target.value })
         }
-      ))), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Correo Electr\xF3nico:"), /* @__PURE__ */ import_react19.default.createElement(
+      ))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Correo Electr\xF3nico:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "email",
@@ -17151,7 +17227,7 @@
           value: newProv.mail,
           onChange: (e) => setNewProv({ ...newProv, mail: e.target.value })
         }
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Ciudad / Estado:"), /* @__PURE__ */ import_react19.default.createElement(
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Ciudad / Estado:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "text",
@@ -17161,31 +17237,31 @@
           onChange: (e) => setNewProv({ ...newProv, ciudad: e.target.value })
         }
       ))))
-    ), /* @__PURE__ */ import_react19.default.createElement(
+    ), /* @__PURE__ */ import_react20.default.createElement(
       Modal,
       {
         isOpen: isAddRecOpen,
         onClose: () => setIsAddRecOpen(false),
         title: "Recepci\xF3n de Mercanc\xEDa",
-        footer: /* @__PURE__ */ import_react19.default.createElement(import_react19.default.Fragment, null, /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddRecOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-primary", onClick: handleSaveReception }, "Registrar Ingreso de Stock"))
+        footer: /* @__PURE__ */ import_react20.default.createElement(import_react20.default.Fragment, null, /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddRecOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-primary", onClick: handleSaveReception }, "Registrar Ingreso de Stock"))
       },
-      /* @__PURE__ */ import_react19.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Proveedor:"), /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Proveedor:"), /* @__PURE__ */ import_react20.default.createElement(
         "select",
         {
           className: "form-control",
           value: recProvId,
           onChange: (e) => setRecProvId(e.target.value)
         },
-        proveedores.filter((p) => p.Activo !== 0 && p.Activo !== false).map((p) => /* @__PURE__ */ import_react19.default.createElement("option", { key: p.IdProveedor, value: p.IdProveedor }, p.NombreEmpresa || p.Nombre))
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "reception-items-header" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Agregar Productos:"), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react19.default.createElement(
+        proveedores.filter((p) => p.Activo !== 0 && p.Activo !== false).map((p) => /* @__PURE__ */ import_react20.default.createElement("option", { key: p.IdProveedor, value: p.IdProveedor }, p.NombreEmpresa || p.Nombre))
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "reception-items-header" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Agregar Productos:"), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react20.default.createElement(
         "select",
         {
           className: "form-control",
           value: recLineForm.idArticulo,
           onChange: (e) => setRecLineForm({ ...recLineForm, idArticulo: e.target.value })
         },
-        products.map((p) => /* @__PURE__ */ import_react19.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre))
-      ), /* @__PURE__ */ import_react19.default.createElement(
+        products.map((p) => /* @__PURE__ */ import_react20.default.createElement("option", { key: p.IdArticulo, value: p.IdArticulo }, p.Nombre))
+      ), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "number",
@@ -17195,7 +17271,7 @@
           value: recLineForm.cantidad,
           onChange: (e) => setRecLineForm({ ...recLineForm, cantidad: e.target.value })
         }
-      ), /* @__PURE__ */ import_react19.default.createElement(
+      ), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "number",
@@ -17206,43 +17282,43 @@
           value: recLineForm.costoUnitario,
           onChange: (e) => setRecLineForm({ ...recLineForm, costoUnitario: e.target.value })
         }
-      )), /* @__PURE__ */ import_react19.default.createElement(
+      )), /* @__PURE__ */ import_react20.default.createElement(
         "button",
         {
           type: "button",
           className: "btn btn-outline btn-sm mt-2",
           onClick: handleAddRecLine
         },
-        /* @__PURE__ */ import_react19.default.createElement(PlusIcon, { style: { width: 14, height: 14 } }),
+        /* @__PURE__ */ import_react20.default.createElement(PlusIcon, { style: { width: 14, height: 14 } }),
         " Agregar a lista"
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "rec-lines-table-box mt-3" }, /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Cant"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Costo"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Subtotal"), /* @__PURE__ */ import_react19.default.createElement("th", null))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, recLines.length === 0 ? /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("td", { colSpan: "5", className: "text-center text-muted py-2" }, "Sin art\xEDculos agregados")) : recLines.map((line, idx) => /* @__PURE__ */ import_react19.default.createElement("tr", { key: idx }, /* @__PURE__ */ import_react19.default.createElement("td", null, line.nombre), /* @__PURE__ */ import_react19.default.createElement("td", null, line.cantidad), /* @__PURE__ */ import_react19.default.createElement("td", null, formatMoney(line.costoUnitario)), /* @__PURE__ */ import_react19.default.createElement("td", null, formatMoney(line.cantidad * line.costoUnitario)), /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement(
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "rec-lines-table-box mt-3" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Cant"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Costo"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Subtotal"), /* @__PURE__ */ import_react20.default.createElement("th", null))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, recLines.length === 0 ? /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("td", { colSpan: "5", className: "text-center text-muted py-2" }, "Sin art\xEDculos agregados")) : recLines.map((line, idx) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: idx }, /* @__PURE__ */ import_react20.default.createElement("td", null, line.nombre), /* @__PURE__ */ import_react20.default.createElement("td", null, line.cantidad), /* @__PURE__ */ import_react20.default.createElement("td", null, formatMoney(line.costoUnitario)), /* @__PURE__ */ import_react20.default.createElement("td", null, formatMoney(line.cantidad * line.costoUnitario)), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement(
         "button",
         {
           className: "btn-text-danger",
           onClick: () => setRecLines(recLines.filter((_, i) => i !== idx))
         },
-        /* @__PURE__ */ import_react19.default.createElement(TrashIcon, { style: { width: 14, height: 14 } })
-      )))))), /* @__PURE__ */ import_react19.default.createElement("div", { className: "text-right font-bold mt-2" }, "Total Recepci\xF3n:", " ", formatMoney(
+        /* @__PURE__ */ import_react20.default.createElement(TrashIcon, { style: { width: 14, height: 14 } })
+      )))))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "text-right font-bold mt-2" }, "Total Recepci\xF3n:", " ", formatMoney(
         recLines.reduce((acc, l) => acc + l.cantidad * l.costoUnitario, 0)
       ))))
-    ), /* @__PURE__ */ import_react19.default.createElement(
+    ), /* @__PURE__ */ import_react20.default.createElement(
       Modal,
       {
         isOpen: isAddDevOpen,
         onClose: () => setIsAddDevOpen(false),
         title: "Devoluci\xF3n de Cliente y Reintegro",
         type: "warning",
-        footer: /* @__PURE__ */ import_react19.default.createElement(import_react19.default.Fragment, null, /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddDevOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react19.default.createElement("button", { className: "btn btn-danger", onClick: handleSaveDevolucion }, "Procesar Reintegro"))
+        footer: /* @__PURE__ */ import_react20.default.createElement(import_react20.default.Fragment, null, /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAddDevOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-danger", onClick: handleSaveDevolucion }, "Procesar Reintegro"))
       },
-      /* @__PURE__ */ import_react19.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Selecciona Folio de Venta:"), /* @__PURE__ */ import_react19.default.createElement(
+      /* @__PURE__ */ import_react20.default.createElement("div", { className: "modal-form" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Selecciona Folio de Venta:"), /* @__PURE__ */ import_react20.default.createElement(
         "select",
         {
           className: "form-control",
           value: devVentaId,
           onChange: (e) => setDevVentaId(e.target.value)
         },
-        ventas.slice(0, 30).map((v) => /* @__PURE__ */ import_react19.default.createElement("option", { key: v.IdVenta, value: v.IdVenta }, "Venta #", v.IdVenta, " - Total: $", v.Total))
-      )), /* @__PURE__ */ import_react19.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Productos a Devolver:"), /* @__PURE__ */ import_react19.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react19.default.createElement("thead", null, /* @__PURE__ */ import_react19.default.createElement("tr", null, /* @__PURE__ */ import_react19.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Comprado"), /* @__PURE__ */ import_react19.default.createElement("th", null, "Devolver"))), /* @__PURE__ */ import_react19.default.createElement("tbody", null, devItems.map((item, idx) => /* @__PURE__ */ import_react19.default.createElement("tr", { key: item.IdArticulo }, /* @__PURE__ */ import_react19.default.createElement("td", null, item.NombreProducto), /* @__PURE__ */ import_react19.default.createElement("td", null, item.Cantidad, " pzs"), /* @__PURE__ */ import_react19.default.createElement("td", null, /* @__PURE__ */ import_react19.default.createElement(
+        ventas.slice(0, 30).map((v) => /* @__PURE__ */ import_react20.default.createElement("option", { key: v.IdVenta, value: v.IdVenta }, "Venta #", v.IdVenta, " - Total: $", v.Total))
+      )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Productos a Devolver:"), /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Comprado"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Devolver"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, devItems.map((item, idx) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: item.IdArticulo }, /* @__PURE__ */ import_react20.default.createElement("td", null, item.NombreProducto), /* @__PURE__ */ import_react20.default.createElement("td", null, item.Cantidad, " pzs"), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "number",
@@ -17259,7 +17335,7 @@
             );
           }
         }
-      ))))))), /* @__PURE__ */ import_react19.default.createElement("div", { className: "form-group mt-3" }, /* @__PURE__ */ import_react19.default.createElement("label", { className: "form-label" }, "Motivo de Devoluci\xF3n:"), /* @__PURE__ */ import_react19.default.createElement(
+      ))))))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "form-group mt-3" }, /* @__PURE__ */ import_react20.default.createElement("label", { className: "form-label" }, "Motivo de Devoluci\xF3n:"), /* @__PURE__ */ import_react20.default.createElement(
         "input",
         {
           type: "text",
@@ -17272,17 +17348,129 @@
   };
 
   // src/renderer/views/ReportesView.jsx
-  var import_react20 = __toESM(require_react());
+  var import_react22 = __toESM(require_react());
+
+  // src/renderer/components/reports/SpreadsheetViewer.jsx
+  var import_react21 = __toESM(require_react());
+  var SpreadsheetViewer = ({
+    reportData,
+    ventas: rawVentas = [],
+    summary: rawSummary = {},
+    range: rawRange = {},
+    onExportExcel,
+    exportingExcel = false
+  }) => {
+    const ventas = reportData?.ventas || rawVentas || [];
+    const summary = reportData?.resumen || rawSummary || {};
+    const range = reportData?.range || rawRange || {};
+    const [search, setSearch] = (0, import_react21.useState)("");
+    const [channelFilter, setChannelFilter] = (0, import_react21.useState)("all");
+    const [sortBy, setSortBy] = (0, import_react21.useState)("id-desc");
+    const filteredVentas = (0, import_react21.useMemo)(() => {
+      const q = search.toLowerCase().trim();
+      let result = (ventas || []).filter((v) => {
+        if (channelFilter !== "all" && v.Canal !== channelFilter) return false;
+        if (!q) return true;
+        const haystack = `${v.IdVenta} ${v.EmpleadoNombre || ""} ${v.ClienteNombre || ""} ${v.Canal || ""}`.toLowerCase();
+        return haystack.includes(q);
+      });
+      result.sort((a, b) => {
+        if (sortBy === "id-desc") return Number(b.IdVenta) - Number(a.IdVenta);
+        if (sortBy === "id-asc") return Number(a.IdVenta) - Number(b.IdVenta);
+        if (sortBy === "total-desc") return Number(b.Total || 0) - Number(a.Total || 0);
+        if (sortBy === "fecha-desc") return new Date(b.FechaVenta) - new Date(a.FechaVenta);
+        return 0;
+      });
+      return result;
+    }, [ventas, search, channelFilter, sortBy]);
+    const liveTotals = (0, import_react21.useMemo)(() => {
+      const subtotal = filteredVentas.reduce((acc, v) => acc + Number(v.Subtotal || 0), 0);
+      const iva = filteredVentas.reduce((acc, v) => acc + Number(v.Iva || 0), 0);
+      const total = filteredVentas.reduce((acc, v) => acc + Number(v.Total || 0), 0);
+      const tickets = filteredVentas.length;
+      const ticketPromedio = tickets > 0 ? total / tickets : 0;
+      return {
+        subtotal: Number(subtotal.toFixed(2)),
+        iva: Number(iva.toFixed(2)),
+        total: Number(total.toFixed(2)),
+        tickets,
+        ticketPromedio: Number(ticketPromedio.toFixed(2))
+      };
+    }, [filteredVentas]);
+    return /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-view-container animate-fade-in" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-toolbar" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "toolbar-left" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-search-box" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "search-icon" }, /* @__PURE__ */ import_react21.default.createElement(SearchIcon, { style: { width: 15, height: 15 } })), /* @__PURE__ */ import_react21.default.createElement(
+      "input",
+      {
+        type: "text",
+        className: "form-control spreadsheet-input",
+        placeholder: "Filtrar por # ticket, cajero o cliente...",
+        value: search,
+        onChange: (e) => setSearch(e.target.value)
+      }
+    ), search && /* @__PURE__ */ import_react21.default.createElement(
+      "button",
+      {
+        className: "btn-clear-mini",
+        onClick: () => setSearch(""),
+        "aria-label": "Borrar filtro"
+      },
+      "\xD7"
+    )), /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-channel-pills" }, /* @__PURE__ */ import_react21.default.createElement(
+      "button",
+      {
+        className: `pill-btn ${channelFilter === "all" ? "active" : ""}`,
+        onClick: () => setChannelFilter("all")
+      },
+      "Todos (",
+      ventas.length,
+      ")"
+    ), /* @__PURE__ */ import_react21.default.createElement(
+      "button",
+      {
+        className: `pill-btn ${channelFilter === "CajaEmpleado" ? "active" : ""}`,
+        onClick: () => setChannelFilter("CajaEmpleado")
+      },
+      /* @__PURE__ */ import_react21.default.createElement(PosIcon, { style: { width: 13, height: 13 } }),
+      /* @__PURE__ */ import_react21.default.createElement("span", null, "Caja Mostrador")
+    ), /* @__PURE__ */ import_react21.default.createElement(
+      "button",
+      {
+        className: `pill-btn ${channelFilter === "Autocobro" ? "active" : ""}`,
+        onClick: () => setChannelFilter("Autocobro")
+      },
+      /* @__PURE__ */ import_react21.default.createElement(CartIcon, { style: { width: 13, height: 13 } }),
+      /* @__PURE__ */ import_react21.default.createElement("span", null, "Autocobro")
+    ))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "toolbar-right" }, /* @__PURE__ */ import_react21.default.createElement(
+      "button",
+      {
+        className: "btn btn-sm btn-primary btn-excel",
+        onClick: onExportExcel,
+        disabled: exportingExcel,
+        title: "Generar Libro Excel Oficial (.xlsx) con Logo y Formato"
+      },
+      /* @__PURE__ */ import_react21.default.createElement(DownloadIcon, { style: { width: 15, height: 15 } }),
+      /* @__PURE__ */ import_react21.default.createElement("span", null, exportingExcel ? "Generando Excel..." : "Descargar Excel (.xlsx)"),
+      /* @__PURE__ */ import_react21.default.createElement("span", { className: "excel-badge" }, "Con Logo")
+    ))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-kpi-bar" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "kpi-mini-card" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-label" }, "Ingresos Filtrados"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-val text-primary-dark" }, formatMoney(liveTotals.total))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "kpi-mini-card" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-label" }, "Tickets Mostrados"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-val" }, liveTotals.tickets, " ventas")), /* @__PURE__ */ import_react21.default.createElement("div", { className: "kpi-mini-card" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-label" }, "Ticket Promedio"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-val" }, formatMoney(liveTotals.ticketPromedio))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "kpi-mini-card" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-label" }, "IVA Recaudado"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "kpi-mini-val text-muted" }, formatMoney(liveTotals.iva)))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "spreadsheet-grid-wrapper" }, /* @__PURE__ */ import_react21.default.createElement("table", { className: "spreadsheet-table" }, /* @__PURE__ */ import_react21.default.createElement("thead", null, /* @__PURE__ */ import_react21.default.createElement("tr", null, /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "90px" }, onClick: () => setSortBy(sortBy === "id-desc" ? "id-asc" : "id-desc") }, /* @__PURE__ */ import_react21.default.createElement("span", null, "# Ticket"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "sort-arrow" }, sortBy.startsWith("id") ? sortBy.endsWith("desc") ? "\u25BC" : "\u25B2" : "\u2195")), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "150px" } }, "Fecha y Hora"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "150px" } }, "Canal de Venta"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "180px" } }, "Cajero / Atendi\xF3"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "180px" } }, "Cliente"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "120px", textAlign: "right" } }, "Subtotal"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "110px", textAlign: "right" } }, "IVA (16%)"), /* @__PURE__ */ import_react21.default.createElement("th", { style: { width: "130px", textAlign: "right" }, onClick: () => setSortBy(sortBy === "total-desc" ? "id-desc" : "total-desc") }, /* @__PURE__ */ import_react21.default.createElement("span", null, "Total"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "sort-arrow" }, sortBy.startsWith("total") ? "\u25BC" : "\u2195")))), /* @__PURE__ */ import_react21.default.createElement("tbody", null, filteredVentas.length === 0 ? /* @__PURE__ */ import_react21.default.createElement("tr", null, /* @__PURE__ */ import_react21.default.createElement("td", { colSpan: "8", className: "spreadsheet-empty-cell" }, /* @__PURE__ */ import_react21.default.createElement("p", null, "No se encontraron registros de ventas con el filtro aplicado."))) : filteredVentas.map((v, idx) => /* @__PURE__ */ import_react21.default.createElement("tr", { key: v.IdVenta, className: idx % 2 === 0 ? "row-even" : "row-odd" }, /* @__PURE__ */ import_react21.default.createElement("td", { className: "font-mono text-center text-semibold text-primary" }, "#", v.IdVenta), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-center text-secondary font-mono text-xs" }, v.FechaVenta ? new Date(v.FechaVenta).toLocaleString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }) : "-"), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-center" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: `channel-badge ${v.Canal === "Autocobro" ? "badge-auto" : "badge-cajero"}` }, v.Canal === "Autocobro" ? /* @__PURE__ */ import_react21.default.createElement(import_react21.default.Fragment, null, /* @__PURE__ */ import_react21.default.createElement(CartIcon, { style: { width: 11, height: 11 } }), " Autocobro") : /* @__PURE__ */ import_react21.default.createElement(import_react21.default.Fragment, null, /* @__PURE__ */ import_react21.default.createElement(PosIcon, { style: { width: 11, height: 11 } }), " Mostrador"))), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-secondary font-medium" }, v.EmpleadoNombre || (v.Canal === "Autocobro" ? "Terminal Autocobro" : "Cajero")), /* @__PURE__ */ import_react21.default.createElement("td", { className: "font-medium text-dark" }, v.ClienteNombre || "P\xFAblico General"), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono" }, formatMoney(v.Subtotal)), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono text-muted" }, formatMoney(v.Iva)), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono font-bold text-primary-dark" }, formatMoney(v.Total))))), /* @__PURE__ */ import_react21.default.createElement("tfoot", null, /* @__PURE__ */ import_react21.default.createElement("tr", { className: "spreadsheet-total-row" }, /* @__PURE__ */ import_react21.default.createElement("td", { colSpan: "5", className: "text-right font-bold text-uppercase" }, "Totales Calculados (", filteredVentas.length, " registros):"), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono font-bold" }, formatMoney(liveTotals.subtotal)), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono font-bold" }, formatMoney(liveTotals.iva)), /* @__PURE__ */ import_react21.default.createElement("td", { className: "text-right font-mono font-bold text-primary total-highlight" }, formatMoney(liveTotals.total)))))));
+  };
+
+  // src/renderer/views/ReportesView.jsx
   var ReportesView = () => {
     const { showToast } = useToast();
-    const [mode, setMode] = (0, import_react20.useState)("weekly");
-    const [activeSubtab, setActiveSubtab] = (0, import_react20.useState)("resumen");
-    const [reportData, setReportData] = (0, import_react20.useState)(null);
-    const [auxiliarData, setAuxiliarData] = (0, import_react20.useState)([]);
-    const [loading, setLoading] = (0, import_react20.useState)(true);
-    const [startDate, setStartDate] = (0, import_react20.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
-    const [endDate, setEndDate] = (0, import_react20.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
-    const loadReport = (0, import_react20.useCallback)(async () => {
+    const { globalSettings } = useSettings();
+    const [mode, setMode] = (0, import_react22.useState)("weekly");
+    const [activeSubtab, setActiveSubtab] = (0, import_react22.useState)("resumen");
+    const [reportData, setReportData] = (0, import_react22.useState)(null);
+    const [auxiliarData, setAuxiliarData] = (0, import_react22.useState)([]);
+    const [loading, setLoading] = (0, import_react22.useState)(true);
+    const [startDate, setStartDate] = (0, import_react22.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+    const [endDate, setEndDate] = (0, import_react22.useState)(() => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+    const loadReport = (0, import_react22.useCallback)(async () => {
       try {
         setLoading(true);
         const filters = { mode };
@@ -17302,62 +17490,91 @@
         setLoading(false);
       }
     }, [mode, startDate, endDate, showToast]);
-    (0, import_react20.useEffect)(() => {
+    (0, import_react22.useEffect)(() => {
       loadReport();
     }, [loadReport]);
-    const handleExportCSV = () => {
-      if (!reportData || !reportData.ventas) return;
-      const { ventas, range } = reportData;
-      const headers = ["ID Venta", "Fecha", "Canal", "Empleado", "Cliente", "Subtotal", "IVA", "Total"];
-      const rows = ventas.map((v) => [
-        v.IdVenta,
-        v.FechaVenta,
-        v.Canal,
-        v.EmpleadoNombre || "Autocobro",
-        v.ClienteNombre || "P\xFAblico General",
-        v.Subtotal,
-        v.Iva,
-        v.Total
-      ]);
-      const escapeCell = (val) => {
-        const s = String(val ?? "").replace(/"/g, '""');
-        return s.includes(",") || s.includes("\n") || s.includes('"') ? `"${s}"` : s;
-      };
-      const headerLine = headers.map(escapeCell).join(",");
-      const dataLines = rows.map((r) => r.map(escapeCell).join(",")).join("\n");
-      const content = `\uFEFF${headerLine}
-${dataLines}`;
-      const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Reporte_Panaderia_${range.start.slice(0, 10)}_al_${range.end.slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast("Reporte exportado como archivo CSV.", "success");
+    const handleExportExcel = async () => {
+      if (!reportData || !reportData.ventas) {
+        showToast("No hay datos disponibles para exportar a Excel", "warning");
+        return;
+      }
+      try {
+        showToast("Generando reporte \xFAnico en Excel con f\xF3rmulas y logo...", "info");
+        const res = await window.api.exportarReporteExcel({
+          reportData,
+          auxiliarData,
+          storeInfo: globalSettings,
+          saveToFile: true
+        });
+        if (res && res.success) {
+          if (res.canceled) {
+            showToast("Guardado de Excel cancelado por el usuario", "info");
+          } else if (res.filePath) {
+            showToast(`Reporte Excel guardado exitosamente en: ${res.filePath}`, "success");
+          } else if (res.base64) {
+            const byteCharacters = atob(res.base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = res.defaultFilename || `Reporte_Dulce_Horno_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Archivo Excel descargado con \xE9xito", "success");
+          }
+        } else {
+          showToast(`Error al exportar Excel: ${res?.error || "Desconocido"}`, "error");
+        }
+      } catch (err) {
+        showToast(`Error al exportar Excel: ${err.message}`, "error");
+      }
     };
-    return /* @__PURE__ */ import_react20.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react20.default.createElement("div", null, /* @__PURE__ */ import_react20.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react20.default.createElement(ChartIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Reportes y M\xE9tricas Operativas")), /* @__PURE__ */ import_react20.default.createElement("p", { className: "view-page-sub" }, "Analiza ingresos por periodo, productos con mayor demanda y kardex de movimientos.")), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-outline", onClick: handleExportCSV }, /* @__PURE__ */ import_react20.default.createElement(DownloadIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Exportar Reporte CSV"))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "card rep-filter-card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "rep-filter-row" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "filter-period-buttons" }, /* @__PURE__ */ import_react20.default.createElement(
+    return /* @__PURE__ */ import_react22.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react22.default.createElement("div", null, /* @__PURE__ */ import_react22.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react22.default.createElement(ChartIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Reportes y M\xE9tricas Operativas")), /* @__PURE__ */ import_react22.default.createElement("p", { className: "view-page-sub" }, "Analiza ingresos por periodo, productos con mayor demanda y desglose de ventas.")), /* @__PURE__ */ import_react22.default.createElement("div", null, /* @__PURE__ */ import_react22.default.createElement(
+      "button",
+      {
+        className: "btn btn-primary",
+        onClick: handleExportExcel,
+        style: {
+          background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)",
+          color: "#FFFFFF",
+          boxShadow: "0 4px 12px rgba(198, 127, 67, 0.25)",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "10px 18px",
+          fontSize: "14px",
+          fontWeight: 600
+        }
+      },
+      /* @__PURE__ */ import_react22.default.createElement(DownloadIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react22.default.createElement("span", null, "Descargar Reporte en Excel (.xlsx)")
+    ))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "card rep-filter-card" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "rep-filter-row" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "filter-period-buttons" }, /* @__PURE__ */ import_react22.default.createElement(
       "button",
       {
         className: `btn btn-sm ${mode === "weekly" ? "btn-primary" : "btn-outline"}`,
         onClick: () => setMode("weekly")
       },
       "Esta Semana"
-    ), /* @__PURE__ */ import_react20.default.createElement(
+    ), /* @__PURE__ */ import_react22.default.createElement(
       "button",
       {
         className: `btn btn-sm ${mode === "monthly" ? "btn-primary" : "btn-outline"}`,
         onClick: () => setMode("monthly")
       },
       "Este Mes"
-    ), /* @__PURE__ */ import_react20.default.createElement(
+    ), /* @__PURE__ */ import_react22.default.createElement(
       "button",
       {
         className: `btn btn-sm ${mode === "custom" ? "btn-primary" : "btn-outline"}`,
         onClick: () => setMode("custom")
       },
       "Rango Personalizado"
-    )), mode === "custom" && /* @__PURE__ */ import_react20.default.createElement("div", { className: "filter-custom-dates" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "date-input-group" }, /* @__PURE__ */ import_react20.default.createElement("label", null, "Desde:"), /* @__PURE__ */ import_react20.default.createElement(
+    )), mode === "custom" && /* @__PURE__ */ import_react22.default.createElement("div", { className: "filter-custom-dates" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "date-input-group" }, /* @__PURE__ */ import_react22.default.createElement("label", null, "Desde:"), /* @__PURE__ */ import_react22.default.createElement(
       "input",
       {
         type: "date",
@@ -17365,7 +17582,7 @@ ${dataLines}`;
         value: startDate,
         onChange: (e) => setStartDate(e.target.value)
       }
-    )), /* @__PURE__ */ import_react20.default.createElement("div", { className: "date-input-group" }, /* @__PURE__ */ import_react20.default.createElement("label", null, "Hasta:"), /* @__PURE__ */ import_react20.default.createElement(
+    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "date-input-group" }, /* @__PURE__ */ import_react22.default.createElement("label", null, "Hasta:"), /* @__PURE__ */ import_react22.default.createElement(
       "input",
       {
         type: "date",
@@ -17373,51 +17590,66 @@ ${dataLines}`;
         value: endDate,
         onChange: (e) => setEndDate(e.target.value)
       }
-    )), /* @__PURE__ */ import_react20.default.createElement("button", { className: "btn btn-primary btn-sm", onClick: loadReport }, "Aplicar")))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "tabs-nav-bar mt-3" }, /* @__PURE__ */ import_react20.default.createElement(
+    )), /* @__PURE__ */ import_react22.default.createElement("button", { className: "btn btn-primary btn-sm", onClick: loadReport }, "Aplicar")))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "tabs-nav-bar mt-3" }, /* @__PURE__ */ import_react22.default.createElement(
       "button",
       {
         className: `tab-btn ${activeSubtab === "resumen" ? "active" : ""}`,
         onClick: () => setActiveSubtab("resumen")
       },
-      /* @__PURE__ */ import_react20.default.createElement(ChartIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react20.default.createElement("span", null, "Resumen Ejecutivo")
-    ), /* @__PURE__ */ import_react20.default.createElement(
+      /* @__PURE__ */ import_react22.default.createElement(ChartIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react22.default.createElement("span", null, "Resumen Ejecutivo")
+    ), /* @__PURE__ */ import_react22.default.createElement(
+      "button",
+      {
+        className: `tab-btn ${activeSubtab === "excel" ? "active" : ""}`,
+        onClick: () => setActiveSubtab("excel")
+      },
+      /* @__PURE__ */ import_react22.default.createElement(BoxIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react22.default.createElement("span", null, "Hoja de C\xE1lculo (Vista Excel)"),
+      /* @__PURE__ */ import_react22.default.createElement("span", { className: "tab-pill-badge badge-gerente", style: { fontSize: "10px", padding: "2px 7px", marginLeft: "6px" } }, "En vivo")
+    ), /* @__PURE__ */ import_react22.default.createElement(
       "button",
       {
         className: `tab-btn ${activeSubtab === "kardex" ? "active" : ""}`,
         onClick: () => setActiveSubtab("kardex")
       },
-      /* @__PURE__ */ import_react20.default.createElement(BoxIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react20.default.createElement("span", null, "Auxiliar Kardex (Movimientos)")
-    )), loading ? /* @__PURE__ */ import_react20.default.createElement("div", { className: "loading-state mt-4" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "spinner" }), /* @__PURE__ */ import_react20.default.createElement("p", null, "Generando estad\xEDsticas...")) : activeSubtab === "resumen" && reportData ? /* @__PURE__ */ import_react20.default.createElement("div", { className: "mt-4" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-icon-circle kpi-primary" }, /* @__PURE__ */ import_react20.default.createElement(CashIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-label" }, "Ingresos Totales"), /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-value text-primary" }, formatMoney(reportData.resumen.totalIngresos)))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-icon-circle kpi-success" }, /* @__PURE__ */ import_react20.default.createElement(CartIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-label" }, "Ventas Cobradas"), /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-value" }, reportData.resumen.ventas, " tickets"))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-icon-circle kpi-amber" }, /* @__PURE__ */ import_react20.default.createElement(BreadIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-label" }, "Piezas Vendidas"), /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-value" }, reportData.resumen.articulosVendidos, " pzs"))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-icon-circle kpi-danger" }, /* @__PURE__ */ import_react20.default.createElement(AlertIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react20.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-label" }, "Bolillo & Stock M\xEDnimo"), /* @__PURE__ */ import_react20.default.createElement("span", { className: "kpi-value" }, reportData.resumen.bolilloPiezas, " pzs (", reportData.resumen.bolilloKilosEstimados, " kg)"), /* @__PURE__ */ import_react20.default.createElement(
+      /* @__PURE__ */ import_react22.default.createElement(BoxIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react22.default.createElement("span", null, "Auxiliar Kardex (Movimientos)")
+    )), loading ? /* @__PURE__ */ import_react22.default.createElement("div", { className: "loading-state mt-4" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "spinner" }), /* @__PURE__ */ import_react22.default.createElement("p", null, "Generando estad\xEDsticas...")) : activeSubtab === "excel" && reportData ? /* @__PURE__ */ import_react22.default.createElement("div", { className: "mt-4 animate-fade-in" }, /* @__PURE__ */ import_react22.default.createElement(
+      SpreadsheetViewer,
+      {
+        reportData,
+        onExportExcel: handleExportExcel
+      }
+    )) : activeSubtab === "resumen" && reportData ? /* @__PURE__ */ import_react22.default.createElement("div", { className: "mt-4 animate-fade-in" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-grid" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-icon-circle kpi-primary" }, /* @__PURE__ */ import_react22.default.createElement(CashIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-label" }, "Ingresos Totales"), /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-value text-primary" }, formatMoney(reportData.resumen.totalIngresos)))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-icon-circle kpi-success" }, /* @__PURE__ */ import_react22.default.createElement(CartIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-label" }, "Ventas Cobradas"), /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-value" }, reportData.resumen.ventas, " tickets"))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-icon-circle kpi-amber" }, /* @__PURE__ */ import_react22.default.createElement(BreadIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-label" }, "Piezas Vendidas"), /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-value" }, reportData.resumen.articulosVendidos, " pzs"))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-icon-circle kpi-danger" }, /* @__PURE__ */ import_react22.default.createElement(AlertIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react22.default.createElement("div", { className: "kpi-data" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-label" }, "Bolillo & Stock M\xEDnimo"), /* @__PURE__ */ import_react22.default.createElement("span", { className: "kpi-value" }, reportData.resumen.bolilloPiezas, " pzs (", reportData.resumen.bolilloKilosEstimados, " kg)"), /* @__PURE__ */ import_react22.default.createElement(
       "span",
       {
         className: `text-xs ${reportData.resumen.productosStockBajo > 0 ? "text-danger font-semibold" : "text-muted"}`
       },
       reportData.resumen.productosStockBajo,
       " panes con stock cr\xEDtico"
-    )))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "dashboard-columns mt-4" }, /* @__PURE__ */ import_react20.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react20.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react20.default.createElement(CashIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Ventas por Canal")), /* @__PURE__ */ import_react20.default.createElement("div", { className: "channel-distribution-grid mt-3" }, reportData.porCanal.map((c) => /* @__PURE__ */ import_react20.default.createElement("div", { key: c.canal, className: "channel-metric-box" }, /* @__PURE__ */ import_react20.default.createElement("span", { className: "channel-name" }, c.canal === "CajaEmpleado" ? "Caja Mostrador" : c.canal === "Autocobro" ? "Autocobro" : "Sin Clasificar"), /* @__PURE__ */ import_react20.default.createElement("span", { className: "channel-total" }, formatMoney(c.total)), /* @__PURE__ */ import_react20.default.createElement("span", { className: "channel-count" }, c.ventas, " tickets"))))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react20.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react20.default.createElement(BreadIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Panes con Mayor Venta")), /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table mt-2" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Piezas"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Total ($)"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, reportData.productosMasVendidos.slice(0, 6).map((p) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: p.idArticulo }, /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-semibold" }, p.producto), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement("strong", null, p.cantidadVendida), " pzs"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono" }, formatMoney(p.importe)))), reportData.productosMasVendidos.length === 0 && /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("td", { colSpan: "3", className: "text-center text-muted" }, "Sin ventas registradas en el periodo")))))), /* @__PURE__ */ import_react20.default.createElement("div", { className: "card mt-4" }, /* @__PURE__ */ import_react20.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react20.default.createElement(ChartIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Desglose Diario de Ingresos")), /* @__PURE__ */ import_react20.default.createElement("div", { className: "table-responsive mt-3" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Tickets"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Autocobro"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Caja Mostrador"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Total Ingreso"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, reportData.ventasPorDia.map((d) => /* @__PURE__ */ import_react20.default.createElement("tr", { key: d.fecha }, /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono font-semibold" }, d.fecha), /* @__PURE__ */ import_react20.default.createElement("td", null, d.ventas), /* @__PURE__ */ import_react20.default.createElement("td", null, formatMoney(d.autocobro)), /* @__PURE__ */ import_react20.default.createElement("td", null, formatMoney(d.cajaEmpleado)), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-bold text-success" }, formatMoney(d.total))))))))) : /* @__PURE__ */ import_react20.default.createElement("div", { className: "card mt-4" }, /* @__PURE__ */ import_react20.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react20.default.createElement(BoxIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react20.default.createElement("span", null, "Kardex de Movimientos (Auditor\xEDa de Entradas y Salidas)")), /* @__PURE__ */ import_react20.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Historial de entradas por recepci\xF3n a proveedores, salidas por ventas en caja y reintegros."), /* @__PURE__ */ import_react20.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react20.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react20.default.createElement("thead", null, /* @__PURE__ */ import_react20.default.createElement("tr", null, /* @__PURE__ */ import_react20.default.createElement("th", null, "Fecha y Hora"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Tipo"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Cantidad"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Motivo"), /* @__PURE__ */ import_react20.default.createElement("th", null, "Referencia"))), /* @__PURE__ */ import_react20.default.createElement("tbody", null, auxiliarData.map((m) => {
+    )))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "dashboard-columns mt-4" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(CashIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Ventas por Canal")), /* @__PURE__ */ import_react22.default.createElement("div", { className: "channel-distribution-grid mt-3" }, reportData.porCanal.map((c) => /* @__PURE__ */ import_react22.default.createElement("div", { key: c.canal, className: "channel-metric-box" }, /* @__PURE__ */ import_react22.default.createElement("span", { className: "channel-name" }, c.canal === "CajaEmpleado" ? "Caja Mostrador" : c.canal === "Autocobro" ? "Autocobro" : "Sin Clasificar"), /* @__PURE__ */ import_react22.default.createElement("span", { className: "channel-total" }, formatMoney(c.total)), /* @__PURE__ */ import_react22.default.createElement("span", { className: "channel-count" }, c.ventas, " tickets"))))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(BreadIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Panes con Mayor Venta")), /* @__PURE__ */ import_react22.default.createElement("table", { className: "data-table mt-2" }, /* @__PURE__ */ import_react22.default.createElement("thead", null, /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Piezas"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Total ($)"))), /* @__PURE__ */ import_react22.default.createElement("tbody", null, reportData.productosMasVendidos.slice(0, 6).map((p) => /* @__PURE__ */ import_react22.default.createElement("tr", { key: p.idArticulo }, /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-semibold" }, p.producto), /* @__PURE__ */ import_react22.default.createElement("td", null, /* @__PURE__ */ import_react22.default.createElement("strong", null, p.cantidadVendida), " pzs"), /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-mono" }, formatMoney(p.importe)))), reportData.productosMasVendidos.length === 0 && /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("td", { colSpan: "3", className: "text-center text-muted" }, "Sin ventas registradas en el periodo")))))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "card mt-4" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(ChartIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Desglose Diario de Ingresos")), /* @__PURE__ */ import_react22.default.createElement("div", { className: "table-responsive mt-3" }, /* @__PURE__ */ import_react22.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react22.default.createElement("thead", null, /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("th", null, "Fecha"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Tickets"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Autocobro"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Caja Mostrador"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Total Ingreso"))), /* @__PURE__ */ import_react22.default.createElement("tbody", null, reportData.ventasPorDia.map((d) => /* @__PURE__ */ import_react22.default.createElement("tr", { key: d.fecha }, /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-mono font-semibold" }, d.fecha), /* @__PURE__ */ import_react22.default.createElement("td", null, d.ventas), /* @__PURE__ */ import_react22.default.createElement("td", null, formatMoney(d.autocobro)), /* @__PURE__ */ import_react22.default.createElement("td", null, formatMoney(d.cajaEmpleado)), /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-bold text-success" }, formatMoney(d.total))))))))) : /* @__PURE__ */ import_react22.default.createElement("div", { className: "card mt-4" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(BoxIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Kardex de Movimientos (Auditor\xEDa de Entradas y Salidas)")), /* @__PURE__ */ import_react22.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Historial de entradas por recepci\xF3n a proveedores, salidas por ventas en caja y reintegros."), /* @__PURE__ */ import_react22.default.createElement("div", { className: "table-responsive" }, /* @__PURE__ */ import_react22.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react22.default.createElement("thead", null, /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("th", null, "Fecha y Hora"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Producto"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Tipo"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Cantidad"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Motivo"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Referencia"))), /* @__PURE__ */ import_react22.default.createElement("tbody", null, auxiliarData.map((m) => {
       const isEntrada = m.TipoMovimiento === "Entrada";
-      return /* @__PURE__ */ import_react20.default.createElement("tr", { key: m.IdMovimiento }, /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-mono text-secondary text-xs" }, new Date(m.FechaMovimiento).toLocaleString("es-MX")), /* @__PURE__ */ import_react20.default.createElement("td", { className: "font-semibold" }, m.Producto), /* @__PURE__ */ import_react20.default.createElement("td", null, /* @__PURE__ */ import_react20.default.createElement("span", { className: `badge ${isEntrada ? "badge-success" : "badge-danger"}` }, isEntrada ? "+ Entrada" : "- Salida")), /* @__PURE__ */ import_react20.default.createElement(
+      return /* @__PURE__ */ import_react22.default.createElement("tr", { key: m.IdMovimiento }, /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-mono text-secondary text-xs" }, new Date(m.FechaMovimiento).toLocaleString("es-MX")), /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-semibold" }, m.Producto), /* @__PURE__ */ import_react22.default.createElement("td", null, /* @__PURE__ */ import_react22.default.createElement("span", { className: `badge ${isEntrada ? "badge-success" : "badge-danger"}` }, isEntrada ? "+ Entrada" : "- Salida")), /* @__PURE__ */ import_react22.default.createElement(
         "td",
         {
           className: `font-mono font-bold ${isEntrada ? "text-success" : "text-danger"}`
         },
         isEntrada ? `+${m.Cantidad}` : `-${m.Cantidad}`
-      ), /* @__PURE__ */ import_react20.default.createElement("td", null, m.Motivo || "-"), /* @__PURE__ */ import_react20.default.createElement("td", { className: "text-xs font-mono" }, m.NumeroRecepcion ? `Recepci\xF3n ${m.NumeroRecepcion}` : m.IdVenta ? `Venta #${m.IdVenta}` : m.TipoReferencia || "-"));
+      ), /* @__PURE__ */ import_react22.default.createElement("td", null, m.Motivo || "-"), /* @__PURE__ */ import_react22.default.createElement("td", { className: "text-xs font-mono" }, m.NumeroRecepcion ? `Recepci\xF3n ${m.NumeroRecepcion}` : m.IdVenta ? `Venta #${m.IdVenta}` : m.TipoReferencia || "-"));
     }))))));
   };
 
   // src/renderer/views/CortesView.jsx
-  var import_react21 = __toESM(require_react());
+  var import_react23 = __toESM(require_react());
   var CortesView = () => {
     const { user } = useAuth();
     const { showToast } = useToast();
-    const [channel, setChannel] = (0, import_react21.useState)("CajaEmpleado");
-    const [isAuthOpen, setIsAuthOpen] = (0, import_react21.useState)(false);
-    const [managerUser, setManagerUser] = (0, import_react21.useState)("");
-    const [managerPass, setManagerPass] = (0, import_react21.useState)("");
-    const [corteResult, setCorteResult] = (0, import_react21.useState)(null);
+    const [channel, setChannel] = (0, import_react23.useState)("CajaEmpleado");
+    const [isAuthOpen, setIsAuthOpen] = (0, import_react23.useState)(false);
+    const [managerUser, setManagerUser] = (0, import_react23.useState)("");
+    const [managerPass, setManagerPass] = (0, import_react23.useState)("");
+    const [corteResult, setCorteResult] = (0, import_react23.useState)(null);
     const handleExecuteCorte = async (e) => {
       e.preventDefault();
       if (!managerUser || !managerPass) {
@@ -17444,13 +17676,13 @@ ${dataLines}`;
         showToast(err.message || "Error al ejecutar corte de turno", "error");
       }
     };
-    return /* @__PURE__ */ import_react21.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react21.default.createElement("div", null, /* @__PURE__ */ import_react21.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react21.default.createElement(CutIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react21.default.createElement("span", null, "Corte de Turno y Arqueo de Caja")), /* @__PURE__ */ import_react21.default.createElement("p", { className: "view-page-sub" }, "Cierre contable de caja con autorizaci\xF3n de Gerencia para cuadre de ingresos."))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "card max-w-2xl mx-auto" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-intro-box" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-icon-banner" }, /* @__PURE__ */ import_react21.default.createElement(CutIcon, { style: { width: 36, height: 36 } })), /* @__PURE__ */ import_react21.default.createElement("h2", { className: "corte-box-title" }, "Cierre Contable de Turno"), /* @__PURE__ */ import_react21.default.createElement("p", { className: "corte-box-desc" }, "Calcula todas las ventas del canal seleccionado desde el \xFAltimo arqueo, totaliza el dinero en caja y emite el comprobante de turno.")), /* @__PURE__ */ import_react21.default.createElement("div", { className: "form-group mt-4" }, /* @__PURE__ */ import_react21.default.createElement("label", { className: "form-label font-bold" }, "Selecciona el Canal para el Corte:"), /* @__PURE__ */ import_react21.default.createElement("div", { className: "channel-radio-group" }, /* @__PURE__ */ import_react21.default.createElement(
+    return /* @__PURE__ */ import_react23.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react23.default.createElement("div", null, /* @__PURE__ */ import_react23.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react23.default.createElement(CutIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react23.default.createElement("span", null, "Corte de Turno y Arqueo de Caja")), /* @__PURE__ */ import_react23.default.createElement("p", { className: "view-page-sub" }, "Cierre contable de caja con autorizaci\xF3n de Gerencia para cuadre de ingresos."))), /* @__PURE__ */ import_react23.default.createElement("div", { className: "card max-w-2xl mx-auto" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-intro-box" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-icon-banner" }, /* @__PURE__ */ import_react23.default.createElement(CutIcon, { style: { width: 36, height: 36 } })), /* @__PURE__ */ import_react23.default.createElement("h2", { className: "corte-box-title" }, "Cierre Contable de Turno"), /* @__PURE__ */ import_react23.default.createElement("p", { className: "corte-box-desc" }, "Calcula todas las ventas del canal seleccionado desde el \xFAltimo arqueo, totaliza el dinero en caja y emite el comprobante de turno.")), /* @__PURE__ */ import_react23.default.createElement("div", { className: "form-group mt-4" }, /* @__PURE__ */ import_react23.default.createElement("label", { className: "form-label font-bold" }, "Selecciona el Canal para el Corte:"), /* @__PURE__ */ import_react23.default.createElement("div", { className: "channel-radio-group" }, /* @__PURE__ */ import_react23.default.createElement(
       "label",
       {
         className: `channel-radio-card ${channel === "CajaEmpleado" ? "active" : ""}`,
         onClick: () => setChannel("CajaEmpleado")
       },
-      /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement(
         "input",
         {
           type: "radio",
@@ -17460,14 +17692,14 @@ ${dataLines}`;
           onChange: () => setChannel("CajaEmpleado")
         }
       ),
-      /* @__PURE__ */ import_react21.default.createElement("div", { className: "channel-card-body" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "channel-icon" }, /* @__PURE__ */ import_react21.default.createElement(PosIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react21.default.createElement("span", { className: "channel-title" }, "Caja Mostrador (Empleado)"), /* @__PURE__ */ import_react21.default.createElement("small", { className: "text-secondary" }, "Ventas cobradas por cajeros"))
-    ), /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement("div", { className: "channel-card-body" }, /* @__PURE__ */ import_react23.default.createElement("span", { className: "channel-icon" }, /* @__PURE__ */ import_react23.default.createElement(PosIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react23.default.createElement("span", { className: "channel-title" }, "Caja Mostrador (Empleado)"), /* @__PURE__ */ import_react23.default.createElement("small", { className: "text-secondary" }, "Ventas cobradas por cajeros"))
+    ), /* @__PURE__ */ import_react23.default.createElement(
       "label",
       {
         className: `channel-radio-card ${channel === "Autocobro" ? "active" : ""}`,
         onClick: () => setChannel("Autocobro")
       },
-      /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement(
         "input",
         {
           type: "radio",
@@ -17477,16 +17709,16 @@ ${dataLines}`;
           onChange: () => setChannel("Autocobro")
         }
       ),
-      /* @__PURE__ */ import_react21.default.createElement("div", { className: "channel-card-body" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "channel-icon" }, /* @__PURE__ */ import_react21.default.createElement(CartIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react21.default.createElement("span", { className: "channel-title" }, "Terminal Autocobro"), /* @__PURE__ */ import_react21.default.createElement("small", { className: "text-secondary" }, "Ventas de autoservicio"))
-    ))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-action-footer mt-5" }, /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement("div", { className: "channel-card-body" }, /* @__PURE__ */ import_react23.default.createElement("span", { className: "channel-icon" }, /* @__PURE__ */ import_react23.default.createElement(CartIcon, { style: { width: 22, height: 22 } })), /* @__PURE__ */ import_react23.default.createElement("span", { className: "channel-title" }, "Terminal Autocobro"), /* @__PURE__ */ import_react23.default.createElement("small", { className: "text-secondary" }, "Ventas de autoservicio"))
+    ))), /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-action-footer mt-5" }, /* @__PURE__ */ import_react23.default.createElement(
       "button",
       {
         className: "btn btn-primary btn-block btn-lg",
         onClick: () => setIsAuthOpen(true)
       },
-      /* @__PURE__ */ import_react21.default.createElement(LockIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react21.default.createElement("span", null, "Solicitar Autorizaci\xF3n de Gerente y Cortar")
-    )), corteResult && /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-summary-card animate-pop-in mt-4" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-summary-header" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-check-icon" }, /* @__PURE__ */ import_react21.default.createElement(CheckIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react21.default.createElement("h3", null, "Corte de Turno #", corteResult.idCorte, " Realizado"), /* @__PURE__ */ import_react21.default.createElement("p", { className: "text-secondary text-sm" }, "Autorizado por: ", /* @__PURE__ */ import_react21.default.createElement("strong", null, corteResult.autorizadoPor))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-summary-metrics" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "summary-metric-item" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-label" }, "Periodo:"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-val text-xs font-mono" }, corteResult.resumen.fechaInicio, " \u2022 ", corteResult.resumen.fechaFin)), /* @__PURE__ */ import_react21.default.createElement("div", { className: "summary-metric-item" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-label" }, "Ventas Cobradas:"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-val" }, corteResult.resumen.totalVentas, " tickets")), /* @__PURE__ */ import_react21.default.createElement("div", { className: "summary-metric-item highlight" }, /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-label" }, "Importe Total en Caja:"), /* @__PURE__ */ import_react21.default.createElement("span", { className: "metric-val font-bold text-success" }, formatMoney(corteResult.resumen.totalImporte)))), /* @__PURE__ */ import_react21.default.createElement("div", { className: "corte-actions mt-3" }, /* @__PURE__ */ import_react21.default.createElement("button", { className: "btn btn-outline btn-block", onClick: () => window.print() }, /* @__PURE__ */ import_react21.default.createElement(PrinterIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react21.default.createElement("span", null, "Imprimir Comprobante de Corte"))))), /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement(LockIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react23.default.createElement("span", null, "Solicitar Autorizaci\xF3n de Gerente y Cortar")
+    )), corteResult && /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-summary-card animate-pop-in mt-4" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-summary-header" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-check-icon" }, /* @__PURE__ */ import_react23.default.createElement(CheckIcon, { style: { width: 24, height: 24 } })), /* @__PURE__ */ import_react23.default.createElement("h3", null, "Corte de Turno #", corteResult.idCorte, " Realizado"), /* @__PURE__ */ import_react23.default.createElement("p", { className: "text-secondary text-sm" }, "Autorizado por: ", /* @__PURE__ */ import_react23.default.createElement("strong", null, corteResult.autorizadoPor))), /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-summary-metrics" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "summary-metric-item" }, /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-label" }, "Periodo:"), /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-val text-xs font-mono" }, corteResult.resumen.fechaInicio, " \u2022 ", corteResult.resumen.fechaFin)), /* @__PURE__ */ import_react23.default.createElement("div", { className: "summary-metric-item" }, /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-label" }, "Ventas Cobradas:"), /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-val" }, corteResult.resumen.totalVentas, " tickets")), /* @__PURE__ */ import_react23.default.createElement("div", { className: "summary-metric-item highlight" }, /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-label" }, "Importe Total en Caja:"), /* @__PURE__ */ import_react23.default.createElement("span", { className: "metric-val font-bold text-success" }, formatMoney(corteResult.resumen.totalImporte)))), /* @__PURE__ */ import_react23.default.createElement("div", { className: "corte-actions mt-3" }, /* @__PURE__ */ import_react23.default.createElement("button", { className: "btn btn-outline btn-block", onClick: () => window.print() }, /* @__PURE__ */ import_react23.default.createElement(PrinterIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react23.default.createElement("span", null, "Imprimir Comprobante de Corte"))))), /* @__PURE__ */ import_react23.default.createElement(
       Modal,
       {
         isOpen: isAuthOpen,
@@ -17494,9 +17726,9 @@ ${dataLines}`;
         title: "Autorizaci\xF3n Gerencial Requerida",
         subtitle: "Ingresa credenciales de un Gerente activo para validar el corte.",
         type: "warning",
-        footer: /* @__PURE__ */ import_react21.default.createElement(import_react21.default.Fragment, null, /* @__PURE__ */ import_react21.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAuthOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react21.default.createElement("button", { className: "btn btn-primary btn-warning", onClick: handleExecuteCorte }, /* @__PURE__ */ import_react21.default.createElement(KeyIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react21.default.createElement("span", null, "Autorizar y Procesar Corte")))
+        footer: /* @__PURE__ */ import_react23.default.createElement(import_react23.default.Fragment, null, /* @__PURE__ */ import_react23.default.createElement("button", { className: "btn btn-secondary", onClick: () => setIsAuthOpen(false) }, "Cancelar"), /* @__PURE__ */ import_react23.default.createElement("button", { className: "btn btn-primary btn-warning", onClick: handleExecuteCorte }, /* @__PURE__ */ import_react23.default.createElement(KeyIcon, { style: { width: 16, height: 16 } }), /* @__PURE__ */ import_react23.default.createElement("span", null, "Autorizar y Procesar Corte")))
       },
-      /* @__PURE__ */ import_react21.default.createElement("form", { onSubmit: handleExecuteCorte, className: "modal-form" }, /* @__PURE__ */ import_react21.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react21.default.createElement("label", { className: "form-label" }, "Usuario Gerente:"), /* @__PURE__ */ import_react21.default.createElement(
+      /* @__PURE__ */ import_react23.default.createElement("form", { onSubmit: handleExecuteCorte, className: "modal-form" }, /* @__PURE__ */ import_react23.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react23.default.createElement("label", { className: "form-label" }, "Usuario Gerente:"), /* @__PURE__ */ import_react23.default.createElement(
         "input",
         {
           type: "text",
@@ -17507,7 +17739,7 @@ ${dataLines}`;
           required: true,
           autoFocus: true
         }
-      )), /* @__PURE__ */ import_react21.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react21.default.createElement("label", { className: "form-label" }, "Contrase\xF1a:"), /* @__PURE__ */ import_react21.default.createElement(
+      )), /* @__PURE__ */ import_react23.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react23.default.createElement("label", { className: "form-label" }, "Contrase\xF1a:"), /* @__PURE__ */ import_react23.default.createElement(
         "input",
         {
           type: "password",
@@ -17522,17 +17754,17 @@ ${dataLines}`;
   };
 
   // src/renderer/views/ProgramadorView.jsx
-  var import_react22 = __toESM(require_react());
+  var import_react24 = __toESM(require_react());
   var ProgramadorView = () => {
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = (0, import_react22.useState)("password");
-    const [passForm, setPassForm] = (0, import_react22.useState)({
+    const [activeTab, setActiveTab] = (0, import_react24.useState)("password");
+    const [passForm, setPassForm] = (0, import_react24.useState)({
       usernameProgramador: "programador",
       passwordProgramador: "",
       usuarioObjetivo: "",
       passwordNuevo: ""
     });
-    const [gerenteForm, setGerenteForm] = (0, import_react22.useState)({
+    const [gerenteForm, setGerenteForm] = (0, import_react24.useState)({
       usernameProgramador: "programador",
       passwordProgramador: "",
       nombre: "",
@@ -17543,9 +17775,9 @@ ${dataLines}`;
       genero: "Prefiero no decir",
       salario: 18e3
     });
-    const [accounts, setAccounts] = (0, import_react22.useState)([]);
-    const [loadingAccounts, setLoadingAccounts] = (0, import_react22.useState)(false);
-    (0, import_react22.useEffect)(() => {
+    const [accounts, setAccounts] = (0, import_react24.useState)([]);
+    const [loadingAccounts, setLoadingAccounts] = (0, import_react24.useState)(false);
+    (0, import_react24.useEffect)(() => {
       if (activeTab === "usuarios") {
         const fetchAccounts = async () => {
           setLoadingAccounts(true);
@@ -17586,31 +17818,31 @@ ${dataLines}`;
         showToast(err.message, "error");
       }
     };
-    return /* @__PURE__ */ import_react22.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react22.default.createElement("div", null, /* @__PURE__ */ import_react22.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react22.default.createElement(CodeIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Panel de Soporte y Stored Procedures (Programador)")), /* @__PURE__ */ import_react22.default.createElement("p", { className: "view-page-sub" }, "Herramientas t\xE9cnicas de mantenimiento y seguridad mediante procedimientos almacenados en MySQL."))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "tabs-nav-bar" }, /* @__PURE__ */ import_react22.default.createElement(
+    return /* @__PURE__ */ import_react24.default.createElement("div", { className: "view-page animate-fade-in" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "view-header-bar" }, /* @__PURE__ */ import_react24.default.createElement("div", null, /* @__PURE__ */ import_react24.default.createElement("h1", { className: "view-page-title" }, /* @__PURE__ */ import_react24.default.createElement(CodeIcon, { style: { width: 26, height: 26 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Panel de Soporte y Stored Procedures (Programador)")), /* @__PURE__ */ import_react24.default.createElement("p", { className: "view-page-sub" }, "Herramientas t\xE9cnicas de mantenimiento y seguridad mediante procedimientos almacenados en MySQL."))), /* @__PURE__ */ import_react24.default.createElement("div", { className: "tabs-nav-bar" }, /* @__PURE__ */ import_react24.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "password" ? "active" : ""}`,
         onClick: () => setActiveTab("password")
       },
-      /* @__PURE__ */ import_react22.default.createElement(KeyIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react22.default.createElement("span", null, "Cambio de Contrase\xF1a (SP)")
-    ), /* @__PURE__ */ import_react22.default.createElement(
+      /* @__PURE__ */ import_react24.default.createElement(KeyIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react24.default.createElement("span", null, "Cambio de Contrase\xF1a (SP)")
+    ), /* @__PURE__ */ import_react24.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "gerente" ? "active" : ""}`,
         onClick: () => setActiveTab("gerente")
       },
-      /* @__PURE__ */ import_react22.default.createElement(UserIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react22.default.createElement("span", null, "Alta de Gerente (SP)")
-    ), /* @__PURE__ */ import_react22.default.createElement(
+      /* @__PURE__ */ import_react24.default.createElement(UserIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react24.default.createElement("span", null, "Alta de Gerente (SP)")
+    ), /* @__PURE__ */ import_react24.default.createElement(
       "button",
       {
         className: `tab-btn ${activeTab === "usuarios" ? "active" : ""}`,
         onClick: () => setActiveTab("usuarios")
       },
-      /* @__PURE__ */ import_react22.default.createElement(UsersIcon, { style: { width: 18, height: 18 } }),
-      /* @__PURE__ */ import_react22.default.createElement("span", null, "Auditor\xEDa de Cuentas")
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "mt-4" }, activeTab === "password" ? /* @__PURE__ */ import_react22.default.createElement("div", { className: "card max-w-xl mx-auto" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(LockIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Procedimiento: sp_programador_cambiar_password")), /* @__PURE__ */ import_react22.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Restablece la contrase\xF1a de cualquier cuenta de usuario activo mediante procedimiento almacenado."), /* @__PURE__ */ import_react22.default.createElement("form", { onSubmit: handleChangePassword, className: "modal-form" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Usuario Programador:"), /* @__PURE__ */ import_react22.default.createElement(
+      /* @__PURE__ */ import_react24.default.createElement(UsersIcon, { style: { width: 18, height: 18 } }),
+      /* @__PURE__ */ import_react24.default.createElement("span", null, "Auditor\xEDa de Cuentas")
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "mt-4" }, activeTab === "password" ? /* @__PURE__ */ import_react24.default.createElement("div", { className: "card max-w-xl mx-auto" }, /* @__PURE__ */ import_react24.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react24.default.createElement(LockIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Procedimiento: sp_programador_cambiar_password")), /* @__PURE__ */ import_react24.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Restablece la contrase\xF1a de cualquier cuenta de usuario activo mediante procedimiento almacenado."), /* @__PURE__ */ import_react24.default.createElement("form", { onSubmit: handleChangePassword, className: "modal-form" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Usuario Programador:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17619,7 +17851,7 @@ ${dataLines}`;
         onChange: (e) => setPassForm({ ...passForm, usernameProgramador: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Programador:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Programador:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "password",
@@ -17629,7 +17861,7 @@ ${dataLines}`;
         onChange: (e) => setPassForm({ ...passForm, passwordProgramador: e.target.value }),
         required: true
       }
-    ))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group mt-2" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Usuario Objetivo a Modificar:"), /* @__PURE__ */ import_react22.default.createElement(
+    ))), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group mt-2" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Usuario Objetivo a Modificar:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17639,7 +17871,7 @@ ${dataLines}`;
         onChange: (e) => setPassForm({ ...passForm, usuarioObjetivo: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Nueva Contrase\xF1a:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Nueva Contrase\xF1a:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "password",
@@ -17649,7 +17881,7 @@ ${dataLines}`;
         onChange: (e) => setPassForm({ ...passForm, passwordNuevo: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("button", { type: "submit", className: "btn btn-primary btn-block mt-3" }, /* @__PURE__ */ import_react22.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Ejecutar Procedimiento Almacenado")))) : activeTab === "gerente" ? /* @__PURE__ */ import_react22.default.createElement("div", { className: "card max-w-2xl mx-auto" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(UserIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Procedimiento: AgregarEmpleadoPorProgramador")), /* @__PURE__ */ import_react22.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Registra una cuenta Gerencial con permisos administrativos en la panader\xEDa."), /* @__PURE__ */ import_react22.default.createElement("form", { onSubmit: handleCreateGerente, className: "modal-form" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Usuario Programador:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("button", { type: "submit", className: "btn btn-primary btn-block mt-3" }, /* @__PURE__ */ import_react24.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Ejecutar Procedimiento Almacenado")))) : activeTab === "gerente" ? /* @__PURE__ */ import_react24.default.createElement("div", { className: "card max-w-2xl mx-auto" }, /* @__PURE__ */ import_react24.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react24.default.createElement(UserIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Procedimiento: AgregarEmpleadoPorProgramador")), /* @__PURE__ */ import_react24.default.createElement("p", { className: "text-secondary text-sm mb-3" }, "Registra una cuenta Gerencial con permisos administrativos en la panader\xEDa."), /* @__PURE__ */ import_react24.default.createElement("form", { onSubmit: handleCreateGerente, className: "modal-form" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Usuario Programador:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17658,7 +17890,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, usernameProgramador: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Programador:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Programador:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "password",
@@ -17668,7 +17900,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, passwordProgramador: e.target.value }),
         required: true
       }
-    ))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Nombre(s) del Gerente:"), /* @__PURE__ */ import_react22.default.createElement(
+    ))), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Nombre(s) del Gerente:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17678,7 +17910,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, nombre: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Apellido Paterno:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17688,7 +17920,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, apellidoPaterno: e.target.value }),
         required: true
       }
-    ))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Usuario Gerente:"), /* @__PURE__ */ import_react22.default.createElement(
+    ))), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-row-2" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Usuario Gerente:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17698,7 +17930,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, username: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Inicial:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Contrase\xF1a Inicial:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "password",
@@ -17708,7 +17940,7 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, password: e.target.value }),
         required: true
       }
-    ))), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react22.default.createElement(
+    ))), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-row-3" }, /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Puesto:"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "text",
@@ -17717,17 +17949,17 @@ ${dataLines}`;
         onChange: (e) => setGerenteForm({ ...gerenteForm, puesto: e.target.value }),
         required: true
       }
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "G\xE9nero:"), /* @__PURE__ */ import_react22.default.createElement(
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "G\xE9nero:"), /* @__PURE__ */ import_react24.default.createElement(
       "select",
       {
         className: "form-control",
         value: gerenteForm.genero,
         onChange: (e) => setGerenteForm({ ...gerenteForm, genero: e.target.value })
       },
-      /* @__PURE__ */ import_react22.default.createElement("option", { value: "Prefiero no decir" }, "Prefiero no decir"),
-      /* @__PURE__ */ import_react22.default.createElement("option", { value: "Masculino" }, "Masculino"),
-      /* @__PURE__ */ import_react22.default.createElement("option", { value: "Femenino" }, "Femenino")
-    )), /* @__PURE__ */ import_react22.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react22.default.createElement("label", { className: "form-label" }, "Salario Mensual ($):"), /* @__PURE__ */ import_react22.default.createElement(
+      /* @__PURE__ */ import_react24.default.createElement("option", { value: "Prefiero no decir" }, "Prefiero no decir"),
+      /* @__PURE__ */ import_react24.default.createElement("option", { value: "Masculino" }, "Masculino"),
+      /* @__PURE__ */ import_react24.default.createElement("option", { value: "Femenino" }, "Femenino")
+    )), /* @__PURE__ */ import_react24.default.createElement("div", { className: "form-group" }, /* @__PURE__ */ import_react24.default.createElement("label", { className: "form-label" }, "Salario Mensual ($):"), /* @__PURE__ */ import_react24.default.createElement(
       "input",
       {
         type: "number",
@@ -17738,22 +17970,22 @@ ${dataLines}`;
           salario: parseFloat(e.target.value) || 0
         })
       }
-    ))), /* @__PURE__ */ import_react22.default.createElement("button", { type: "submit", className: "btn btn-primary btn-block mt-3" }, /* @__PURE__ */ import_react22.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Crear Gerente v\xEDa Stored Procedure")))) : /* @__PURE__ */ import_react22.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react22.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react22.default.createElement(UsersIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react22.default.createElement("span", null, "Cuentas Registradas en la Base de Datos")), /* @__PURE__ */ import_react22.default.createElement("div", { className: "table-responsive mt-3" }, /* @__PURE__ */ import_react22.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react22.default.createElement("thead", null, /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Usuario"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Nombre Completo"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Rol"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Puesto"), /* @__PURE__ */ import_react22.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react22.default.createElement("tbody", null, loadingAccounts ? /* @__PURE__ */ import_react22.default.createElement("tr", null, /* @__PURE__ */ import_react22.default.createElement("td", { colSpan: "6", className: "text-center py-4" }, "Cargando cuentas...")) : accounts.map((e) => /* @__PURE__ */ import_react22.default.createElement("tr", { key: e.IdEmpleado }, /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-mono text-muted" }, "#", e.IdEmpleado), /* @__PURE__ */ import_react22.default.createElement("td", { className: "font-mono font-semibold" }, e.NombreUsuario), /* @__PURE__ */ import_react22.default.createElement("td", null, e.NombreCompleto || "-"), /* @__PURE__ */ import_react22.default.createElement("td", null, /* @__PURE__ */ import_react22.default.createElement(
+    ))), /* @__PURE__ */ import_react24.default.createElement("button", { type: "submit", className: "btn btn-primary btn-block mt-3" }, /* @__PURE__ */ import_react24.default.createElement(CheckIcon, { style: { width: 18, height: 18 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Crear Gerente v\xEDa Stored Procedure")))) : /* @__PURE__ */ import_react24.default.createElement("div", { className: "card" }, /* @__PURE__ */ import_react24.default.createElement("h3", { className: "card-subtitle-bold" }, /* @__PURE__ */ import_react24.default.createElement(UsersIcon, { style: { width: 20, height: 20 } }), /* @__PURE__ */ import_react24.default.createElement("span", null, "Cuentas Registradas en la Base de Datos")), /* @__PURE__ */ import_react24.default.createElement("div", { className: "table-responsive mt-3" }, /* @__PURE__ */ import_react24.default.createElement("table", { className: "data-table" }, /* @__PURE__ */ import_react24.default.createElement("thead", null, /* @__PURE__ */ import_react24.default.createElement("tr", null, /* @__PURE__ */ import_react24.default.createElement("th", null, "ID"), /* @__PURE__ */ import_react24.default.createElement("th", null, "Usuario"), /* @__PURE__ */ import_react24.default.createElement("th", null, "Nombre Completo"), /* @__PURE__ */ import_react24.default.createElement("th", null, "Rol"), /* @__PURE__ */ import_react24.default.createElement("th", null, "Puesto"), /* @__PURE__ */ import_react24.default.createElement("th", null, "Estado"))), /* @__PURE__ */ import_react24.default.createElement("tbody", null, loadingAccounts ? /* @__PURE__ */ import_react24.default.createElement("tr", null, /* @__PURE__ */ import_react24.default.createElement("td", { colSpan: "6", className: "text-center py-4" }, "Cargando cuentas...")) : accounts.map((e) => /* @__PURE__ */ import_react24.default.createElement("tr", { key: e.IdEmpleado }, /* @__PURE__ */ import_react24.default.createElement("td", { className: "font-mono text-muted" }, "#", e.IdEmpleado), /* @__PURE__ */ import_react24.default.createElement("td", { className: "font-mono font-semibold" }, e.NombreUsuario), /* @__PURE__ */ import_react24.default.createElement("td", null, e.NombreCompleto || "-"), /* @__PURE__ */ import_react24.default.createElement("td", null, /* @__PURE__ */ import_react24.default.createElement(
       "span",
       {
         className: `badge ${e.Rol === "Gerente" ? "badge-primary" : e.Rol === "Programador" ? "badge-dark" : "badge-secondary"}`
       },
       e.Rol
-    )), /* @__PURE__ */ import_react22.default.createElement("td", null, e.Puesto || "-"), /* @__PURE__ */ import_react22.default.createElement("td", null, /* @__PURE__ */ import_react22.default.createElement("span", { className: `badge ${e.Activo ? "badge-success" : "badge-danger"}` }, e.Activo ? "Activo" : "Inactivo"))))))))));
+    )), /* @__PURE__ */ import_react24.default.createElement("td", null, e.Puesto || "-"), /* @__PURE__ */ import_react24.default.createElement("td", null, /* @__PURE__ */ import_react24.default.createElement("span", { className: `badge ${e.Activo ? "badge-success" : "badge-danger"}` }, e.Activo ? "Activo" : "Inactivo"))))))))));
   };
 
   // src/renderer/App.jsx
   var AppContent = () => {
     const { user, isAuthenticated } = useAuth();
-    const [currentPage, setCurrentPage] = (0, import_react23.useState)("ventas");
-    const [updateStatus, setUpdateStatus] = (0, import_react23.useState)(null);
-    const [isSettingsOpen, setIsSettingsOpen] = (0, import_react23.useState)(false);
-    (0, import_react23.useEffect)(() => {
+    const [currentPage, setCurrentPage] = (0, import_react25.useState)("ventas");
+    const [updateStatus, setUpdateStatus] = (0, import_react25.useState)(null);
+    const [isSettingsOpen, setIsSettingsOpen] = (0, import_react25.useState)(false);
+    (0, import_react25.useEffect)(() => {
       if (user) {
         if (user.Rol === "Cliente") {
           setCurrentPage("compras");
@@ -17764,7 +17996,7 @@ ${dataLines}`;
         }
       }
     }, [user]);
-    (0, import_react23.useEffect)(() => {
+    (0, import_react25.useEffect)(() => {
       if (window.api && typeof window.api.onUpdateStatus === "function") {
         const cleanup = window.api.onUpdateStatus((status) => {
           setUpdateStatus(status);
@@ -17773,64 +18005,64 @@ ${dataLines}`;
       }
     }, []);
     if (!isAuthenticated) {
-      return /* @__PURE__ */ import_react23.default.createElement(LoginView, { onLoginSuccess: () => {
+      return /* @__PURE__ */ import_react25.default.createElement(LoginView, { onLoginSuccess: () => {
       } });
     }
     const renderCurrentView = () => {
       switch (currentPage) {
         case "ventas":
-          return /* @__PURE__ */ import_react23.default.createElement(POSView, { isClientMode: false });
+          return /* @__PURE__ */ import_react25.default.createElement(POSView, { isClientMode: false });
         case "compras":
-          return /* @__PURE__ */ import_react23.default.createElement(POSView, { isClientMode: true });
+          return /* @__PURE__ */ import_react25.default.createElement(POSView, { isClientMode: true });
         case "inventario":
-          return /* @__PURE__ */ import_react23.default.createElement(InventarioView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(InventarioView, null);
         case "personal":
-          return /* @__PURE__ */ import_react23.default.createElement(PersonalView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(PersonalView, null);
         case "clientes":
-          return /* @__PURE__ */ import_react23.default.createElement(ClientesView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(ClientesView, null);
         case "proveedores":
-          return /* @__PURE__ */ import_react23.default.createElement(ProveedoresView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(ProveedoresView, null);
         case "reportes":
-          return /* @__PURE__ */ import_react23.default.createElement(ReportesView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(ReportesView, null);
         case "cortes":
-          return /* @__PURE__ */ import_react23.default.createElement(CortesView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(CortesView, null);
         case "programador":
-          return /* @__PURE__ */ import_react23.default.createElement(ProgramadorView, null);
+          return /* @__PURE__ */ import_react25.default.createElement(ProgramadorView, null);
         default:
-          return /* @__PURE__ */ import_react23.default.createElement(POSView, { isClientMode: user?.Rol === "Cliente" });
+          return /* @__PURE__ */ import_react25.default.createElement(POSView, { isClientMode: user?.Rol === "Cliente" });
       }
     };
-    return /* @__PURE__ */ import_react23.default.createElement("div", { className: "app-layout" }, /* @__PURE__ */ import_react23.default.createElement(
+    return /* @__PURE__ */ import_react25.default.createElement("div", { className: "app-layout" }, /* @__PURE__ */ import_react25.default.createElement(
       Navbar,
       {
         currentPage,
         onNavigate: setCurrentPage,
         onOpenSettings: () => setIsSettingsOpen(true)
       }
-    ), /* @__PURE__ */ import_react23.default.createElement(
+    ), /* @__PURE__ */ import_react25.default.createElement(
       SettingsModal,
       {
         isOpen: isSettingsOpen,
         onClose: () => setIsSettingsOpen(false)
       }
-    ), updateStatus && updateStatus.status === "downloading" && /* @__PURE__ */ import_react23.default.createElement("div", { className: "updater-banner" }, /* @__PURE__ */ import_react23.default.createElement("span", null, "Descargando actualizaci\xF3n obligatoria:", " ", /* @__PURE__ */ import_react23.default.createElement("strong", null, updateStatus.progressPercent?.toFixed(1), "%"))), updateStatus && updateStatus.status === "pending_install" && /* @__PURE__ */ import_react23.default.createElement("div", { className: "updater-banner" }, /* @__PURE__ */ import_react23.default.createElement("span", null, "Actualizaci\xF3n ", updateStatus.version, " lista para instalarse."), /* @__PURE__ */ import_react23.default.createElement(
+    ), updateStatus && updateStatus.status === "downloading" && /* @__PURE__ */ import_react25.default.createElement("div", { className: "updater-banner" }, /* @__PURE__ */ import_react25.default.createElement("span", null, "Descargando actualizaci\xF3n obligatoria:", " ", /* @__PURE__ */ import_react25.default.createElement("strong", null, updateStatus.progressPercent?.toFixed(1), "%"))), updateStatus && updateStatus.status === "pending_install" && /* @__PURE__ */ import_react25.default.createElement("div", { className: "updater-banner" }, /* @__PURE__ */ import_react25.default.createElement("span", null, "Actualizaci\xF3n ", updateStatus.version, " lista para instalarse."), /* @__PURE__ */ import_react25.default.createElement(
       "button",
       {
         className: "btn btn-sm btn-primary ml-3",
         onClick: () => window.api.installPendingUpdate()
       },
       "Reiniciar ahora"
-    )), /* @__PURE__ */ import_react23.default.createElement("main", { className: "app-main-viewport" }, renderCurrentView()));
+    )), /* @__PURE__ */ import_react25.default.createElement("main", { className: "app-main-viewport" }, renderCurrentView()));
   };
   var App = () => {
-    return /* @__PURE__ */ import_react23.default.createElement(ThemeProvider, null, /* @__PURE__ */ import_react23.default.createElement(AuthProvider, null, /* @__PURE__ */ import_react23.default.createElement(SettingsProvider, null, /* @__PURE__ */ import_react23.default.createElement(ToastProvider, null, /* @__PURE__ */ import_react23.default.createElement(CartProvider, null, /* @__PURE__ */ import_react23.default.createElement(AppContent, null))))));
+    return /* @__PURE__ */ import_react25.default.createElement(ThemeProvider, null, /* @__PURE__ */ import_react25.default.createElement(AuthProvider, null, /* @__PURE__ */ import_react25.default.createElement(SettingsProvider, null, /* @__PURE__ */ import_react25.default.createElement(ToastProvider, null, /* @__PURE__ */ import_react25.default.createElement(CartProvider, null, /* @__PURE__ */ import_react25.default.createElement(AppContent, null))))));
   };
 
   // src/renderer/index.jsx
   var container = document.getElementById("app-container") || document.getElementById("root");
   if (container) {
     const root = (0, import_client.createRoot)(container);
-    root.render(/* @__PURE__ */ import_react24.default.createElement(App, null));
+    root.render(/* @__PURE__ */ import_react26.default.createElement(App, null));
   } else {
     console.error("No se encontr\xF3 el contenedor #app-container en el DOM.");
   }

@@ -88,13 +88,19 @@ export const POSView = ({ isClientMode = false }) => {
       if (!matchesSearch) return false;
 
       if (category === 'pan-blanco') {
-        return /bolillo|telera|baguette|francés|virote/i.test(p.Nombre);
+        return p.IdCategoria === 1 || /bolillo|telera|baguette|hogaza|integral|francés|virote/i.test(p.Nombre);
       }
       if (category === 'pan-dulce') {
-        return /concha|cuerno|dona|oreja|margarita|rebanada|choux/i.test(p.Nombre);
+        return p.IdCategoria === 2 || /concha|cuerno|cuernito|dona|oreja|margarita|rebanada|rol|choux/i.test(p.Nombre);
       }
       if (category === 'reposteria') {
-        return /pastel|muffin|panqué|tarta|cheesecake/i.test(p.Nombre);
+        return p.IdCategoria === 3 || /pastel|muffin|panqué|tarta|cheesecake/i.test(p.Nombre);
+      }
+      if (category === 'galletas-hojaldres') {
+        return p.IdCategoria === 4 || /galleta|polvorón|beso|hojaldra/i.test(p.Nombre);
+      }
+      if (category === 'cafeteria') {
+        return p.IdCategoria === 5 || /café|capuchino|chocolate|té|leche|bebida/i.test(p.Nombre);
       }
       return true;
     });
@@ -128,6 +134,7 @@ export const POSView = ({ isClientMode = false }) => {
       idCliente: user?.Rol === 'Cliente' ? user.IdEmpleado : null,
       canal,
       carrito: cart,
+      tasaIva: totals?.subtotal > 0 ? (totals.iva / totals.subtotal) : 0.16,
       datosCliente: clientName ? { nombre: clientName, genero: 'Prefiero no decir' } : null
     };
 
@@ -246,6 +253,18 @@ export const POSView = ({ isClientMode = false }) => {
             onClick={() => setCategory('reposteria')}
           >
             Repostería
+          </button>
+          <button
+            className={`pos-category-pill ${category === 'galletas-hojaldres' ? 'active' : ''}`}
+            onClick={() => setCategory('galletas-hojaldres')}
+          >
+            Galletas &amp; Hojaldres
+          </button>
+          <button
+            className={`pos-category-pill ${category === 'cafeteria' ? 'active' : ''}`}
+            onClick={() => setCategory('cafeteria')}
+          >
+            Cafetería &amp; Bebidas
           </button>
         </div>
 

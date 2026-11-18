@@ -1,5 +1,75 @@
 const mysql = require('mysql');
 const crypto = require('crypto');
+const net = require('net');
+const { spawn, exec } = require('child_process');
+const fs = require('fs');
+
+/**
+ * Comprueba si MySQL está respondiendo en el puerto 3306.
+ * Si no está iniciado, intenta levantarlo automáticamente usando el servicio
+ * de Windows o el ejecutable mysqld de XAMPP de forma silenciosa para que la
+ * computadora esté 100% lista para cobrar desde el encendido.
+ */
+async function ensureMySQLRunning(maxRetries = 8, retryDelayMs = 1200) {
+  const checkPort = () => {
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      socket.setTimeout(800);
+      socket.on('connect', () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        resolve(false);
+      });
+      socket.connect(Number(process.env.DB_PORT || 3306), process.env.DB_HOST || '127.0.0.1');
+    });
+  };
+
+  const isAlreadyRunning = await checkPort();
+  if (isAlreadyRunning) return true;
+
+  console.log('[DulceHorno AutoStart] MySQL no responde en puerto 3306. Iniciando servicio automáticamente...');
+
+  // 1. Intentar iniciar servicio Windows 'mysql' si existe
+  try {
+    exec('net start mysql', () => {});
+  } catch (e) {}
+
+  // 2. Si no es servicio, buscar binario de XAMPP
+  const xamppMysqld = 'C:\\xampp\\mysql\\bin\\mysqld.exe';
+  const xamppIni = 'C:\\xampp\\mysql\\bin\\my.ini';
+  if (fs.existsSync(xamppMysqld)) {
+    try {
+      const child = spawn(xamppMysqld, [`--defaults-file=${xamppIni}`, '--standalone'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+    } catch (e) {
+      console.warn('[DulceHorno AutoStart] No se pudo lanzar mysqld de XAMPP:', e.message);
+    }
+  }
+
+  // Esperar a que el puerto responda con reintentos progresivos
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise((r) => setTimeout(r, retryDelayMs));
+    const ok = await checkPort();
+    if (ok) {
+      console.log(`[DulceHorno AutoStart] MySQL conectado y listo tras intento ${i + 1}.`);
+      return true;
+    }
+  }
+
+  console.warn('[DulceHorno AutoStart] MySQL no abrió el puerto a tiempo.');
+  return false;
+}
 
 // Pool de conexiones seguro con reconexión automática
 const pool = mysql.createPool({
@@ -256,6 +326,23 @@ async function ensureSecurityProcedure() {
 }
 
 async function ensureSupportTables() {
+  // Desactivar triggers legados que causaban doble descuento de inventario o IVA hardcodeado
+  const legacyTriggers = [
+    'trg_ventadetalle_ai_descontar_inventario',
+    'trg_ventadetalle_ai_registrar_movimiento',
+    'trg_ventadetalle_ai_recalcular_totales',
+    'trg_ventadetalle_bi_calcular_subtotal',
+    'trg_compradetalle_ai_sumar_inventario',
+    'trg_compradetalle_ai_registrar_movimiento',
+    'trg_compradetalle_ai_recalcular_totales',
+    'trg_compradetalle_bi_calcular_subtotal'
+  ];
+  for (const trg of legacyTriggers) {
+    try {
+      await query(`DROP TRIGGER IF EXISTS ${trg}`);
+    } catch (_) {}
+  }
+
   await ensureEmpleadosRolProgramador();
 
   await ensureColumn('Empleados', 'Nombre', 'VARCHAR(60) NULL AFTER NombreCompleto');
@@ -607,6 +694,7 @@ module.exports = {
   rollback,
   hashPassword,
   verifyPassword,
+  ensureMySQLRunning,
   ensureSupportTables,
   seedRandomDataIfEmpty,
   closePool

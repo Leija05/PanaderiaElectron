@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,26 @@ export const LoginView = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    if (window.api && typeof window.api.getAppInfo === 'function') {
+      window.api.getAppInfo()
+        .then((info) => {
+          if (mounted && info && typeof info.isDev === 'boolean') {
+            setIsDev(info.isDev);
+          }
+        })
+        .catch((err) => {
+          console.warn('No se pudo obtener información del entorno:', err);
+          if (mounted) setIsDev(false);
+        });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,46 +133,48 @@ export const LoginView = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        <div className="login-demo-bar">
-          <span className="demo-label">Acceso rápido para demostración:</span>
-          <div className="demo-buttons-grid">
-            <button
-              type="button"
-              className="demo-btn"
-              title="Usuario: admin | Contraseña: admin123"
-              onClick={() => handleQuickDemo('admin', 'admin123')}
-            >
-              Gerente
-            </button>
-            <button
-              type="button"
-              className="demo-btn"
-              title="Usuario: empleado1 | Contraseña: empleado123"
-              onClick={() => handleQuickDemo('empleado1', 'empleado123')}
-            >
-              Cajero
-            </button>
-            <button
-              type="button"
-              className="demo-btn"
-              title="Usuario: cliente1 | Contraseña: cliente123"
-              onClick={() => handleQuickDemo('cliente1', 'cliente123')}
-            >
-              Cliente
-            </button>
-            <button
-              type="button"
-              className="demo-btn"
-              title="Usuario: programador | Contraseña: programador123"
-              onClick={() => handleQuickDemo('programador', 'programador123')}
-            >
-              Programador
-            </button>
+        {isDev && (
+          <div className="login-demo-bar">
+            <span className="demo-label">Acceso rápido para demostración (Solo en Modo Desarrollo):</span>
+            <div className="demo-buttons-grid">
+              <button
+                type="button"
+                className="demo-btn"
+                title="Usuario: admin | Contraseña: admin123"
+                onClick={() => handleQuickDemo('admin', 'admin123')}
+              >
+                Gerente
+              </button>
+              <button
+                type="button"
+                className="demo-btn"
+                title="Usuario: empleado1 | Contraseña: empleado123"
+                onClick={() => handleQuickDemo('empleado1', 'empleado123')}
+              >
+                Cajero
+              </button>
+              <button
+                type="button"
+                className="demo-btn"
+                title="Usuario: cliente1 | Contraseña: cliente123"
+                onClick={() => handleQuickDemo('cliente1', 'cliente123')}
+              >
+                Cliente
+              </button>
+              <button
+                type="button"
+                className="demo-btn"
+                title="Usuario: programador | Contraseña: programador123"
+                onClick={() => handleQuickDemo('programador', 'programador123')}
+              >
+                Programador
+              </button>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              O cuentas demo: <code>gerente_demo</code> / <code>empleado_demo_1</code> / <code>cliente_demo_1</code> (pass: <code>demo123</code>)
+            </div>
           </div>
-          <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            O cuentas demo: <code>gerente_demo</code> / <code>empleado_demo_1</code> / <code>cliente_demo_1</code> (pass: <code>demo123</code>)
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -35,6 +35,11 @@ contextBridge.exposeInMainWorld('api', {
   getUpdateStatus: () => ipcRenderer.invoke('getUpdateStatus'),
   retryUpdateCheck: () => ipcRenderer.invoke('retryUpdateCheck'),
   installPendingUpdate: () => ipcRenderer.invoke('installPendingUpdate'),
+  exportarReporteExcel: (payload) => ipcRenderer.invoke('exportarReporteExcel', payload),
+  abrirArchivoExterno: (filePath) => ipcRenderer.invoke('abrirArchivoExterno', filePath),
+  getAutostartStatus: () => ipcRenderer.invoke('getAutostartStatus'),
+  setAutostart: (enable) => ipcRenderer.invoke('setAutostart', enable),
+  getAppInfo: () => ipcRenderer.invoke('getAppInfo'),
   onUpdateStatus: (callback) => {
     const handler = (_, payload) => callback(payload);
     ipcRenderer.on('update-status', handler);

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
+import { ToggleSwitch } from './ToggleSwitch';
 import { useSettings, DEFAULT_GLOBAL_SETTINGS, DEFAULT_DEV_SETTINGS } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -55,6 +56,44 @@ export const SettingsModal = ({ isOpen, onClose }) => {
   // Estado para importar JSON
   const [jsonInput, setJsonInput] = useState('');
   const [showJsonImportBox, setShowJsonImportBox] = useState(false);
+
+  // Estado para arranque automático en Windows (Exclusivo Gerente / Admin)
+  const [autostartActive, setAutostartActive] = useState(false);
+  const [loadingAutostart, setLoadingAutostart] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && window.api && window.api.getAutostartStatus) {
+      window.api.getAutostartStatus()
+        .then((status) => setAutostartActive(Boolean(status)))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  const handleToggleAutostart = async (enable) => {
+    if (!isGerente) {
+      showToast('Acceso Restringido: Solo el Administrador o Gerente puede configurar el arranque de Windows.', 'warning');
+      return;
+    }
+    try {
+      setLoadingAutostart(true);
+      const res = await window.api.setAutostart(enable);
+      if (res && res.success) {
+        setAutostartActive(res.enabled);
+        showToast(
+          res.enabled
+            ? 'Arranque automático activado: Dulce Horno y MySQL iniciarán al encender la computadora'
+            : 'Arranque automático desactivado',
+          'success'
+        );
+      } else {
+        showToast('No se pudo configurar el arranque automático: ' + (res?.error || 'Desconocido'), 'error');
+      }
+    } catch (err) {
+      showToast('Error al modificar arranque de Windows: ' + err.message, 'error');
+    } finally {
+      setLoadingAutostart(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -160,9 +199,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Configuración del Sistema por Perfil"
-      subtitle={`Usuario activo: ${user?.NombreCompleto || user?.NombreUsuario} (${role})`}
-      maxWidth="720px"
+      title="Ajustes y Configuración del Sistema"
+      subtitle={`Perfil activo: ${user?.NombreCompleto || user?.NombreUsuario} • Nivel: ${role}`}
+      maxWidth="800px"
       footer={
         <button className="btn btn-secondary" onClick={onClose}>
           Cerrar
@@ -170,7 +209,7 @@ export const SettingsModal = ({ isOpen, onClose }) => {
       }
     >
       {/* Pestañas de configuración según jerarquía */}
-      <div className="tabs-nav-bar mb-4">
+      <div className="tabs-nav-bar mb-3">
         <button
           className={`tab-btn ${activeTab === 'perfil' ? 'active' : ''}`}
           onClick={() => setActiveTab('perfil')}
@@ -184,7 +223,10 @@ export const SettingsModal = ({ isOpen, onClose }) => {
           onClick={() => setActiveTab('tienda')}
         >
           <PosIcon style={{ width: 16, height: 16 }} />
-          <span>Parámetros de Tienda {isGerente ? '' : '(Solo Lectura)'}</span>
+          <span>Parámetros de Tienda</span>
+          <span className={`tab-pill-badge ${isGerente ? 'badge-gerente' : 'badge-readonly'}`}>
+            {isGerente ? 'Gerencia' : 'Consulta'}
+          </span>
         </button>
 
         <button
@@ -192,7 +234,10 @@ export const SettingsModal = ({ isOpen, onClose }) => {
           onClick={() => setActiveTab('sistema')}
         >
           <CodeIcon style={{ width: 16, height: 16 }} />
-          <span>Sistema &amp; Dev {isProgramador ? '' : '(Restringido)'}</span>
+          <span>Sistema &amp; Dev</span>
+          <span className={`tab-pill-badge ${isProgramador ? 'badge-dev' : 'badge-lock'}`}>
+            {isProgramador ? 'Desarrollo' : 'Restringido'}
+          </span>
         </button>
       </div>
 
@@ -259,18 +304,19 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                 <strong>Animaciones y Transiciones Suaves</strong>
                 <p className="text-secondary text-xs">Desactívalas si trabajas en terminales con recursos de hardware limitados.</p>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={userSettings.animationsEnabled !== false}
                 onChange={(e) => updateUserSettings({ animationsEnabled: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
           </div>
 
           {/* Sección 2: Comportamiento en Caja y Punto de Venta */}
           <div className="settings-section-card mb-3">
-            <h4 className="font-semibold text-primary mb-2">Comportamiento en Caja y Punto de Venta</h4>
+            <div className="settings-section-header">
+              <PosIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+              <h4 className="settings-section-title">Comportamiento en Caja y Punto de Venta</h4>
+            </div>
             
             <div className="settings-row-item">
               <div>
@@ -295,11 +341,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                 <strong>Confirmar antes de vaciar carrito</strong>
                 <p className="text-secondary text-xs">Previene vaciados accidentales de tickets largos.</p>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={userSettings.confirmClearCart}
                 onChange={(e) => updateUserSettings({ confirmClearCart: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
 
@@ -308,11 +352,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                 <strong>Mostrar barra de atajos rápidos</strong>
                 <p className="text-secondary text-xs">Muestra recordatorios de teclas (F2 para cobrar, F4 para báscula, Ctrl+F).</p>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={userSettings.showShortcuts}
                 onChange={(e) => updateUserSettings({ showShortcuts: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
 
@@ -340,11 +382,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                   </button>
                 </div>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={userSettings.soundEffects !== false}
                 onChange={(e) => updateUserSettings({ soundEffects: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
 
@@ -354,11 +394,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                 <strong>Limpiar búsqueda al agregar pan</strong>
                 <p className="text-secondary text-xs">Restaura el catálogo completo de inmediato al seleccionar una pieza.</p>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={Boolean(userSettings.autoClearSearch)}
                 onChange={(e) => updateUserSettings({ autoClearSearch: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
 
@@ -368,11 +406,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                 <strong>Disparar impresión automática al cobrar</strong>
                 <p className="text-secondary text-xs">Abre directamente el cuadro de impresión térmica al registrar la venta.</p>
               </div>
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={Boolean(userSettings.autoPrintReceipt)}
                 onChange={(e) => updateUserSettings({ autoPrintReceipt: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
               />
             </div>
           </div>
@@ -394,13 +430,23 @@ export const SettingsModal = ({ isOpen, onClose }) => {
       {/* PESTAÑA 2: PARÁMETROS DE TIENDA (GERENTE Y PROGRAMADOR) */}
       {activeTab === 'tienda' && (
         <div className="settings-panel animate-fade-in">
-          {!isGerente && (
-            <div className="inv-alert-banner mb-3" style={{ background: '#FFF3CD', color: '#856404', borderColor: '#FFEEBA' }}>
-              <LockIcon style={{ width: 18, height: 18 }} />
+          {!isGerente ? (
+            <div className="access-level-banner access-warning mb-3">
+              <LockIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
               <div>
-                <strong>Nivel de Acceso: Limitado para Empleado</strong>
-                <p className="text-xs mt-1" style={{ margin: 0 }}>
-                  Como empleado puedes consultar estos parámetros de operación del negocio. Para modificarlos se requiere la cuenta del Gerente o Programador.
+                <strong>Nivel de Acceso: Modo Consulta (Solo Lectura)</strong>
+                <p className="text-xs mt-0.5">
+                  Como empleado puedes revisar los parámetros de operación, membretes y límites. Para modificarlos se requiere la cuenta del Gerente o Programador.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="access-level-banner access-success mb-3">
+              <CheckIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
+              <div>
+                <strong>Modo Gerencia Habilitado</strong>
+                <p className="text-xs mt-0.5">
+                  Tienes autorización completa para ajustar los parámetros comerciales, membretes de tickets, tasas de IVA y políticas de negocio.
                 </p>
               </div>
             </div>
@@ -409,7 +455,10 @@ export const SettingsModal = ({ isOpen, onClose }) => {
           <form onSubmit={handleSaveStore}>
             {/* Tarjeta 1: Identidad del Ticket */}
             <div className="settings-section-card mb-3">
-              <h4 className="font-semibold text-primary mb-2">Membrete e Identidad del Ticket Térmico</h4>
+              <div className="settings-section-header">
+                <PosIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                <h4 className="settings-section-title">Membrete e Identidad del Ticket Térmico</h4>
+              </div>
               
               <div className="form-row-2">
                 <div className="form-group">
@@ -462,7 +511,11 @@ export const SettingsModal = ({ isOpen, onClose }) => {
 
             {/* Tarjeta 2: Parámetros de Cálculo e Impuestos */}
             <div className="settings-section-card mb-3">
-              <h4 className="font-semibold text-primary mb-2">Parámetros de Cálculo, Báscula e Impuestos</h4>
+              <div className="settings-section-header">
+                <DatabaseIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                <h4 className="settings-section-title">Parámetros de Cálculo, Báscula e Impuestos</h4>
+              </div>
+
               <div className="form-row-3">
                 <div className="form-group">
                   <label className="form-label">Tasa de IVA (%):</label>
@@ -524,7 +577,10 @@ export const SettingsModal = ({ isOpen, onClose }) => {
 
             {/* Tarjeta 3: Políticas Comerciales y Pan Rezago */}
             <div className="settings-section-card mb-3">
-              <h4 className="font-semibold text-primary mb-2">Políticas Comerciales y Pan Rezago</h4>
+              <div className="settings-section-header">
+                <AlertIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                <h4 className="settings-section-title">Políticas Comerciales y Pan Rezago</h4>
+              </div>
               
               <div className="form-row-2">
                 <div className="form-group">
@@ -557,31 +613,30 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                   <strong>Permitir Devoluciones sin Ticket Físico</strong>
                   <p className="text-secondary text-xs">Habilita reintegros en caja con autorización del cajero sin exigir folio previo.</p>
                 </div>
-                <input
-                  type="checkbox"
+                <ToggleSwitch
                   checked={Boolean(storeForm.permitirDevolucionSinTicket)}
                   disabled={!isGerente}
                   onChange={(e) => setStoreForm({ ...storeForm, permitirDevolucionSinTicket: e.target.checked })}
-                  style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
                 />
               </div>
             </div>
 
             {/* Tarjeta 4: Canales y Seguridad Operativa */}
             <div className="settings-section-card mb-3">
-              <h4 className="font-semibold text-primary mb-2">Canales y Seguridad Operativa</h4>
+              <div className="settings-section-header">
+                <LockIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                <h4 className="settings-section-title">Canales y Seguridad Operativa</h4>
+              </div>
               
               <div className="settings-row-item">
                 <div>
                   <strong>Habilitar Módulo de Autocobro a Clientes</strong>
                   <p className="text-secondary text-xs">Permite a los clientes usar terminales de autoservicio para sus órdenes.</p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={storeForm.autocobroHabilitado}
+                <ToggleSwitch
+                  checked={Boolean(storeForm.autocobroHabilitado)}
                   disabled={!isGerente}
                   onChange={(e) => setStoreForm({ ...storeForm, autocobroHabilitado: e.target.checked })}
-                  style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
                 />
               </div>
 
@@ -590,12 +645,41 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                   <strong>Requerir Autorización de Gerente para Cortes</strong>
                   <p className="text-secondary text-xs">Exige credenciales de gerente antes de emitir y cerrar el arqueo de caja.</p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={storeForm.requiereAuthGerenteCorte}
+                <ToggleSwitch
+                  checked={Boolean(storeForm.requiereAuthGerenteCorte)}
                   disabled={!isGerente}
                   onChange={(e) => setStoreForm({ ...storeForm, requiereAuthGerenteCorte: e.target.checked })}
-                  style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
+                />
+              </div>
+            </div>
+
+            {/* Tarjeta 5: Arranque y Automatización de la Terminal (Windows) */}
+            <div className="settings-section-card mb-3">
+              <div className="settings-section-header">
+                <RefreshIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                <h4 className="settings-section-title">Arranque y Automatización de la Terminal (Windows)</h4>
+                <span className={`tab-pill-badge ${isGerente ? 'badge-gerente' : 'badge-readonly'}`} style={{ marginLeft: 'auto', fontSize: '10px' }}>
+                  {isGerente ? 'Gerencia / Admin' : 'Solo Lectura'}
+                </span>
+              </div>
+
+              <div className="settings-row-item">
+                <div>
+                  <strong>Iniciar Dulce Horno y MySQL automáticamente al encender la PC</strong>
+                  <p className="text-secondary text-xs">
+                    Inicia el Punto de Venta en pantalla completa y asegura silenciosamente que MySQL de XAMPP esté listo al prender la computadora.
+                  </p>
+                  {!isGerente && (
+                    <small className="text-warning text-xs font-semibold" style={{ display: 'block', marginTop: '4px' }}>
+                      <LockIcon style={{ width: 12, height: 12, verticalAlign: 'middle', marginRight: '4px' }} />
+                      Configuración reservada exclusivamente para el Administrador o Gerente.
+                    </small>
+                  )}
+                </div>
+                <ToggleSwitch
+                  checked={autostartActive}
+                  disabled={!isGerente || loadingAutostart}
+                  onChange={(e) => handleToggleAutostart(e.target.checked)}
                 />
               </div>
             </div>
@@ -616,24 +700,36 @@ export const SettingsModal = ({ isOpen, onClose }) => {
       {activeTab === 'sistema' && (
         <div className="settings-panel animate-fade-in">
           {!isProgramador ? (
-            <div className="inv-alert-banner mb-3" style={{ background: '#F8D7DA', color: '#721C24', borderColor: '#F5C6CB' }}>
-              <LockIcon style={{ width: 18, height: 18 }} />
+            <div className="access-level-banner access-danger mb-3">
+              <LockIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
               <div>
                 <strong>Acceso Denegado: Exclusivo para Programador</strong>
-                <p className="text-xs mt-1" style={{ margin: 0 }}>
-                  Esta pestaña contiene herramientas de diagnóstico, exportación de esquemas y parámetros de bajo nivel. Solo el rol de Programador tiene autorización.
+                <p className="text-xs mt-0.5">
+                  Esta pestaña contiene herramientas de bajo nivel, diagnósticos IPC y simulación de conectividad. Solo el rol de Programador tiene acceso técnico.
                 </p>
               </div>
             </div>
           ) : (
+            <div className="access-level-banner access-info mb-3">
+              <CodeIcon style={{ width: 18, height: 18, flexShrink: 0 }} />
+              <div>
+                <strong>Entorno de Diagnóstico e Ingeniería Activo</strong>
+                <p className="text-xs mt-0.5">
+                  Herramientas de inspección de red MySQL, volcado de tráfico IPC y serialización de respaldos para depuración del sistema.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isProgramador && (
             <form onSubmit={handleSaveDev}>
               {/* Tarjeta 1: Monitor de Salud de Base de Datos */}
               <div className="settings-section-card mb-3">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h4 className="font-semibold text-primary" style={{ margin: 0 }}>
-                    <DatabaseIcon style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: '6px' }} />
-                    <span>Monitor de Salud de Base de Datos y Red</span>
-                  </h4>
+                  <div className="settings-section-header" style={{ marginBottom: 0 }}>
+                    <DatabaseIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                    <h4 className="settings-section-title">Monitor de Salud de Base de Datos y Red</h4>
+                  </div>
                   {dbPingStatus && (
                     <span className={`ping-indicator-badge ${dbPingStatus.ok ? (dbPingStatus.latency < 50 ? 'ping-fast' : 'ping-slow') : 'ping-error'}`}>
                       {dbPingStatus.ok ? `● ${dbPingStatus.latency}ms (${dbPingStatus.timestamp})` : '● Error'}
@@ -645,7 +741,7 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                   Comprueba la latencia del pool de conexiones MySQL 8.0 y el tiempo de respuesta del motor de consultas.
                 </p>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className="btn btn-sm btn-outline"
@@ -661,18 +757,19 @@ export const SettingsModal = ({ isOpen, onClose }) => {
 
               {/* Tarjeta 2: Diagnóstico y Registro Técnico */}
               <div className="settings-section-card mb-3">
-                <h4 className="font-semibold text-primary mb-2">Herramientas de Depuración y Diagnóstico</h4>
+                <div className="settings-section-header">
+                  <CodeIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                  <h4 className="settings-section-title">Herramientas de Depuración y Diagnóstico</h4>
+                </div>
                 
                 <div className="settings-row-item">
                   <div>
                     <strong>Modo Desarrollador Activo</strong>
                     <p className="text-secondary text-xs">Muestra tiempos de ejecución y detalles de cada comanda.</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={devForm.modoDebug}
+                  <ToggleSwitch
+                    checked={Boolean(devForm.modoDebug)}
                     onChange={(e) => setDevForm({ ...devForm, modoDebug: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
                   />
                 </div>
 
@@ -681,11 +778,9 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                     <strong>Registro de Tráfico IPC en Consola</strong>
                     <p className="text-secondary text-xs">Imprime en la terminal de Electron cada canal y payload invocado.</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={devForm.mostrarLogsIPC}
+                  <ToggleSwitch
+                    checked={Boolean(devForm.mostrarLogsIPC)}
                     onChange={(e) => setDevForm({ ...devForm, mostrarLogsIPC: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
                   />
                 </div>
 
@@ -694,18 +789,19 @@ export const SettingsModal = ({ isOpen, onClose }) => {
                     <strong>Simular Modo Desconectado / Fallas de Red</strong>
                     <p className="text-secondary text-xs">Permite verificar el manejo de errores ante interrupción de conexión.</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={devForm.simularModoOffline}
+                  <ToggleSwitch
+                    checked={Boolean(devForm.simularModoOffline)}
                     onChange={(e) => setDevForm({ ...devForm, simularModoOffline: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
                   />
                 </div>
               </div>
 
               {/* Tarjeta 3: Respaldos y Migración de Configuraciones */}
               <div className="settings-section-card mb-3">
-                <h4 className="font-semibold text-primary mb-2">Gestión de Respaldos y Migración (.JSON)</h4>
+                <div className="settings-section-header">
+                  <DownloadIcon style={{ width: 18, height: 18, color: 'var(--color-primary)' }} />
+                  <h4 className="settings-section-title">Gestión de Respaldos y Migración (.JSON)</h4>
+                </div>
                 <p className="text-secondary text-xs mb-3">
                   Exporta e importa todas las reglas de negocio, membresías de tickets, políticas e IVA en formato portable.
                 </p>

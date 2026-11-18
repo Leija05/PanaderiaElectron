@@ -41,6 +41,8 @@ app.whenReady().then(async () => {
   }
 
   try {
+    // Verificar si MySQL de XAMPP está activo; si no, levantarlo automáticamente
+    await db.ensureMySQLRunning();
     await db.ensureSupportTables();
     await db.seedRandomDataIfEmpty();
   } catch (err) {

@@ -1,6 +1,9 @@
-const { ipcMain } = require('electron');
+const { ipcMain, dialog, shell, app } = require('electron');
+const path = require('path');
+const fs = require('fs');
 const db = require('./database.js');
 const updater = require('./updater.js');
+const { generateExecutiveExcel } = require('./excelService.js');
 
 const DEFAULT_BOLILLO_WEIGHT_KG = 0.065;
 
@@ -738,9 +741,10 @@ function registerIpcHandlers() {
         }
       }
 
-      const subtotal = carrito.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
-      const iva = subtotal * 0.16;
-      const total = subtotal + iva;
+      const subtotal = Number(carrito.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0).toFixed(2));
+      const tasaIva = Number.isFinite(Number(ventaData.tasaIva)) ? Number(ventaData.tasaIva) : 0.16;
+      const iva = Number((subtotal * tasaIva).toFixed(2));
+      const total = Number((subtotal + iva).toFixed(2));
       let idClienteVenta = idCliente;
 
       if (datosCliente && buildFullName(datosCliente)) {
@@ -1304,6 +1308,126 @@ function registerIpcHandlers() {
       autorizadoPor: gerente.NombreCompleto,
       resumen
     };
+  });
+
+  ipcMain.handle('exportarReporteExcel', async (event, payload = {}) => {
+    try {
+      delete require.cache[require.resolve('./excelService.js')];
+      const { generateExecutiveExcel } = require('./excelService.js');
+      const { reportData, auxiliarData = [], storeInfo = {}, saveToFile = false } = payload;
+      const buffer = await generateExecutiveExcel({ reportData, auxiliarData, storeInfo });
+
+      const startDateStr = reportData?.range?.start ? String(reportData.range.start).slice(0, 10) : 'reporte';
+      const endDateStr = reportData?.range?.end ? String(reportData.range.end).slice(0, 10) : '';
+      const defaultFilename = `DulceHorno_Reporte_${startDateStr}_al_${endDateStr}.xlsx`;
+
+      if (saveToFile) {
+        const { canceled, filePath } = await dialog.showSaveDialog({
+          title: 'Guardar Reporte Ejecutivo Excel (Dulce Horno)',
+          defaultPath: defaultFilename,
+          filters: [
+            { name: 'Libro de Excel (*.xlsx)', extensions: ['xlsx'] }
+          ]
+        });
+
+        if (!canceled && filePath) {
+          const fs = require('fs');
+          fs.writeFileSync(filePath, buffer);
+          return {
+            success: true,
+            saved: true,
+            filePath,
+            filename: defaultFilename
+          };
+        }
+        return { success: true, canceled: true };
+      }
+
+      return {
+        success: true,
+        saved: false,
+        filename: defaultFilename,
+        base64: buffer.toString('base64'),
+        size: buffer.length
+      };
+    } catch (err) {
+      console.error('Error generando archivo Excel en IPC:', err);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('abrirArchivoExterno', async (event, filePath) => {
+    if (filePath && shell) {
+      await shell.openPath(filePath);
+      return { success: true };
+    }
+    return { success: false };
+  });
+
+  ipcMain.handle('getAppInfo', () => {
+    return {
+      isPackaged: Boolean(app && app.isPackaged),
+      isDev: Boolean(app && !app.isPackaged),
+      version: app ? app.getVersion() : '1.1.0'
+    };
+  });
+
+  ipcMain.handle('getAutostartStatus', async () => {
+    try {
+      if (app && app.isPackaged) {
+        return Boolean(app.getLoginItemSettings().openAtLogin);
+      }
+      const startupFolder = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+      const vbsPath = path.join(startupFolder, 'DulceHorno_AutoStart.vbs');
+      return fs.existsSync(vbsPath);
+    } catch (e) {
+      console.warn('Error consultando autostart:', e.message);
+      return false;
+    }
+  });
+
+  ipcMain.handle('setAutostart', async (event, enable) => {
+    try {
+      const shouldEnable = Boolean(enable);
+      if (app && app.isPackaged) {
+        app.setLoginItemSettings({
+          openAtLogin: shouldEnable,
+          path: process.execPath
+        });
+      }
+
+      const startupFolder = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup');
+      const vbsPath = path.join(startupFolder, 'DulceHorno_AutoStart.vbs');
+
+      if (shouldEnable) {
+        if (!fs.existsSync(startupFolder)) {
+          fs.mkdirSync(startupFolder, { recursive: true });
+        }
+        const projectDir = path.resolve(__dirname, '..', '..');
+        const vbsContent = [
+          'Set WshShell = CreateObject("WScript.Shell")',
+          `WshShell.CurrentDirectory = "${projectDir.replace(/\\/g, '\\\\')}"`,
+          'WshShell.Run "cmd /c npm start", 0, False',
+          ''
+        ].join('\r\n');
+        fs.writeFileSync(vbsPath, vbsContent, 'utf8');
+
+        // Levantar o verificar servicio MySQL si existe
+        try {
+          const { exec } = require('child_process');
+          exec('net start MySQL', () => {});
+        } catch (e) {}
+      } else {
+        if (fs.existsSync(vbsPath)) {
+          fs.unlinkSync(vbsPath);
+        }
+      }
+
+      return { success: true, enabled: shouldEnable };
+    } catch (err) {
+      console.error('Error configurando autostart en IPC:', err);
+      return { success: false, error: err.message };
+    }
   });
 }
 
